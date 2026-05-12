@@ -66,6 +66,9 @@
   .stat-big { font-size: 36px; font-weight: 600; letter-spacing: -0.02em; }
   .stat-label { font-size: 13px; color: var(--muted); margin-top: 2px; }
   .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stats-row.stats-4 { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .stats-row.stats-4 .stat-big { font-size: 26px; }
+  .stats-row.stats-4 .card { padding: 12px 6px; }
   .stats-row .card { margin-bottom: 0; padding: 14px 12px; text-align: center; }
 
   .pace-good { color: var(--good); }
@@ -102,6 +105,21 @@
 
   .quick-fab { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: max(20px, env(safe-area-inset-right)); width: 60px; height: 60px; border-radius: 50%; background: var(--accent); color: white; font-size: 28px; box-shadow: 0 4px 16px rgba(74, 107, 138, 0.35); display: flex; align-items: center; justify-content: center; z-index: 50; }
 
+  .tab-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--card-bg); padding: 4px; border-radius: var(--radius); margin-bottom: 14px; }
+  .tab-strip .tab { padding: 10px 6px; text-align: center; font-size: 13px; color: var(--muted); border-radius: 10px; cursor: pointer; transition: background 0.15s, color 0.15s; min-height: 40px; display: flex; align-items: center; justify-content: center; }
+  .tab-strip .tab.active { background: var(--bg); color: var(--text); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+
+  .goal-bar { height: 6px; background: var(--card-bg); border-radius: 100px; overflow: hidden; margin-top: 10px; position: relative; }
+  .goal-bar .fill { height: 100%; background: var(--accent); border-radius: 100px; transition: width 0.3s; }
+  .goal-bar .fill.met { background: var(--good); }
+  .goal-bar .fill.behind { background: var(--warn); }
+  .goal-bar .pace-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); opacity: 0.45; border-radius: 2px; transform: translateX(-1px); }
+  .water-chip-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+  .intake-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); font-size: 14px; }
+  .intake-item:first-child { border-top: none; }
+  .intake-item .x { color: var(--muted); padding: 4px 8px; }
+
+
   .week-bar { display: flex; align-items: flex-end; gap: 6px; height: 80px; padding: 8px 0; }
   .week-bar .bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; justify-content: flex-end; }
   .week-bar .bar-fill { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; transition: height 0.3s; }
@@ -134,7 +152,65 @@ let state = {
   currentQuote: null,
   dismissedQuotes: [],
   settingPaceTimer: null,
+  tab: 'water',                // 'water' | 'food' | 'supplements' | 'drinks' (drinks tab includes substances)
+  todayIntake: [],             // today's tide_intake_logs rows
+  supplements: [],             // user's stack
+  aliases: [],                 // user's substance aliases
+  todayOther: [],              // today's tide_other_substances rows
 };
+
+const MEAL_DEFAULTS = { breakfast: 400, lunch: 600, dinner: 700, snack: 200 };
+
+const ACTIVITY_LEVELS = [
+  { id: 'sedentary', label: 'Sedentary', mult: 1.2,   note: 'desk, little exercise' },
+  { id: 'light',     label: 'Light',     mult: 1.375, note: '1–3x/week' },
+  { id: 'moderate',  label: 'Moderate',  mult: 1.55,  note: '3–5x/week' },
+  { id: 'very',      label: 'Very',      mult: 1.725, note: '6–7x/week' },
+];
+const WEIGHT_LOSS_DEFICIT_KCAL = 250; // ~0.5 lb/week — "a little"
+const DEFAULT_KCAL_GOAL = 1800;       // fallback when profile incomplete
+
+function computeBMR(p) {
+  const weightKg = p.weight_lb / 2.205;
+  const heightCm = p.height_in * 2.54;
+  return p.gender === 'female'
+    ? 10 * weightKg + 6.25 * heightCm - 5 * p.age - 161
+    : 10 * weightKg + 6.25 * heightCm - 5 * p.age + 5;
+}
+function computeTDEE(p) {
+  if (!p || !p.height_in || !p.activity_level) return null;
+  const mult = (ACTIVITY_LEVELS.find(a => a.id === p.activity_level) || {}).mult;
+  if (!mult) return null;
+  return Math.round(computeBMR(p) * mult);
+}
+function computeDailyCalorieGoal(p) {
+  const tdee = computeTDEE(p);
+  return tdee == null ? null : tdee - WEIGHT_LOSS_DEFICIT_KCAL;
+}
+
+const WATER_GOAL_ML = 2500;
+const WATER_DAY_START_HR = 7;    // start ramping target at 7am
+const WATER_DAY_END_HR = 22;     // hit full goal by 10pm
+
+const CAFFEINE_PRESETS = [
+  { id: 'coffee',   label: 'Coffee',   mg: 95 },
+  { id: 'espresso', label: 'Espresso', mg: 65 },
+  { id: 'tea',      label: 'Tea',      mg: 40 },
+];
+const CAFFEINE_SOFT_LIMIT_MG = 400; // FDA "safe" daily upper bound
+
+function waterPaceTarget(now = new Date()) {
+  const h = now.getHours() + now.getMinutes() / 60;
+  if (h <= WATER_DAY_START_HR) return 0;
+  if (h >= WATER_DAY_END_HR) return WATER_GOAL_ML;
+  const frac = (h - WATER_DAY_START_HR) / (WATER_DAY_END_HR - WATER_DAY_START_HR);
+  return Math.round(frac * WATER_GOAL_ML);
+}
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
+const SUPP_TIMINGS = ['morning', 'evening', 'as_needed'];
+const ROUTES = ['oral', 'inhaled', 'other'];
+
+function todayISO() { return new Date().toISOString().slice(0, 10); }
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -144,6 +220,17 @@ const el = (html) => { const t = document.createElement('template'); t.innerHTML
 
 function getKey() { return localStorage.getItem('anthropic_api_key'); }
 function setKey(k) { localStorage.setItem('anthropic_api_key', k); }
+
+function getProfile() {
+  try {
+    const raw = localStorage.getItem('tide_profile');
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p || !p.age || !p.gender || !p.weight_lb) return null;
+    return p;
+  } catch { return null; }
+}
+function setProfile(p) { localStorage.setItem('tide_profile', JSON.stringify(p)); }
 
 function toast(msg, ms = 2400) {
   document.querySelectorAll('.toast').forEach(t => t.remove());
@@ -329,6 +416,27 @@ function computePace(drinks) {
   return { perHour, status, minSinceLast, total };
 }
 
+// Widmark BAC estimate. Inaccurate by ~20% — for awareness, not legal/medical decisions.
+function computeBAC(drinks, profile) {
+  if (!profile || drinks.length === 0) return null;
+  const { age, gender, weight_lb } = profile;
+  const baseR = gender === 'female' ? 0.55 : 0.68;
+  const floorR = gender === 'female' ? 0.45 : 0.58;
+  const r = Math.max(floorR, baseR - Math.max(0, age - 30) * 0.001);
+  const grams = drinks.reduce((s, d) => s + (Number(d.standard_units) || 1) * 14, 0);
+  const weightG = weight_lb * 453.592;
+  const firstDrink = new Date(drinks[0].drink_at).getTime();
+  const hoursElapsed = Math.max(0, (Date.now() - firstDrink) / 3600000);
+  const rawBac = (grams / (weightG * r)) * 100;
+  const bac = Math.max(0, rawBac - 0.015 * hoursElapsed);
+  const soberInHours = bac / 0.015;
+  let status = 'safe';
+  if (bac >= 0.08) status = 'over';
+  else if (bac >= 0.05) status = 'high';
+  else if (bac >= 0.02) status = 'moderate';
+  return { bac, status, soberInHours };
+}
+
 // ---------------------------------------------------------------------------
 // Render — root
 // ---------------------------------------------------------------------------
@@ -338,6 +446,7 @@ function render() {
   if (screen === 'home') renderHome();
   else if (screen === 'history') renderHistory();
   else if (screen === 'morning') renderMorning(state.morningSession);
+  else if (screen === 'settings') renderSettings();
 }
 
 function renderKeyForm() {
@@ -363,53 +472,346 @@ function renderKeyForm() {
 // Home screen
 // ---------------------------------------------------------------------------
 function renderHome() {
-  const hasSession = !!state.activeSession;
-  const pace = hasSession ? computePace(state.drinks) : null;
-  const elapsed = hasSession ? Date.now() - new Date(state.activeSession.started_at).getTime() : 0;
+  const tab = state.tab || 'water';
+  const tabs = [
+    { id: 'water',       label: 'Water' },
+    { id: 'food',        label: 'Food' },
+    { id: 'supplements', label: 'Supps' },
+    { id: 'drinks',      label: 'Drinks' },
+  ];
 
   $('#app').innerHTML = `
     <header class="app-head">
       <div class="title">Tide</div>
-      <button class="nav-btn" data-nav="history">History</button>
+      <div style="display: flex; gap: 8px">
+        <button class="nav-btn" data-nav="settings">Profile</button>
+        <button class="nav-btn" data-nav="history">History</button>
+      </div>
     </header>
 
-    ${hasSession ? renderActiveSessionCard(pace, elapsed) : renderIdleCard()}
+    <div class="tab-strip" role="tablist">
+      ${tabs.map(t => `<div class="tab ${t.id === tab ? 'active' : ''}" data-tab="${t.id}" role="tab">${t.label}</div>`).join('')}
+    </div>
 
-    <div class="card card-warm" id="quote-card">
-      ${state.currentQuote
-        ? `<div class="quote">${escapeHtml(state.currentQuote.q)}</div>
-           <div class="quote-author">— ${escapeHtml(state.currentQuote.a)}</div>`
-        : '<div class="quote"><span class="muted">…</span></div>'}
-      <div class="quote-meta">
-        <button id="quote-new">New quote</button>
-        <button id="quote-dismiss">Dismiss</button>
+    <div id="tab-content">${renderTabContent(tab)}</div>
+
+    <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
+  `;
+
+  // Wire shared events
+  $$('[data-nav]').forEach(b => b.onclick = () => { state.screen = b.dataset.nav; render(); });
+  $$('[data-tab]').forEach(b => b.onclick = () => { state.tab = b.dataset.tab; renderHome(); });
+  $('#any-fab').onclick = openLogAny;
+
+  wireTabEvents(tab);
+
+  // Pace re-render timer only meaningful on drinks tab with active session
+  if (state.paceTimer) clearInterval(state.paceTimer);
+  if (tab === 'drinks' && state.activeSession) {
+    state.paceTimer = setInterval(() => {
+      if (state.screen === 'home' && state.tab === 'drinks' && state.activeSession) renderHome();
+    }, 60000);
+  }
+}
+
+function renderTabContent(tab) {
+  if (tab === 'drinks') {
+    const hasSession = !!state.activeSession;
+    const pace = hasSession ? computePace(state.drinks) : null;
+    const elapsed = hasSession ? Date.now() - new Date(state.activeSession.started_at).getTime() : 0;
+    return `
+      ${hasSession ? renderActiveSessionCard(pace, elapsed) : renderIdleCard()}
+      ${hasSession ? renderDrinkList() : renderWeekSummary()}
+      ${renderCaffeineSection()}
+      ${renderOtherSection()}
+    `;
+  }
+  if (tab === 'water') return renderWaterTab();
+  if (tab === 'food') return renderFoodTab();
+  if (tab === 'supplements') return renderSupplementsTab();
+  return '';
+}
+
+function renderCaffeineSection() {
+  const todayCaff = state.todayIntake.filter(r => r.category === 'caffeine');
+  const totalMg = todayCaff.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+  const last = todayCaff.length ? todayCaff.reduce((a, b) => new Date(a.logged_at) > new Date(b.logged_at) ? a : b) : null;
+  let lastLabel = '';
+  if (last) {
+    const elapsedMin = Math.floor((Date.now() - new Date(last.logged_at).getTime()) / 60000);
+    const elapsedLabel = elapsedMin < 60 ? `${elapsedMin}m ago` : `${(elapsedMin / 60).toFixed(1)}h ago`;
+    lastLabel = ` · last ${fmtTime(last.logged_at)} (${elapsedLabel})`;
+  }
+  const over = totalMg > CAFFEINE_SOFT_LIMIT_MG;
+  return `
+    <div class="card">
+      <div class="row" style="margin-bottom: 10px">
+        <div class="stack">
+          <h3 style="margin: 0">Caffeine</h3>
+          <div class="muted small ${over ? 'pace-warn' : ''}">${totalMg} mg today${lastLabel}${over ? ' · over 400mg' : ''}</div>
+        </div>
+      </div>
+      <div class="grid-4">
+        ${CAFFEINE_PRESETS.map(p => `<div class="chip" data-caff="${p.id}" data-caff-mg="${p.mg}">${p.label}<br><span class="muted small" style="font-weight: 400">${p.mg} mg</span></div>`).join('')}
+        <div class="chip" data-caff-custom="1">Custom</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderOtherSection() {
+  const today = todayISO();
+  const todayOther = state.todayOther.filter(r => r.log_date === today);
+  const aliases = state.aliases.filter(a => a.active !== false);
+
+  if (aliases.length === 0) {
+    return `
+      <div class="card">
+        <div class="row" style="margin-bottom: 6px">
+          <h3 style="margin: 0">◦</h3>
+        </div>
+        <p class="small muted" style="margin-bottom: 12px">Track anything else here. You name it — the actual name is never stored.</p>
+        <button class="btn btn-soft" id="other-aliases">Add a label</button>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="card">
+      <div class="row" style="margin-bottom: 10px">
+        <div class="stack">
+          <h3 style="margin: 0">◦</h3>
+          <div class="muted small">${todayOther.length} today</div>
+        </div>
+        <div style="display: flex; gap: 8px">
+          <button class="nav-btn" id="other-aliases">Labels</button>
+          <button class="nav-btn" id="other-log">+ Log</button>
+        </div>
+      </div>
+      ${todayOther.length === 0
+        ? '<div class="muted small">Nothing logged today.</div>'
+        : `<div>${todayOther.slice().reverse().map(r => `
+            <div class="intake-item">
+              <div>
+                <div>${escapeHtml(r.alias)}${r.dose_amount ? ` · ${r.dose_amount}${r.dose_unit ? ' ' + escapeHtml(r.dose_unit) : ''}` : ''}</div>
+                <div class="muted small">${r.setting ? escapeHtml(r.setting) : ''}${r.who_with ? ' · ' + escapeHtml(r.who_with) : ''}${r.mood_before ? ' · ' + escapeHtml(r.mood_before) : ''}</div>
+              </div>
+              <div class="muted small">${fmtTime(r.logged_at)} <span class="x" data-undo-other="${r.id}" role="button" aria-label="Undo">×</span></div>
+            </div>`).join('')}</div>`
+      }
+    </div>
+  `;
+}
+
+function wireTabEvents(tab) {
+  if (tab === 'drinks') {
+    if (state.activeSession) {
+      const end = $('#end-session');
+      if (end) end.onclick = openEndSession;
+    } else {
+      const start = $('#start-session');
+      if (start) start.onclick = openStartSession;
+    }
+    // Substances section (always present on this tab)
+    const otherLog = $('#other-log');
+    if (otherLog) otherLog.onclick = openLogOther;
+    const otherAliases = $('#other-aliases');
+    if (otherAliases) otherAliases.onclick = openManageAliases;
+    // Caffeine section
+    $$('[data-caff]').forEach(c => c.onclick = () => logCaffeine(c.dataset.caff, parseInt(c.dataset.caffMg, 10)));
+    const caffCustom = document.querySelector('[data-caff-custom]');
+    if (caffCustom) caffCustom.onclick = openLogCustomCaffeine;
+  } else if (tab === 'water') {
+    $$('[data-water-ml]').forEach(c => c.onclick = () => logWater(parseInt(c.dataset.waterMl, 10)));
+  } else if (tab === 'food') {
+    const log = $('#food-log');
+    if (log) log.onclick = openLogFood;
+  } else if (tab === 'supplements') {
+    $$('[data-supp-toggle]').forEach(b => b.onclick = () => toggleSupplement(b.dataset.suppToggle, b.dataset.suppName));
+    const edit = $('#supp-edit');
+    if (edit) edit.onclick = openManageSupplements;
+  }
+}
+
+function renderComingSoonTab(title, body) {
+  return `
+    <div class="card">
+      ${title ? `<h2>${escapeHtml(title)}</h2>` : ''}
+      <p class="small muted" style="margin: 0">${escapeHtml(body)}</p>
+    </div>
+  `;
+}
+
+function renderWaterTab() {
+  const todayWater = state.todayIntake.filter(r => r.category === 'water');
+  const totalMl = todayWater.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+  const pct = Math.min(100, Math.round((totalMl / WATER_GOAL_ML) * 100));
+  const met = totalMl >= WATER_GOAL_ML;
+
+  const target = waterPaceTarget();
+  const tickPct = Math.min(100, Math.round((target / WATER_GOAL_ML) * 100));
+  const diff = totalMl - target; // positive = ahead, negative = behind
+  let paceLabel = '';
+  let fillMod = '';
+  if (target === 0) {
+    paceLabel = 'Day not started';
+  } else if (met) {
+    paceLabel = 'Goal hit';
+  } else if (Math.abs(diff) < 100) {
+    paceLabel = 'On pace';
+  } else if (diff > 0) {
+    paceLabel = `${diff} ml ahead`;
+  } else {
+    paceLabel = `${-diff} ml behind`;
+    fillMod = 'behind';
+  }
+
+  return `
+    <div class="card">
+      <div class="row" style="margin-bottom: 4px">
+        <div class="stack">
+          <div class="muted small">Today</div>
+          <div style="font-weight: 500; font-size: 22px;">${totalMl} <span class="muted small" style="font-weight: 400">ml</span></div>
+        </div>
+        <div class="stack" style="text-align: right">
+          <div class="muted small">goal ${WATER_GOAL_ML} ml</div>
+          <div class="small ${fillMod === 'behind' ? 'pace-warn' : (met ? 'pace-good' : '')}">${paceLabel}</div>
+        </div>
+      </div>
+      <div class="goal-bar">
+        <div class="fill ${met ? 'met' : fillMod}" style="width: ${pct}%"></div>
+        ${target > 0 && !met ? `<div class="pace-tick" style="left: ${tickPct}%"></div>` : ''}
+      </div>
+
+      <div class="water-chip-row">
+        <div class="chip" data-water-ml="240">Small<br><span class="muted small" style="font-weight: 400">glass</span></div>
+        <div class="chip" data-water-ml="475">Big<br><span class="muted small" style="font-weight: 400">glass</span></div>
+        <div class="chip" data-water-ml="950">Quart</div>
+        <div class="chip" data-water-ml="1000">Liter</div>
       </div>
     </div>
 
-    ${hasSession ? renderDrinkList() : renderWeekSummary()}
-
-    ${hasSession ? `<button class="quick-fab" id="quick-add" aria-label="Log drink">+</button>` : ''}
+    <div class="card">
+      <h3>Today's glasses</h3>
+      ${todayWater.length === 0
+        ? `<div class="empty"><div class="em">~</div><div>Nothing logged yet</div></div>`
+        : `<div>${todayWater.slice().reverse().map(r => `
+            <div class="intake-item">
+              <div>${r.quantity} ml</div>
+              <div class="muted small">${fmtTime(r.logged_at)} <span class="x" data-undo-intake="${r.id}" role="button" aria-label="Undo">×</span></div>
+            </div>`).join('')}</div>`
+      }
+    </div>
   `;
+}
 
-  // Wire events
-  $$('[data-nav]').forEach(b => b.onclick = () => { state.screen = b.dataset.nav; render(); });
-  $('#quote-new').onclick = () => loadQuote(true);
-  $('#quote-dismiss').onclick = dismissQuote;
+function renderFoodTab() {
+  const todayFood = state.todayIntake.filter(r => r.category === 'food');
+  const todayTotal = todayFood.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+  const profile = getProfile();
+  const personalGoal = computeDailyCalorieGoal(profile);
+  const goal = personalGoal || DEFAULT_KCAL_GOAL;
+  const tdee = computeTDEE(profile);
+  const remaining = goal - todayTotal;
+  const pct = Math.min(100, Math.round((todayTotal / goal) * 100));
+  const over = todayTotal > goal;
 
-  if (hasSession) {
-    $('#quick-add').onclick = openLogDrink;
-    $('#end-session').onclick = openEndSession;
-  } else {
-    $('#start-session').onclick = openStartSession;
+  return `
+    <div class="card">
+      <div class="row" style="margin-bottom: 8px">
+        <div class="stack">
+          <div class="muted small">Today</div>
+          <div style="font-weight: 500; font-size: 28px">${todayTotal} <span class="muted small" style="font-weight: 400">/ ${goal} kcal</span></div>
+        </div>
+        <div class="stack" style="text-align: right">
+          <div class="muted small">${over ? 'over by' : 'remaining'}</div>
+          <div style="font-weight: 500; font-size: 20px" class="${over ? 'pace-warn' : (remaining < goal * 0.2 ? 'pace-good' : '')}">${Math.abs(remaining)}</div>
+        </div>
+      </div>
+      <div class="goal-bar"><div class="fill ${over ? 'behind' : (pct >= 100 ? 'met' : '')}" style="width: ${Math.min(100, pct)}%"></div></div>
+      ${personalGoal == null
+        ? '<p class="small muted" style="margin-top: 10px; margin-bottom: 0">Using default 1800 kcal. Set height + activity in Profile for a personalized target.</p>'
+        : `<p class="small muted" style="margin-top: 10px; margin-bottom: 0">TDEE ${tdee} − ${WEIGHT_LOSS_DEFICIT_KCAL} kcal deficit.</p>`
+      }
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom: 8px">
+        <h3 style="margin: 0">Meals logged</h3>
+        <button class="nav-btn" id="food-log">+ Log meal</button>
+      </div>
+      ${todayFood.length === 0
+        ? `<div class="empty"><div class="em">~</div><div>Nothing logged yet</div></div>`
+        : `<div>${todayFood.slice().reverse().map(r => `
+            <div class="intake-item">
+              <div>
+                <div style="text-transform: capitalize">${escapeHtml(r.item_type || 'meal')}${r.quantity ? ` <span class="muted small" style="font-weight: 400">· ${r.quantity} kcal</span>` : ''}</div>
+                ${r.note ? `<div class="muted small">${escapeHtml(r.note)}</div>` : ''}
+              </div>
+              <div class="muted small">${fmtTime(r.logged_at)} <span class="x" data-undo-intake="${r.id}" role="button" aria-label="Undo">×</span></div>
+            </div>`).join('')}</div>`
+      }
+    </div>
+  `;
+}
+
+function renderSupplementsTab() {
+  const stack = state.supplements.filter(s => s.active !== false);
+  if (stack.length === 0) {
+    return `
+      <div class="card">
+        <h2>Your stack</h2>
+        <p>Add the supplements you take regularly. Tick them off here each day.</p>
+        <button class="btn" id="supp-edit">Build stack</button>
+      </div>
+    `;
   }
 
-  // Schedule pace re-render every minute
-  if (state.paceTimer) clearInterval(state.paceTimer);
-  if (hasSession) {
-    state.paceTimer = setInterval(() => {
-      if (state.screen === 'home' && state.activeSession) renderHome();
-    }, 60000);
-  }
+  const today = todayISO();
+  const taken = new Set(
+    state.todayIntake
+      .filter(r => r.category === 'supplement' && r.log_date === today)
+      .map(r => r.item_type)
+  );
+
+  const renderGroup = (timing, label) => {
+    const items = stack.filter(s => s.timing === timing);
+    if (items.length === 0) return '';
+    return `
+      <div style="margin-top: 14px">
+        <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px">${label}</div>
+        ${items.map(s => {
+          const isTaken = taken.has(s.name);
+          return `
+            <div class="intake-item">
+              <div>${escapeHtml(s.name)}</div>
+              <button class="chip ${isTaken ? 'selected' : ''}" data-supp-toggle="${s.id}" data-supp-name="${escapeHtml(s.name)}" style="min-width: 80px">${isTaken ? 'taken' : 'tap'}</button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  };
+
+  const total = stack.length;
+  const done = stack.filter(s => taken.has(s.name)).length;
+  const pct = Math.round((done / total) * 100);
+
+  return `
+    <div class="card">
+      <div class="row">
+        <div class="stack">
+          <div class="muted small">Today</div>
+          <div style="font-weight: 500; font-size: 22px">${done} / ${total}</div>
+        </div>
+        <button class="nav-btn" id="supp-edit">Edit stack</button>
+      </div>
+      <div class="goal-bar"><div class="fill ${done === total ? 'met' : ''}" style="width: ${pct}%"></div></div>
+      ${renderGroup('morning', 'Morning')}
+      ${renderGroup('evening', 'Evening')}
+      ${renderGroup('as_needed', 'As needed')}
+    </div>
+  `;
 }
 
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -435,6 +837,10 @@ function renderActiveSessionCard(pace, elapsed) {
   const paceClass = pace.status === 'fast' ? 'pace-warn' : (pace.status === 'easy' ? 'pace-good' : '');
   const paceText = pace.status === 'fast' ? 'Pacing fast' : (pace.status === 'easy' ? 'Easy pace' : 'Moderate pace');
 
+  const bac = computeBAC(state.drinks, getProfile());
+  const bacClass = bac && bac.status === 'over' ? 'pace-warn' : (bac && bac.status === 'safe' ? 'pace-good' : '');
+  const bacText = bac ? bac.bac.toFixed(3).replace(/^0/, '') : null; // ".042"
+
   return `
     <div class="card">
       <div class="row" style="margin-bottom: 14px">
@@ -445,7 +851,7 @@ function renderActiveSessionCard(pace, elapsed) {
         ${overLimit ? '<span class="pill pill-warm">past range</span>' : label ? `<span class="pill">aim ${label}</span>` : ''}
       </div>
 
-      <div class="stats-row">
+      <div class="stats-row ${bac ? 'stats-4' : ''}">
         <div class="card">
           <div class="stat-big">${count}</div>
           <div class="stat-label">drinks</div>
@@ -458,9 +864,14 @@ function renderActiveSessionCard(pace, elapsed) {
           <div class="stat-big">${pace.minSinceLast == null ? '—' : pace.minSinceLast + 'm'}</div>
           <div class="stat-label">since last</div>
         </div>
+        ${bac ? `
+        <div class="card">
+          <div class="stat-big ${bacClass}">${bacText}</div>
+          <div class="stat-label">est BAC</div>
+        </div>` : ''}
       </div>
 
-      <div class="small ${paceClass}" style="text-align: center; margin-top: 12px">${paceText}</div>
+      <div class="small ${paceClass}" style="text-align: center; margin-top: 12px">${paceText}${bac && bac.bac > 0 ? ` · sober in ~${bac.soberInHours < 1 ? Math.round(bac.soberInHours * 60) + 'm' : bac.soberInHours.toFixed(1) + 'h'}` : ''}</div>
 
       <div style="height: 14px"></div>
       <div class="btn-row">
@@ -577,6 +988,94 @@ function renderHistory() {
     if (s && s.morning_pending) renderMorning(s);
     else openSessionDetail(s);
   });
+}
+
+function renderSettings() {
+  const p = getProfile() || { age: '', gender: '', weight_lb: '', height_in: '', activity_level: '' };
+  const heightFt = p.height_in ? Math.floor(p.height_in / 12) : '';
+  const heightIn = p.height_in ? p.height_in % 12 : '';
+  const goal = computeDailyCalorieGoal(p);
+  $('#app').innerHTML = `
+    <header class="app-head">
+      <button class="nav-btn" data-back>← Back</button>
+      <div class="title">Profile</div>
+      <div style="width: 60px"></div>
+    </header>
+
+    <div class="card">
+      <p class="small" style="margin-bottom: 18px">Used for BAC estimation and your daily calorie target. Stored only in this browser.</p>
+
+      <div class="modal-section">
+        <div class="label">Sex</div>
+        <div class="grid-2">
+          <div class="chip ${p.gender === 'male' ? 'selected' : ''}" data-gender="male">Male</div>
+          <div class="chip ${p.gender === 'female' ? 'selected' : ''}" data-gender="female">Female</div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="label">Age</div>
+        <input id="age-input" type="number" inputmode="numeric" min="16" max="100" value="${p.age || ''}" placeholder="years">
+      </div>
+
+      <div class="modal-section">
+        <div class="label">Weight (lb)</div>
+        <input id="weight-input" type="number" inputmode="numeric" min="60" max="500" value="${p.weight_lb || ''}" placeholder="lb">
+      </div>
+
+      <div class="modal-section">
+        <div class="label">Height</div>
+        <div class="grid-2">
+          <input id="height-ft-input" type="number" inputmode="numeric" min="4" max="7" value="${heightFt}" placeholder="ft">
+          <input id="height-in-input" type="number" inputmode="numeric" min="0" max="11" value="${heightIn}" placeholder="in">
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="label">Activity</div>
+        <div class="grid-2">
+          ${ACTIVITY_LEVELS.map(a => `
+            <div class="chip ${p.activity_level === a.id ? 'selected' : ''}" data-activity="${a.id}">
+              <div>${a.label}</div>
+              <div class="small muted" style="margin-top: 2px">${a.note}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      ${goal != null ? `<p class="small" style="margin-bottom: 14px"><span class="muted">Calorie goal:</span> <strong>${goal} kcal/day</strong> <span class="muted">(TDEE ${computeTDEE(p)} − ${WEIGHT_LOSS_DEFICIT_KCAL} for slow loss)</span></p>` : ''}
+
+      <button class="btn" id="profile-save">Save</button>
+      <p class="small muted" style="margin-top: 16px; margin-bottom: 0">BAC is a Widmark estimate, ±20%. Don't use for legal or driving decisions. Calorie target uses Mifflin-St Jeor with a 250 kcal deficit (~½ lb/week).</p>
+    </div>
+  `;
+
+  let sel = { gender: p.gender || null, activity: p.activity_level || null };
+  $$('[data-gender]').forEach(c => c.onclick = () => {
+    $$('[data-gender]').forEach(x => x.classList.remove('selected'));
+    c.classList.add('selected'); sel.gender = c.dataset.gender;
+  });
+  $$('[data-activity]').forEach(c => c.onclick = () => {
+    $$('[data-activity]').forEach(x => x.classList.remove('selected'));
+    c.classList.add('selected'); sel.activity = c.dataset.activity;
+  });
+  $$('[data-back]').forEach(b => b.onclick = () => { state.screen = 'home'; render(); });
+  $('#profile-save').onclick = () => {
+    const age = parseInt($('#age-input').value, 10);
+    const weight_lb = parseFloat($('#weight-input').value);
+    const hFt = parseInt($('#height-ft-input').value, 10);
+    const hIn = parseInt($('#height-in-input').value, 10);
+    const height_in = (Number.isFinite(hFt) ? hFt * 12 : 0) + (Number.isFinite(hIn) ? hIn : 0);
+    if (!sel.gender) { toast('Pick a sex'); return; }
+    if (!age || age < 16 || age > 100) { toast('Enter a valid age'); return; }
+    if (!weight_lb || weight_lb < 60 || weight_lb > 500) { toast('Enter a valid weight'); return; }
+    if (!height_in || height_in < 48 || height_in > 90) { toast('Enter a valid height'); return; }
+    if (!sel.activity) { toast('Pick an activity level'); return; }
+    setProfile({ age, gender: sel.gender, weight_lb, height_in, activity_level: sel.activity });
+    toast('Profile saved');
+    state.screen = 'home';
+    render();
+  };
 }
 
 function openSessionDetail(s) {
@@ -698,6 +1197,8 @@ function openLogDrink() {
   const atLimit = intentionHasLimit(intention) && count + 1 > intention;
   const label = intentionLabel(intention);
 
+  const aliases = state.aliases.filter(a => a.active !== false);
+
   showModal(`
     <h2>Log a drink</h2>
     ${atLimit ? `<div class="card" style="background: rgba(181, 117, 74, 0.12); margin-bottom: 14px"><div class="small">You said ${label} tonight. This would be ${count + 1}. Just noticing.</div></div>` : ''}
@@ -707,6 +1208,11 @@ function openLogDrink() {
       <div class="grid-4">
         ${Object.keys(DRINK_LABELS).map(t => `<div class="chip" data-type="${t}">${DRINK_LABELS[t]}</div>`).join('')}
       </div>
+      ${aliases.length ? `
+        <div class="grid-4" style="margin-top: 8px">
+          ${aliases.map(a => `<div class="chip chip-soft" data-alias-pick="${escapeHtml(a.alias)}">◦ ${escapeHtml(a.alias)}</div>`).join('')}
+        </div>
+      ` : ''}
     </div>
 
     <div class="modal-section">
@@ -733,6 +1239,11 @@ function openLogDrink() {
         sel.standard_units = 1.5;
       }
       updateBtn();
+    });
+    m.querySelectorAll('[data-alias-pick]').forEach(c => c.onclick = () => {
+      const alias = c.dataset.aliasPick;
+      closeModal();
+      openLogOther(alias);
     });
     m.querySelectorAll('[data-units]').forEach(c => c.onclick = () => {
       m.querySelectorAll('[data-units]').forEach(x => x.classList.remove('selected'));
@@ -775,11 +1286,523 @@ async function undoDrink(id) {
   render();
 }
 
+async function logWater(ml) {
+  const row = {
+    category: 'water',
+    quantity: ml,
+    unit: 'ml',
+    logged_at: new Date().toISOString(),
+  };
+  try {
+    const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(row) });
+    state.todayIntake.push(result[0]);
+    render();
+  } catch (e) {
+    toast('Could not log: ' + e.message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Universal "+" sheet — log anything from any tab
+// ---------------------------------------------------------------------------
+function openLogAny() {
+  const drinkLabel = state.activeSession ? 'Drink' : 'Drink<br><span class="muted small" style="font-weight: 400">starts session</span>';
+  showModal(`
+    <h2>Log</h2>
+    <div class="grid-2" style="gap: 10px">
+      <div class="chip" data-add="water" style="padding: 18px 8px">Water<br><span class="muted small" style="font-weight: 400">240 ml</span></div>
+      <div class="chip" data-add="caffeine" style="padding: 18px 8px">Caffeine</div>
+      <div class="chip" data-add="meal" style="padding: 18px 8px">Meal</div>
+      <div class="chip" data-add="drink" style="padding: 18px 8px">${drinkLabel}</div>
+      <div class="chip" data-add="supp" style="padding: 18px 8px">Supplement</div>
+      <div class="chip" data-add="substance" style="padding: 18px 8px">◦ Substance</div>
+    </div>
+  `, (m) => {
+    m.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
+      const choice = b.dataset.add;
+      closeModal();
+      // Tiny delay so the previous modal animates out before the next opens
+      setTimeout(() => handleAddChoice(choice), 60);
+    });
+  });
+}
+
+async function handleAddChoice(choice) {
+  if (choice === 'water') {
+    await logWater(240);
+    toast('Logged 240 ml');
+  } else if (choice === 'caffeine') {
+    openCaffeinePicker();
+  } else if (choice === 'meal') {
+    openLogFood();
+  } else if (choice === 'drink') {
+    if (state.activeSession) openLogDrink();
+    else openStartSession();
+  } else if (choice === 'supp') {
+    state.tab = 'supplements';
+    renderHome();
+    if (state.supplements.filter(s => s.active !== false).length === 0) {
+      openManageSupplements();
+    }
+  } else if (choice === 'substance') {
+    openLogOther();
+  }
+}
+
+function openCaffeinePicker() {
+  showModal(`
+    <h2>Log caffeine</h2>
+    <div class="grid-4" style="gap: 8px">
+      ${CAFFEINE_PRESETS.map(p => `<div class="chip" data-caff-pick="${p.id}" data-caff-pick-mg="${p.mg}">${p.label}<br><span class="muted small" style="font-weight: 400">${p.mg} mg</span></div>`).join('')}
+      <div class="chip" data-caff-pick-custom="1">Custom</div>
+    </div>
+  `, (m) => {
+    m.querySelectorAll('[data-caff-pick]').forEach(c => c.onclick = async () => {
+      const id = c.dataset.caffPick;
+      const mg = parseInt(c.dataset.caffPickMg, 10);
+      closeModal();
+      await logCaffeine(id, mg);
+      toast(`Logged ${mg} mg`);
+    });
+    const custom = m.querySelector('[data-caff-pick-custom]');
+    if (custom) custom.onclick = () => { closeModal(); openLogCustomCaffeine(); };
+  });
+}
+
+async function logCaffeine(item_type, mg, note = null) {
+  const row = {
+    category: 'caffeine',
+    item_type,
+    quantity: mg,
+    unit: 'mg',
+    note,
+    logged_at: new Date().toISOString(),
+  };
+  try {
+    const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(row) });
+    state.todayIntake.push(result[0]);
+    render();
+  } catch (e) {
+    toast('Could not log: ' + e.message);
+  }
+}
+
+function openLogCustomCaffeine() {
+  showModal(`
+    <h2>Caffeine</h2>
+    <div class="modal-section">
+      <div class="label">Amount (mg)</div>
+      <input id="caff-mg" type="number" inputmode="numeric" min="1" max="1000" placeholder="e.g., 120">
+    </div>
+    <div class="modal-section">
+      <div class="label">Source (optional)</div>
+      <input id="caff-note" type="text" placeholder="e.g., cold brew, matcha" maxlength="40">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="caff-go">Log</button>
+    </div>
+  `, () => {
+    $('#caff-mg').focus();
+    $('#caff-go').onclick = async () => {
+      const mg = parseInt($('#caff-mg').value, 10);
+      if (!mg || mg < 1 || mg > 1000) { toast('Enter a valid mg'); return; }
+      const note = $('#caff-note').value.trim() || null;
+      $('#caff-go').disabled = true; $('#caff-go').textContent = 'Logging…';
+      try {
+        await logCaffeine(note || 'custom', mg, note);
+        closeModal();
+      } catch (e) {
+        toast('Could not log: ' + e.message);
+        $('#caff-go').disabled = false; $('#caff-go').textContent = 'Log';
+      }
+    };
+  });
+}
+
+async function undoIntake(id) {
+  try {
+    await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'DELETE' });
+    state.todayIntake = state.todayIntake.filter(r => r.id !== id);
+    render();
+  } catch (e) {
+    toast('Could not undo: ' + e.message);
+  }
+}
+
+async function undoOther(id) {
+  try {
+    await sbFetch(`/tide_other_substances?id=eq.${id}`, { method: 'DELETE' });
+    state.todayOther = state.todayOther.filter(r => r.id !== id);
+    render();
+  } catch (e) {
+    toast('Could not undo: ' + e.message);
+  }
+}
+
 // Wire dynamic undo buttons after every render
 document.addEventListener('click', (e) => {
   const undo = e.target.closest('[data-undo]');
   if (undo) undoDrink(undo.dataset.undo);
+  const undoIntakeEl = e.target.closest('[data-undo-intake]');
+  if (undoIntakeEl) undoIntake(undoIntakeEl.dataset.undoIntake);
+  const undoOtherEl = e.target.closest('[data-undo-other]');
+  if (undoOtherEl) undoOther(undoOtherEl.dataset.undoOther);
 });
+
+// ---------------------------------------------------------------------------
+// Food
+// ---------------------------------------------------------------------------
+async function estimateMealKcal(type, note) {
+  const prompt = `Estimate total calories for this meal. Reply ONLY as JSON: {"kcal": <integer>}.
+Meal type: ${type}
+Description: ${note}
+
+Be realistic — a typical portion as described. If multiple items, sum them. Round to nearest 10.`;
+  const fallback = { kcal: MEAL_DEFAULTS[type] || 400 };
+  const result = await callClaudeJSON(prompt, fallback);
+  const k = parseInt(result.kcal, 10);
+  return (Number.isFinite(k) && k > 0 && k < 5000) ? k : fallback.kcal;
+}
+
+function openLogFood() {
+  showModal(`
+    <h2>Log a meal</h2>
+    <div class="modal-section">
+      <div class="label">Type</div>
+      <div class="grid-4">
+        ${MEAL_TYPES.map(t => `<div class="chip" data-meal="${t}" style="text-transform: capitalize">${t}</div>`).join('')}
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="label">What did you have</div>
+      <textarea id="meal-note" rows="2" placeholder="2 eggs, toast, a coffee"></textarea>
+    </div>
+    <div class="modal-section">
+      <div class="label">Calories</div>
+      <div class="row" style="gap: 8px">
+        <input id="meal-kcal" type="number" inputmode="numeric" min="0" max="5000" placeholder="—" style="flex: 1">
+        <button class="nav-btn" id="meal-estimate" disabled style="opacity: 0.5">Estimate</button>
+      </div>
+      <div class="small muted" style="margin-top: 6px">Pick a meal type for a default; tap Estimate to ask AI based on your note.</div>
+    </div>
+    <button class="btn" id="meal-go" disabled style="opacity: 0.5">Log</button>
+  `, (m) => {
+    let type = null;
+    const kcalInput = $('#meal-kcal');
+    const noteInput = $('#meal-note');
+    const estBtn = $('#meal-estimate');
+
+    const refreshEstBtn = () => {
+      const ok = !!type && noteInput.value.trim().length >= 3;
+      estBtn.disabled = !ok; estBtn.style.opacity = ok ? 1 : 0.5;
+    };
+    const refreshGoBtn = () => {
+      const ok = !!type;
+      $('#meal-go').disabled = !ok; $('#meal-go').style.opacity = ok ? 1 : 0.5;
+    };
+
+    m.querySelectorAll('[data-meal]').forEach(c => c.onclick = () => {
+      m.querySelectorAll('[data-meal]').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected'); type = c.dataset.meal;
+      if (!kcalInput.value) kcalInput.value = MEAL_DEFAULTS[type];
+      refreshEstBtn(); refreshGoBtn();
+    });
+    noteInput.oninput = refreshEstBtn;
+
+    estBtn.onclick = async () => {
+      const note = noteInput.value.trim();
+      if (!type || note.length < 3) return;
+      estBtn.disabled = true; estBtn.textContent = '…';
+      try {
+        const k = await estimateMealKcal(type, note);
+        kcalInput.value = k;
+        toast('Estimated by AI — edit if needed');
+      } catch (e) {
+        toast('Estimate failed — using default');
+        kcalInput.value = MEAL_DEFAULTS[type];
+      } finally {
+        estBtn.textContent = 'Estimate';
+        refreshEstBtn();
+      }
+    };
+
+    $('#meal-go').onclick = async () => {
+      if (!type) return;
+      $('#meal-go').disabled = true; $('#meal-go').textContent = 'Logging…';
+      try {
+        const kcal = parseInt(kcalInput.value, 10) || MEAL_DEFAULTS[type];
+        await logFood(type, noteInput.value.trim() || null, kcal);
+        closeModal();
+      } catch (e) {
+        toast('Could not log: ' + e.message);
+        $('#meal-go').disabled = false; $('#meal-go').textContent = 'Log';
+      }
+    };
+  });
+}
+
+async function logFood(item_type, note, kcal) {
+  const row = { category: 'food', item_type, note, quantity: kcal, unit: 'kcal', logged_at: new Date().toISOString() };
+  const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(row) });
+  state.todayIntake.push(result[0]);
+  render();
+}
+
+// ---------------------------------------------------------------------------
+// Supplements
+// ---------------------------------------------------------------------------
+function openManageSupplements() {
+  const renderRows = () => state.supplements.map(s => `
+    <div class="intake-item">
+      <div>
+        <div>${escapeHtml(s.name)}</div>
+        <div class="muted small" style="text-transform: capitalize">${s.timing.replace('_', ' ')}</div>
+      </div>
+      <span class="x" data-supp-remove="${s.id}" role="button" aria-label="Remove">×</span>
+    </div>
+  `).join('');
+
+  showModal(`
+    <h2>Your stack</h2>
+    <div id="supp-list">${state.supplements.length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No supplements yet.</div>'}</div>
+
+    <div class="modal-section">
+      <div class="label">Add</div>
+      <input id="supp-name" type="text" placeholder="e.g., magnesium" autocomplete="off">
+      <div class="grid-3" style="margin-top: 8px">
+        ${SUPP_TIMINGS.map(t => `<div class="chip" data-timing="${t}" style="text-transform: capitalize">${t.replace('_', ' ')}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Done</button>
+      <button class="btn" id="supp-add" disabled style="opacity: 0.5">Add</button>
+    </div>
+  `, (m) => {
+    let timing = null;
+    const refreshAddBtn = () => {
+      const name = $('#supp-name').value.trim();
+      const ok = !!name && !!timing;
+      $('#supp-add').disabled = !ok; $('#supp-add').style.opacity = ok ? 1 : 0.5;
+    };
+    $('#supp-name').oninput = refreshAddBtn;
+    m.querySelectorAll('[data-timing]').forEach(c => c.onclick = () => {
+      m.querySelectorAll('[data-timing]').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected'); timing = c.dataset.timing;
+      refreshAddBtn();
+    });
+    m.querySelectorAll('[data-supp-remove]').forEach(b => b.onclick = async () => {
+      await removeSupplement(b.dataset.suppRemove);
+      $('#supp-list').innerHTML = state.supplements.length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No supplements yet.</div>';
+      m.querySelectorAll('[data-supp-remove]').forEach(b2 => b2.onclick = b.onclick); // re-wire
+    });
+    $('#supp-add').onclick = async () => {
+      const name = $('#supp-name').value.trim();
+      if (!name || !timing) return;
+      await addSupplement(name, timing);
+      $('#supp-name').value = '';
+      m.querySelectorAll('[data-timing]').forEach(x => x.classList.remove('selected'));
+      timing = null;
+      $('#supp-list').innerHTML = renderRows();
+      refreshAddBtn();
+      // Re-bind remove buttons after re-render
+      m.querySelectorAll('[data-supp-remove]').forEach(b => b.onclick = async () => {
+        await removeSupplement(b.dataset.suppRemove);
+        $('#supp-list').innerHTML = state.supplements.length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No supplements yet.</div>';
+      });
+    };
+  });
+}
+
+async function addSupplement(name, timing) {
+  const row = { name, timing, active: true };
+  const result = await sbFetch('/tide_supplements', { method: 'POST', body: JSON.stringify(row) });
+  state.supplements.push(result[0]);
+}
+
+async function removeSupplement(id) {
+  await sbFetch(`/tide_supplements?id=eq.${id}`, { method: 'DELETE' });
+  state.supplements = state.supplements.filter(s => s.id !== id);
+}
+
+async function toggleSupplement(supplementId, name) {
+  const today = todayISO();
+  const existing = state.todayIntake.find(r => r.category === 'supplement' && r.item_type === name && r.log_date === today);
+  if (existing) {
+    await sbFetch(`/tide_intake_logs?id=eq.${existing.id}`, { method: 'DELETE' });
+    state.todayIntake = state.todayIntake.filter(r => r.id !== existing.id);
+  } else {
+    const row = { category: 'supplement', item_type: name, quantity: 1, unit: 'count', logged_at: new Date().toISOString() };
+    const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(row) });
+    state.todayIntake.push(result[0]);
+  }
+  render();
+}
+
+// ---------------------------------------------------------------------------
+// Other (discreet)
+// ---------------------------------------------------------------------------
+function openManageAliases() {
+  const renderRows = () => state.aliases.map(a => `
+    <div class="intake-item">
+      <div>${escapeHtml(a.alias)}</div>
+      <span class="x" data-alias-remove="${a.id}" role="button" aria-label="Remove">×</span>
+    </div>
+  `).join('');
+
+  showModal(`
+    <h2>Labels</h2>
+    <p class="small muted" style="margin-bottom: 14px">You define the label. The actual name is never stored or sent anywhere.</p>
+    <div id="alias-list">${state.aliases.length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">None yet.</div>'}</div>
+
+    <div class="modal-section">
+      <div class="label">Add a label</div>
+      <input id="alias-name" type="text" placeholder="anything — A, mellow, etc." autocomplete="off" maxlength="40">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Done</button>
+      <button class="btn" id="alias-add" disabled style="opacity: 0.5">Add</button>
+    </div>
+  `, (m) => {
+    const refresh = () => {
+      const ok = !!$('#alias-name').value.trim();
+      $('#alias-add').disabled = !ok; $('#alias-add').style.opacity = ok ? 1 : 0.5;
+    };
+    $('#alias-name').oninput = refresh;
+    const wireRemoves = () => m.querySelectorAll('[data-alias-remove]').forEach(b => b.onclick = async () => {
+      await removeAlias(b.dataset.aliasRemove);
+      $('#alias-list').innerHTML = state.aliases.length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">None yet.</div>';
+      wireRemoves();
+    });
+    wireRemoves();
+    $('#alias-add').onclick = async () => {
+      const a = $('#alias-name').value.trim();
+      if (!a) return;
+      try {
+        await addAlias(a);
+      } catch (e) {
+        toast('Already exists'); return;
+      }
+      $('#alias-name').value = '';
+      $('#alias-list').innerHTML = renderRows();
+      wireRemoves();
+      refresh();
+    };
+  });
+}
+
+async function addAlias(alias) {
+  const result = await sbFetch('/tide_other_aliases', { method: 'POST', body: JSON.stringify({ alias, active: true }) });
+  state.aliases.push(result[0]);
+}
+
+async function removeAlias(id) {
+  await sbFetch(`/tide_other_aliases?id=eq.${id}`, { method: 'DELETE' });
+  state.aliases = state.aliases.filter(a => a.id !== id);
+}
+
+function openLogOther(preselectedAlias = null) {
+  const aliases = state.aliases.filter(a => a.active !== false);
+  if (aliases.length === 0) { openManageAliases(); return; }
+
+  showModal(`
+    <h2>Log</h2>
+
+    <div class="modal-section">
+      <div class="label">Label</div>
+      <div class="grid-3">
+        ${aliases.map(a => `<div class="chip" data-alias="${escapeHtml(a.alias)}">${escapeHtml(a.alias)}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Dose</div>
+      <div class="grid-2">
+        <input id="dose-amount" type="number" inputmode="decimal" step="any" placeholder="amount">
+        <input id="dose-unit" type="text" placeholder="unit (tab / g / mg)" maxlength="12">
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Route</div>
+      <div class="grid-3">
+        ${ROUTES.map(r => `<div class="chip" data-route="${r}" style="text-transform: capitalize">${r}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Setting</div>
+      <div class="grid-3">
+        ${SETTINGS.map(s => `<div class="chip" data-setting="${s}" style="text-transform: capitalize">${s}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Who with</div>
+      <div class="grid-3">
+        ${COMPANY.map(c => `<div class="chip" data-who="${c}" style="text-transform: capitalize">${c}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Mood going in</div>
+      <input id="mood-input" type="text" placeholder="one word — curious, calm, frayed" maxlength="40">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="other-go" disabled style="opacity: 0.5">Log</button>
+    </div>
+  `, (m) => {
+    const sel = { alias: null, route: null, setting: null, who_with: null };
+    const refresh = () => {
+      const ok = !!sel.alias;
+      $('#other-go').disabled = !ok; $('#other-go').style.opacity = ok ? 1 : 0.5;
+    };
+    const pick = (attr, key) => m.querySelectorAll(`[data-${attr}]`).forEach(c => c.onclick = () => {
+      m.querySelectorAll(`[data-${attr}]`).forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected'); sel[key] = c.dataset[attr.replace(/-./g, x => x[1].toUpperCase())];
+      refresh();
+    });
+    pick('alias', 'alias');
+    pick('route', 'route');
+    pick('setting', 'setting');
+    pick('who', 'who_with');
+
+    if (preselectedAlias) {
+      const chip = m.querySelector(`[data-alias="${CSS.escape(preselectedAlias)}"]`);
+      if (chip) chip.click();
+    }
+
+    $('#other-go').onclick = async () => {
+      $('#other-go').disabled = true; $('#other-go').textContent = 'Logging…';
+      try {
+        await logOther({
+          alias: sel.alias,
+          dose_amount: parseFloat($('#dose-amount').value) || null,
+          dose_unit: $('#dose-unit').value.trim() || null,
+          route: sel.route,
+          setting: sel.setting,
+          who_with: sel.who_with,
+          mood_before: $('#mood-input').value.trim() || null,
+        });
+        closeModal();
+      } catch (e) {
+        toast('Could not log: ' + e.message);
+        $('#other-go').disabled = false; $('#other-go').textContent = 'Log';
+      }
+    };
+  });
+}
+
+async function logOther(row) {
+  row.logged_at = new Date().toISOString();
+  const result = await sbFetch('/tide_other_substances', { method: 'POST', body: JSON.stringify(row) });
+  state.todayOther.push(result[0]);
+  render();
+}
 
 // ---------------------------------------------------------------------------
 // End session
@@ -1042,6 +2065,46 @@ async function loadActiveSession() {
   }
 }
 
+async function loadTodayIntake() {
+  try {
+    const rows = await sbFetch(`/tide_intake_logs?log_date=eq.${todayISO()}&order=logged_at.asc`);
+    state.todayIntake = rows || [];
+  } catch (e) {
+    console.warn('loadTodayIntake failed:', e.message);
+    state.todayIntake = [];
+  }
+}
+
+async function loadSupplements() {
+  try {
+    const rows = await sbFetch('/tide_supplements?active=eq.true&order=created_at.asc');
+    state.supplements = rows || [];
+  } catch (e) {
+    console.warn('loadSupplements failed:', e.message);
+    state.supplements = [];
+  }
+}
+
+async function loadAliases() {
+  try {
+    const rows = await sbFetch('/tide_other_aliases?active=eq.true&order=created_at.asc');
+    state.aliases = rows || [];
+  } catch (e) {
+    console.warn('loadAliases failed:', e.message);
+    state.aliases = [];
+  }
+}
+
+async function loadTodayOther() {
+  try {
+    const rows = await sbFetch(`/tide_other_substances?log_date=eq.${todayISO()}&order=logged_at.asc`);
+    state.todayOther = rows || [];
+  } catch (e) {
+    console.warn('loadTodayOther failed:', e.message);
+    state.todayOther = [];
+  }
+}
+
 async function loadHistory() {
   try {
     // Pull last 30 sessions with drink counts (computed via two queries — keep it simple)
@@ -1086,6 +2149,7 @@ async function boot() {
   // Then refresh from server
   await loadActiveSession();
   await loadHistory();
+  await Promise.all([loadTodayIntake(), loadSupplements(), loadAliases(), loadTodayOther()]);
   // Auto-prompt morning-after if there's a recently-ended session pending
   const pending = state.history.find(s => s.morning_pending);
   if (pending && !state.activeSession && !sessionStorage.getItem('morning_dismissed_' + pending.id)) {
@@ -1096,7 +2160,6 @@ async function boot() {
     return;
   }
   render();
-  loadQuote();
 }
 
 // Service worker

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tide-v6';
+const CACHE_NAME = 'tide-v17';
 const STATIC_ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
