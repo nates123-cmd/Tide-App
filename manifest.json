@@ -10,16 +10,22 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='38' fill='%23EEF2F6'/><path d='M30 120 Q60 100 96 120 T162 120 L162 162 L30 162 Z' fill='%234A6B8A'/><circle cx='96' cy='70' r='14' fill='%234A6B8A' opacity='0.5'/></svg>",
+      "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='102' fill='%23EEF2F6'/><path d='M80 320 Q160 270 256 320 T432 320 L432 432 L80 432 Z' fill='%234A6B8A'/><circle cx='256' cy='190' r='38' fill='%234A6B8A' opacity='0.5'/></svg>",
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
