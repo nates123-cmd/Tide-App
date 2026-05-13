@@ -163,6 +163,18 @@ Same family as Break/Still/Tick. Slightly warmer accents than Tick (warm card ba
 - **Still:** morning reflection note → `reflections` table with `tags: ['tide', 'morning-after']` and `mood = session.feeling`. Optional checkbox in morning screen.
 - (Not yet wired) **Still habits:** low/no-drink night → `habit_logs`. Spec leaves this for a follow-up; the week summary already surfaces low/no-drink nights as a positive `pill-good`.
 
+## Oura biometric integration
+Tide pulls daily Oura snapshots (sleep score, total sleep, HRV balance, resting HR, readiness score, activity score) into `tide_oura_daily` (PK = date) and joins them against sessions/drinks on the **Patterns** screen.
+
+- **PAT storage:** `localStorage['still_oura_pat']` — shared with Still since both apps run on the same `nates123-cmd.github.io` origin. Set in Profile (Oura section).
+- **Edge function:** `/functions/v1/smooth-processor` (deployed name) — wraps `api.ouraring.com/v2/usercollection/{path}` with a whitelist of `daily_sleep` / `daily_readiness` / `daily_activity` / etc. Source lives in `still-app/supabase/functions/oura-proxy/index.ts`. **Same function is used by both Still and Tide — do not re-deploy.**
+- **Sync cadence:** `syncOura()` runs on boot and from the Profile screen. Throttled to once per 4 hours via `localStorage['tide_oura_last_sync']`. Pulls last 14 days and upserts to `tide_oura_daily` with `Prefer: resolution=merge-duplicates`.
+- **Attribution rule:** a session whose `started_at` is ≥ noon attributes to the *next* day's Oura row (the morning that sleep ended). Before noon: same day. See `ouraDateForSession()`.
+- **Bucketing:** drinks per night → `{0, 1-2, 3-4, 5+}`. `bucketStats()` averages each Oura metric per bucket. Rendered as horizontal bars per metric card.
+- **Narrative:** `patternsNarrative()` ships the joined per-day rows to Claude (sonnet-4-6) with a JSON-only system prompt for a 1–3 pattern, ≤80-word paragraph.
+
+Migration: `migrations/2026-05-13_oura_daily.sql` is the additive migration; `schema.sql` carries the same table for fresh installs.
+
 ---
 
 ## Deploy workflow

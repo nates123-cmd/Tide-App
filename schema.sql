@@ -1,7 +1,10 @@
--- Tide — full schema (8 tables)
+-- Tide — full schema (9 tables)
 -- Runs as drop + recreate. Safe for tide_* only; will not touch reflections/habits/etc.
 -- Anonymous access via anon RLS, matching the existing suite pattern (no auth.users FK).
 -- Paste into Supabase SQL editor and run.
+--
+-- For incremental additions on an existing DB (won't drop data) use the files
+-- under ./migrations/ instead.
 
 -- Drop in dependency order (cascades clear FKs anyway, but explicit is clearer)
 drop table if exists tide_drinks cascade;
@@ -11,6 +14,7 @@ drop table if exists tide_intake_logs cascade;
 drop table if exists tide_supplements cascade;
 drop table if exists tide_other_substances cascade;
 drop table if exists tide_other_aliases cascade;
+drop table if exists tide_oura_daily cascade;
 drop table if exists tide_sessions cascade;
 
 -- 1. Drinking sessions
@@ -100,6 +104,22 @@ create table tide_other_aliases (
   created_at timestamptz not null default now()
 );
 
+-- 9. Oura biometric daily snapshot (one row per date)
+create table tide_oura_daily (
+  date date primary key,
+  sleep_score int,
+  total_sleep_min int,
+  rem_sleep_min int,
+  deep_sleep_min int,
+  sleep_efficiency int,
+  hrv_avg int,
+  resting_hr int,
+  readiness_score int,
+  activity_score int,
+  raw jsonb,
+  fetched_at timestamptz not null default now()
+);
+
 -- RLS on everything
 alter table tide_sessions enable row level security;
 alter table tide_drinks enable row level security;
@@ -109,6 +129,7 @@ alter table tide_intake_logs enable row level security;
 alter table tide_supplements enable row level security;
 alter table tide_other_substances enable row level security;
 alter table tide_other_aliases enable row level security;
+alter table tide_oura_daily enable row level security;
 
 create policy "anon all" on tide_sessions for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_drinks for all to anon, authenticated using (true) with check (true);
@@ -118,6 +139,7 @@ create policy "anon all" on tide_intake_logs for all to anon, authenticated usin
 create policy "anon all" on tide_supplements for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_other_substances for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_other_aliases for all to anon, authenticated using (true) with check (true);
+create policy "anon all" on tide_oura_daily for all to anon, authenticated using (true) with check (true);
 
 grant all on
   tide_sessions,
@@ -127,7 +149,8 @@ grant all on
   tide_intake_logs,
   tide_supplements,
   tide_other_substances,
-  tide_other_aliases
+  tide_other_aliases,
+  tide_oura_daily
   to anon, authenticated, service_role;
 
 -- Indexes for the queries we'll actually run
@@ -136,5 +159,6 @@ create index tide_sessions_log_date_idx        on tide_sessions(log_date);
 create index tide_intake_logs_log_date_idx     on tide_intake_logs(log_date);
 create index tide_intake_logs_category_idx     on tide_intake_logs(category);
 create index tide_other_substances_log_date_idx on tide_other_substances(log_date);
+create index tide_oura_daily_date_idx          on tide_oura_daily(date desc);
 
 notify pgrst, 'reload schema';

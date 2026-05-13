@@ -135,6 +135,20 @@
 
   .key-form { padding: 40px 18px; }
   .key-form input { font-family: monospace; font-size: 13px; }
+
+  .pat-window { display: flex; gap: 8px; margin-bottom: 14px; }
+  .pat-window .chip { flex: 1; text-align: center; padding: 10px 0; }
+  .pat-card { margin-bottom: 14px; }
+  .pat-metric-title { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .pat-row { display: grid; grid-template-columns: 80px 1fr 56px; align-items: center; gap: 10px; padding: 6px 0; }
+  .pat-row-label { font-size: 13px; color: var(--muted); }
+  .pat-row-bar { height: 8px; background: var(--card-bg); border-radius: 4px; overflow: hidden; }
+  .pat-row-bar.dim { background: var(--border); opacity: 0.4; }
+  .pat-row-fill { height: 100%; background: var(--accent); transition: width 0.3s; }
+  .pat-row-val { font-size: 14px; font-weight: 500; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+  .pat-row-val.dim { color: var(--muted); font-weight: 400; }
+  .pat-narrative { font-size: 14px; line-height: 1.55; color: var(--text); white-space: pre-wrap; }
+  .pat-empty { font-size: 14px; color: var(--muted); padding: 8px 0; }
 </style>
 </head>
 <body>
@@ -340,6 +354,108 @@ async function callClaudeJSON(userPrompt, fallback) {
 }
 
 // ---------------------------------------------------------------------------
+// Oura biometric pull. Shares PAT + edge fn with Still (same origin → same localStorage).
+// Sleep for night ending on day D is reported as Oura's daily_sleep row with day=D.
+// We sync periodically into tide_oura_daily so the Patterns view can join with drinking data.
+// ---------------------------------------------------------------------------
+const OURA_PROXY_PATH = '/functions/v1/smooth-processor';
+const OURA_SYNC_MS = 4 * 60 * 60 * 1000;
+
+function getOuraPat() { return localStorage.getItem('still_oura_pat') || ''; }
+function setOuraPat(v) { localStorage.setItem('still_oura_pat', (v || '').trim()); }
+
+function addDays(iso, n) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+async function ouraFetch(path, startDate, endDate) {
+  const pat = getOuraPat();
+  if (!pat) throw new Error('Oura PAT not set');
+  const u = new URL(SB_URL + OURA_PROXY_PATH);
+  u.searchParams.set('path', path);
+  if (startDate) u.searchParams.set('start_date', startDate);
+  if (endDate) u.searchParams.set('end_date', endDate);
+  const r = await fetch(u.toString(), { headers: { 'x-oura-pat': pat } });
+  if (!r.ok) {
+    let detail = '';
+    try { detail = (await r.json()).error || ''; } catch {}
+    throw new Error('Oura ' + r.status + (detail ? ' — ' + detail : ''));
+  }
+  return r.json();
+}
+
+// Build one tide_oura_daily row from same-day Oura sleep+readiness+activity records.
+function normalizeOuraRow(date, sleepRow, readinessRow, activityRow) {
+  const totalSec = sleepRow?.total_sleep_duration ?? null;
+  const remSec   = sleepRow?.rem_sleep_duration ?? null;
+  const deepSec  = sleepRow?.deep_sleep_duration ?? null;
+  return {
+    date,
+    sleep_score:      sleepRow?.score ?? null,
+    total_sleep_min:  totalSec != null ? Math.round(totalSec / 60) : null,
+    rem_sleep_min:    remSec   != null ? Math.round(remSec   / 60) : null,
+    deep_sleep_min:   deepSec  != null ? Math.round(deepSec  / 60) : null,
+    sleep_efficiency: sleepRow?.sleep_efficiency ?? sleepRow?.contributors?.efficiency ?? null,
+    hrv_avg:          readinessRow?.contributors?.hrv_balance ?? null,
+    resting_hr:       readinessRow?.contributors?.resting_heart_rate ?? null,
+    readiness_score:  readinessRow?.score ?? null,
+    activity_score:   activityRow?.score ?? null,
+    raw: { sleep: sleepRow || null, readiness: readinessRow || null, activity: activityRow || null },
+    fetched_at: new Date().toISOString(),
+  };
+}
+
+async function syncOura({ days = 14, force = false } = {}) {
+  if (!getOuraPat()) return { ok: false, skipped: 'no_pat' };
+  const lastSync = parseInt(localStorage.getItem('tide_oura_last_sync') || '0', 10);
+  if (!force && Date.now() - lastSync < OURA_SYNC_MS) return { ok: true, skipped: 'recent' };
+  const endDate = todayISO();
+  const startDate = addDays(endDate, -(days - 1));
+  try {
+    const [sleepRes, readinessRes, activityRes] = await Promise.all([
+      ouraFetch('daily_sleep', startDate, endDate).catch(() => null),
+      ouraFetch('daily_readiness', startDate, endDate).catch(() => null),
+      ouraFetch('daily_activity', startDate, endDate).catch(() => null),
+    ]);
+    const byDate = (res) => Object.fromEntries((res?.data || []).map(r => [r.day, r]));
+    const sleepByDate     = byDate(sleepRes);
+    const readinessByDate = byDate(readinessRes);
+    const activityByDate  = byDate(activityRes);
+    const dates = new Set([
+      ...Object.keys(sleepByDate),
+      ...Object.keys(readinessByDate),
+      ...Object.keys(activityByDate),
+    ]);
+    if (!dates.size) {
+      localStorage.setItem('tide_oura_last_sync', String(Date.now()));
+      return { ok: true, count: 0 };
+    }
+    const rows = [...dates].map(d => normalizeOuraRow(d, sleepByDate[d], readinessByDate[d], activityByDate[d]));
+    await sbFetch('/tide_oura_daily?on_conflict=date', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(rows),
+    });
+    localStorage.setItem('tide_oura_last_sync', String(Date.now()));
+    return { ok: true, count: rows.length };
+  } catch (e) {
+    console.warn('Oura sync failed:', e.message);
+    return { ok: false, error: e.message };
+  }
+}
+
+async function loadOuraRange(startDate, endDate) {
+  try {
+    return await sbFetch(`/tide_oura_daily?date=gte.${startDate}&date=lte.${endDate}&order=date.desc`);
+  } catch (e) {
+    console.warn('loadOuraRange failed:', e.message);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Standard drink units (US standard = 14g pure alcohol)
 // ---------------------------------------------------------------------------
 const DRINK_UNITS = {
@@ -452,6 +568,7 @@ function render() {
   else if (screen === 'history') renderHistory();
   else if (screen === 'morning') renderMorning(state.morningSession);
   else if (screen === 'settings') renderSettings();
+  else if (screen === 'patterns') renderPatterns();
 }
 
 function renderKeyForm() {
@@ -490,6 +607,7 @@ function renderHome() {
       <div class="title">Tide</div>
       <div style="display: flex; gap: 8px">
         <button class="nav-btn" data-nav="settings">Profile</button>
+        <button class="nav-btn" data-nav="patterns">Patterns</button>
         <button class="nav-btn" data-nav="history">History</button>
       </div>
     </header>
@@ -1053,6 +1171,17 @@ function renderSettings() {
       <button class="btn" id="profile-save">Save</button>
       <p class="small muted" style="margin-top: 16px; margin-bottom: 0">BAC is a Widmark estimate, ±20%. Don't use for legal or driving decisions. Calorie target uses Mifflin-St Jeor with a 250 kcal deficit (~½ lb/week).</p>
     </div>
+
+    <div class="card" style="margin-top: 16px">
+      <h3 style="margin-bottom: 6px">Oura</h3>
+      <p class="small" style="margin-bottom: 12px">Pulls sleep, HRV, and readiness into the Patterns view. <a href="https://cloud.ouraring.com/personal-access-tokens" target="_blank" rel="noopener" style="color: var(--accent)">Generate a PAT →</a></p>
+      <input id="oura-pat-input" type="password" placeholder="Personal Access Token" autocomplete="off" value="${escapeHtml(getOuraPat())}" style="width: 100%; padding: 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-family: inherit; font-size: 14px; margin-bottom: 10px">
+      <div class="btn-row">
+        <button class="btn btn-soft" id="oura-save" style="flex: 1">Save token</button>
+        <button class="btn btn-soft" id="oura-sync" style="flex: 1">Sync now</button>
+      </div>
+      <p class="small muted" id="oura-status" style="margin: 12px 0 0">${getOuraPat() ? 'Token saved. Auto-syncs every 4 hours.' : 'No token set.'}</p>
+    </div>
   `;
 
   let sel = { gender: p.gender || null, activity: p.activity_level || null };
@@ -1080,6 +1209,26 @@ function renderSettings() {
     toast('Profile saved');
     state.screen = 'home';
     render();
+  };
+
+  $('#oura-save').onclick = () => {
+    const v = $('#oura-pat-input').value.trim();
+    setOuraPat(v);
+    $('#oura-status').textContent = v ? 'Token saved. Sync starting…' : 'Token cleared.';
+    if (v) {
+      localStorage.removeItem('tide_oura_last_sync');
+      syncOura({ force: true }).then(r => {
+        if (r.ok) $('#oura-status').textContent = `Synced ${r.count ?? 0} days.`;
+        else $('#oura-status').textContent = 'Sync failed: ' + (r.error || 'unknown');
+      });
+    }
+  };
+
+  $('#oura-sync').onclick = async () => {
+    if (!getOuraPat()) { toast('Save a PAT first'); return; }
+    $('#oura-status').textContent = 'Syncing…';
+    const r = await syncOura({ force: true });
+    $('#oura-status').textContent = r.ok ? `Synced ${r.count ?? 0} days.` : 'Sync failed: ' + (r.error || 'unknown');
   };
 }
 
@@ -1873,6 +2022,211 @@ async function endSession(feeling, note) {
 }
 
 // ---------------------------------------------------------------------------
+// Patterns — joins tide_oura_daily with sessions/drinks to surface comparisons
+// ---------------------------------------------------------------------------
+const PAT_WINDOWS = [
+  { id: '7d',  days: 7,  label: '7d'  },
+  { id: '30d', days: 30, label: '30d' },
+  { id: '90d', days: 90, label: '90d' },
+];
+
+// A session that started after noon attributes to the Oura row for the NEXT day
+// (the sleep that ended that morning). Before noon — same day.
+function ouraDateForSession(startedAt) {
+  const d = new Date(startedAt);
+  if (d.getHours() >= 12) {
+    const next = new Date(d);
+    next.setDate(next.getDate() + 1);
+    return next.toISOString().slice(0, 10);
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+function drinkBucket(n) {
+  if (!n) return '0';
+  if (n <= 2) return '1-2';
+  if (n <= 4) return '3-4';
+  return '5+';
+}
+
+const BUCKET_ORDER = ['0', '1-2', '3-4', '5+'];
+const BUCKET_LABELS = {
+  '0':   'No drinks',
+  '1-2': '1–2 drinks',
+  '3-4': '3–4 drinks',
+  '5+':  '5+ drinks',
+};
+
+async function loadPatternsData(days) {
+  const endDate = todayISO();
+  const startDate = addDays(endDate, -(days - 1));
+  // Sessions over a wider window so attribution into the start date works.
+  const startedAfter = addDays(startDate, -1) + 'T00:00:00';
+  const [ouraRows, sessions] = await Promise.all([
+    loadOuraRange(startDate, endDate),
+    sbFetch(`/tide_sessions?started_at=gte.${encodeURIComponent(startedAfter)}&order=started_at.asc`).catch(() => []),
+  ]);
+  const sessIds = (sessions || []).map(s => s.id);
+  let drinkCounts = {};
+  if (sessIds.length) {
+    const drinks = await sbFetch(`/tide_drinks?session_id=in.(${sessIds.join(',')})&select=session_id`).catch(() => []);
+    (drinks || []).forEach(d => { drinkCounts[d.session_id] = (drinkCounts[d.session_id] || 0) + 1; });
+  }
+  // Map oura_date → drink count (summed if multiple sessions land on same night)
+  const drinksByOuraDate = {};
+  (sessions || []).forEach(s => {
+    const od = ouraDateForSession(s.started_at);
+    drinksByOuraDate[od] = (drinksByOuraDate[od] || 0) + (drinkCounts[s.id] || 0);
+  });
+  // Build a row per oura date with metric + bucket
+  const joined = (ouraRows || []).map(o => ({
+    date: o.date,
+    sleep_score: o.sleep_score,
+    hrv_avg: o.hrv_avg,
+    readiness_score: o.readiness_score,
+    total_sleep_min: o.total_sleep_min,
+    drink_count: drinksByOuraDate[o.date] || 0,
+    bucket: drinkBucket(drinksByOuraDate[o.date] || 0),
+  }));
+  return { joined, startDate, endDate, hadPat: !!getOuraPat() };
+}
+
+function bucketStats(rows, key) {
+  const buckets = {};
+  BUCKET_ORDER.forEach(b => { buckets[b] = { sum: 0, n: 0 }; });
+  rows.forEach(r => {
+    const v = r[key];
+    if (v == null) return;
+    buckets[r.bucket].sum += v;
+    buckets[r.bucket].n += 1;
+  });
+  const out = {};
+  BUCKET_ORDER.forEach(b => {
+    out[b] = buckets[b].n ? buckets[b].sum / buckets[b].n : null;
+  });
+  return out;
+}
+
+function patBar(label, value, max, fmt, n) {
+  if (value == null) {
+    return `<div class="pat-row"><div class="pat-row-label">${escapeHtml(label)}</div><div class="pat-row-bar dim"></div><div class="pat-row-val dim">—</div></div>`;
+  }
+  const pct = Math.max(0, Math.min(100, max ? (value / max) * 100 : 0));
+  return `<div class="pat-row">
+    <div class="pat-row-label">${escapeHtml(label)}</div>
+    <div class="pat-row-bar"><div class="pat-row-fill" style="width: ${pct.toFixed(1)}%"></div></div>
+    <div class="pat-row-val">${fmt(value)}${n ? `<span class="muted small" style="font-weight:400"> · ${n}</span>` : ''}</div>
+  </div>`;
+}
+
+function patMetricCard(title, rows, key, max, fmt) {
+  const stats = bucketStats(rows, key);
+  const counts = {};
+  BUCKET_ORDER.forEach(b => { counts[b] = rows.filter(r => r.bucket === b && r[key] != null).length; });
+  const anyData = BUCKET_ORDER.some(b => stats[b] != null);
+  if (!anyData) {
+    return `<div class="card pat-card"><div class="pat-metric-title">${escapeHtml(title)}</div><div class="pat-empty">No data yet for this window.</div></div>`;
+  }
+  return `<div class="card pat-card">
+    <div class="pat-metric-title">${escapeHtml(title)}</div>
+    ${BUCKET_ORDER.map(b => patBar(BUCKET_LABELS[b], stats[b], max, fmt, counts[b])).join('')}
+  </div>`;
+}
+
+async function patternsNarrative(days, joined) {
+  if (!joined.length) return 'Sync Oura and log some sessions — patterns appear here once there is data on both sides.';
+  const summary = joined
+    .filter(r => r.sleep_score != null || r.hrv_avg != null || r.readiness_score != null)
+    .map(r => ({
+      d: r.date,
+      drinks: r.drink_count,
+      sleep: r.sleep_score,
+      hrv: r.hrv_avg,
+      readiness: r.readiness_score,
+      sleep_min: r.total_sleep_min,
+    }));
+  if (summary.length < 3) return 'Not enough joined data yet — keep logging and the pattern will fill in.';
+  const fallback = { paragraph: 'Not enough signal to call a pattern yet.' };
+  const pj = await callClaudeJSON(
+    `You're analyzing ${days} days of someone's drinking + Oura biometrics. Each row is one day: drinks (count for the night before), sleep score, HRV balance, readiness score, total sleep minutes. Identify 1–3 specific, concrete patterns relating drinking to recovery. Be terse, non-judgmental, factual. Cite numbers. Max 80 words. If the signal is weak, say so. Return JSON: {"paragraph": "..."}\n\nData: ${JSON.stringify(summary)}`,
+    fallback
+  );
+  return pj.paragraph || fallback.paragraph;
+}
+
+async function renderPatterns() {
+  const win = state.patternsWindow || '30d';
+  const winCfg = PAT_WINDOWS.find(w => w.id === win) || PAT_WINDOWS[1];
+
+  // Initial frame with loading state
+  $('#app').innerHTML = `
+    <header class="app-head">
+      <button class="nav-btn" data-back>← Back</button>
+      <div class="title">Patterns</div>
+      <div style="width: 60px"></div>
+    </header>
+
+    <div class="pat-window">
+      ${PAT_WINDOWS.map(w => `<div class="chip ${w.id === win ? 'selected' : ''}" data-win="${w.id}">${w.label}</div>`).join('')}
+    </div>
+
+    <div id="pat-body"><div class="pat-empty">Loading…</div></div>
+  `;
+
+  $$('[data-back]').forEach(b => b.onclick = () => { state.screen = 'home'; render(); });
+  $$('[data-win]').forEach(b => b.onclick = () => {
+    state.patternsWindow = b.dataset.win;
+    render();
+  });
+
+  if (!getOuraPat()) {
+    $('#pat-body').innerHTML = `<div class="card"><p>Add an Oura Personal Access Token in Profile to enable Patterns. Your drinking data will be compared against sleep score, HRV, and readiness.</p><button class="btn btn-soft" data-nav="settings">Open Profile</button></div>`;
+    $$('[data-nav]').forEach(b => b.onclick = () => { state.screen = b.dataset.nav; render(); });
+    return;
+  }
+
+  // Trigger a background sync (no await on UI — we'll just read whatever's in the DB now)
+  syncOura().catch(() => {});
+
+  const { joined } = await loadPatternsData(winCfg.days);
+
+  if (!joined.length) {
+    $('#pat-body').innerHTML = `<div class="card"><div class="pat-empty">No Oura data synced for this window yet. Open Profile → Sync now, or wait for the next auto-sync.</div></div>`;
+    return;
+  }
+
+  const fmtScore = v => Math.round(v).toString();
+  const fmtSleepHrs = v => `${Math.floor(v / 60)}h ${String(Math.round(v % 60)).padStart(2, '0')}m`;
+
+  $('#pat-body').innerHTML = `
+    ${patMetricCard('Sleep score', joined, 'sleep_score', 100, fmtScore)}
+    ${patMetricCard('HRV balance',  joined, 'hrv_avg',     100, fmtScore)}
+    ${patMetricCard('Readiness',    joined, 'readiness_score', 100, fmtScore)}
+    ${patMetricCard('Total sleep',  joined, 'total_sleep_min', 600, fmtSleepHrs)}
+
+    <div class="card pat-card">
+      <div class="pat-metric-title">What the data says</div>
+      <div class="pat-narrative" id="pat-narrative">Reading the joined data…</div>
+      <div style="display:flex; gap:8px; margin-top:10px">
+        <button class="btn btn-soft" id="pat-refresh" style="flex: 1">Refresh insight</button>
+      </div>
+    </div>
+  `;
+
+  const narrate = async () => {
+    $('#pat-narrative').textContent = 'Reading the joined data…';
+    try {
+      const p = await patternsNarrative(winCfg.days, joined);
+      $('#pat-narrative').textContent = p;
+    } catch (e) {
+      $('#pat-narrative').textContent = 'Could not generate insight: ' + e.message;
+    }
+  };
+  $('#pat-refresh').onclick = narrate;
+  narrate();
+}
+
+// ---------------------------------------------------------------------------
 // Morning-after
 // ---------------------------------------------------------------------------
 async function renderMorning(session) {
@@ -2155,6 +2509,8 @@ async function boot() {
   await loadActiveSession();
   await loadHistory();
   await Promise.all([loadTodayIntake(), loadSupplements(), loadAliases(), loadTodayOther()]);
+  // Oura sync in the background — does nothing if no PAT or last sync was recent
+  syncOura().catch(() => {});
   // Auto-prompt morning-after if there's a recently-ended session pending
   const pending = state.history.find(s => s.morning_pending);
   if (pending && !state.activeSession && !sessionStorage.getItem('morning_dismissed_' + pending.id)) {
