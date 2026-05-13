@@ -136,6 +136,26 @@
   .key-form { padding: 40px 18px; }
   .key-form input { font-family: monospace; font-size: 13px; }
 
+  .oura-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 10px 8px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 1px solid var(--border);
+  }
+  .oura-bar:active { background: var(--card-bg-warm); }
+  .oura-bar-stat { text-align: center; padding: 2px 4px; }
+  .oura-bar-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .oura-bar-value { font-size: 20px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .oura-bar-value.dim { color: var(--muted); font-weight: 400; }
+  .oura-bar-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .oura-bar-meta { grid-column: 1 / -1; text-align: center; font-size: 10px; color: var(--muted); margin-top: 2px; }
+
   .pat-window { display: flex; gap: 8px; margin-bottom: 14px; }
   .pat-window .chip { flex: 1; text-align: center; padding: 10px 0; }
   .pat-card { margin-bottom: 14px; }
@@ -455,6 +475,22 @@ async function loadOuraRange(startDate, endDate) {
   }
 }
 
+// Most recent Oura row (today, or yesterday if today not in yet). Cached in state.ouraToday.
+async function loadOuraToday() {
+  if (!getOuraPat()) { state.ouraToday = null; return null; }
+  const end = todayISO();
+  const start = addDays(end, -2);
+  try {
+    const rows = await sbFetch(`/tide_oura_daily?date=gte.${start}&date=lte.${end}&order=date.desc&limit=1`);
+    state.ouraToday = (rows && rows[0]) || null;
+    return state.ouraToday;
+  } catch (e) {
+    console.warn('loadOuraToday failed:', e.message);
+    state.ouraToday = null;
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Standard drink units (US standard = 14g pure alcohol)
 // ---------------------------------------------------------------------------
@@ -612,6 +648,8 @@ function renderHome() {
       </div>
     </header>
 
+    ${renderOuraStatBar()}
+
     <div class="tab-strip" role="tablist">
       ${tabs.map(t => `<div class="tab ${t.id === tab ? 'active' : ''}" data-tab="${t.id}" role="tab">${t.label}</div>`).join('')}
     </div>
@@ -625,6 +663,8 @@ function renderHome() {
   $$('[data-nav]').forEach(b => b.onclick = () => { state.screen = b.dataset.nav; render(); });
   $$('[data-tab]').forEach(b => b.onclick = () => { state.tab = b.dataset.tab; renderHome(); });
   $('#any-fab').onclick = openLogAny;
+  const ouraBar = $('#oura-bar');
+  if (ouraBar) ouraBar.onclick = () => { state.screen = 'patterns'; render(); };
 
   wireTabEvents(tab);
 
@@ -635,6 +675,35 @@ function renderHome() {
       if (state.screen === 'home' && state.tab === 'drinks' && state.activeSession) renderHome();
     }, 60000);
   }
+}
+
+function renderOuraStatBar() {
+  if (!getOuraPat() || !state.ouraToday) return '';
+  const o = state.ouraToday;
+  const sleep     = o.sleep_score;
+  const readiness = o.readiness_score;
+  const activity  = o.activity_score;
+  if (sleep == null && readiness == null && activity == null) return '';
+  const sleepSub = o.total_sleep_min != null
+    ? `${Math.floor(o.total_sleep_min / 60)}h ${String(o.total_sleep_min % 60).padStart(2, '0')}m`
+    : '';
+  const readinessSub = o.hrv_avg != null ? `HRV ${o.hrv_avg}` : '';
+  const activitySub  = '';
+  const cell = (label, val, sub) => `
+    <div class="oura-bar-stat">
+      <div class="oura-bar-label">${label}</div>
+      <div class="oura-bar-value${val == null ? ' dim' : ''}">${val == null ? '—' : val}</div>
+      ${sub ? `<div class="oura-bar-sub">${escapeHtml(sub)}</div>` : ''}
+    </div>`;
+  const dateLabel = o.date === todayISO() ? 'Today' : fmtDate(o.date + 'T12:00:00');
+  return `
+    <div class="oura-bar" id="oura-bar" role="button" aria-label="Open Patterns">
+      ${cell('Sleep', sleep, sleepSub)}
+      ${cell('Readiness', readiness, readinessSub)}
+      ${cell('Activity', activity, activitySub)}
+      <div class="oura-bar-meta">${dateLabel} · Oura</div>
+    </div>
+  `;
 }
 
 function renderTabContent(tab) {
@@ -1217,10 +1286,16 @@ function renderSettings() {
     $('#oura-status').textContent = v ? 'Token saved. Sync starting…' : 'Token cleared.';
     if (v) {
       localStorage.removeItem('tide_oura_last_sync');
-      syncOura({ force: true }).then(r => {
-        if (r.ok) $('#oura-status').textContent = `Synced ${r.count ?? 0} days.`;
-        else $('#oura-status').textContent = 'Sync failed: ' + (r.error || 'unknown');
+      syncOura({ force: true }).then(async r => {
+        if (r.ok) {
+          await loadOuraToday();
+          $('#oura-status').textContent = `Synced ${r.count ?? 0} days.`;
+        } else {
+          $('#oura-status').textContent = 'Sync failed: ' + (r.error || 'unknown');
+        }
       });
+    } else {
+      state.ouraToday = null;
     }
   };
 
@@ -1228,7 +1303,12 @@ function renderSettings() {
     if (!getOuraPat()) { toast('Save a PAT first'); return; }
     $('#oura-status').textContent = 'Syncing…';
     const r = await syncOura({ force: true });
-    $('#oura-status').textContent = r.ok ? `Synced ${r.count ?? 0} days.` : 'Sync failed: ' + (r.error || 'unknown');
+    if (r.ok) {
+      await loadOuraToday();
+      $('#oura-status').textContent = `Synced ${r.count ?? 0} days.`;
+    } else {
+      $('#oura-status').textContent = 'Sync failed: ' + (r.error || 'unknown');
+    }
   };
 }
 
@@ -2509,8 +2589,14 @@ async function boot() {
   await loadActiveSession();
   await loadHistory();
   await Promise.all([loadTodayIntake(), loadSupplements(), loadAliases(), loadTodayOther()]);
-  // Oura sync in the background — does nothing if no PAT or last sync was recent
-  syncOura().catch(() => {});
+  // Pull cached Oura row immediately for the home stat bar, then sync in background
+  await loadOuraToday();
+  if (state.screen === 'home') render();
+  syncOura().then(r => {
+    if (r && r.ok && r.count) {
+      loadOuraToday().then(() => { if (state.screen === 'home') render(); });
+    }
+  }).catch(() => {});
   // Auto-prompt morning-after if there's a recently-ended session pending
   const pending = state.history.find(s => s.morning_pending);
   if (pending && !state.activeSession && !sessionStorage.getItem('morning_dismissed_' + pending.id)) {
