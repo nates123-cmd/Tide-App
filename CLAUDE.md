@@ -10,11 +10,17 @@ A mindful drinking companion PWA — fourth app in a personal OS suite alongside
 
 ## File structure
 ```
-index.html    — entire app (~900 lines, HTML + CSS + JS)
-sw.js         — service worker (cache name: tide-vN, bump on deploy)
-manifest.json — PWA manifest
-dev-config.js — GITIGNORED — sets Anthropic API key in localStorage for local dev
-.gitignore    — ignores dev-config.js
+index.html                 — entire app (HTML + CSS + JS, single file)
+sw.js                      — service worker (cache name: tide-vN, bump on deploy)
+manifest.json              — PWA manifest (references PNG icons)
+icon.svg                   — source icon (rendered to PNGs via sips/qlmanage)
+icon-192.png               — PWA manifest icon (192px)
+icon-512.png               — PWA manifest icon (512px, also used for maskable)
+apple-touch-icon.png       — 180px PNG for iOS home-screen install
+schema.sql                 — full drop+recreate schema (fresh installs only)
+migrations/                — additive SQL migrations for the live DB (run in date order)
+dev-config.js              — GITIGNORED — Anthropic API key in localStorage for local dev
+.gitignore                 — ignores dev-config.js
 ```
 
 ---
@@ -33,57 +39,22 @@ SB_URL = 'https://xsmnfcmtbpeaccnyinkr.supabase.co'
 SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' // anon key, safe to commit
 ```
 
-### Tables — run this SQL in Supabase Dashboard → SQL Editor
-```sql
-create table tide_sessions (
-  id uuid primary key default gen_random_uuid(),
-  started_at timestamptz not null default now(),
-  ended_at timestamptz,
-  duration_min int,
-  intention int,
-  setting text,
-  who_with text,
-  feeling text,
-  note text,
-  created_at timestamptz not null default now()
-);
+### Tables (9 total)
+Source of truth is `schema.sql` (drop+recreate, for fresh installs only). Live DB changes ship as additive SQL under `migrations/` — run them in date order in Supabase Dashboard → SQL Editor.
 
-create table tide_drinks (
-  id uuid primary key default gen_random_uuid(),
-  session_id uuid not null references tide_sessions(id) on delete cascade,
-  drink_type text not null,
-  standard_units numeric default 1,
-  drink_at timestamptz not null default now()
-);
+| Table | Purpose |
+|---|---|
+| `tide_sessions` | Drinking sessions (started_at / ended_at / intention / setting / who_with / feeling / note / log_date) |
+| `tide_drinks` | Individual drink logs (FK session_id, drink_type, standard_units, drink_at) |
+| `tide_reflections` | Morning-after notes (FK session_id, sleep_quality, note, pushed_to_still) |
+| `tide_dismissed_quotes` | Quotes the user dismissed — biases rotation |
+| `tide_intake_logs` | Water / food / supplement / caffeine intake (category, item_type, quantity, unit, logged_at) |
+| `tide_supplements` | User-defined supplement stack (name, timing, active) |
+| `tide_other_substances` | Discreet substance log — alias-only by design (no real names) |
+| `tide_other_aliases` | User-defined aliases for the discreet log |
+| `tide_oura_daily` | Daily Oura snapshot keyed by date (sleep_score, total_sleep_min, hrv_avg, readiness_score, activity_score, etc.) |
 
-create table tide_reflections (
-  id uuid primary key default gen_random_uuid(),
-  session_id uuid not null references tide_sessions(id) on delete cascade,
-  sleep_quality text,
-  note text,
-  pushed_to_still boolean default false,
-  created_at timestamptz not null default now()
-);
-
-create table tide_dismissed_quotes (
-  id uuid primary key default gen_random_uuid(),
-  quote text not null,
-  created_at timestamptz not null default now()
-);
-
-alter table tide_sessions enable row level security;
-alter table tide_drinks enable row level security;
-alter table tide_reflections enable row level security;
-alter table tide_dismissed_quotes enable row level security;
-
-create policy "anon all" on tide_sessions for all using (true) with check (true);
-create policy "anon all" on tide_drinks for all using (true) with check (true);
-create policy "anon all" on tide_reflections for all using (true) with check (true);
-create policy "anon all" on tide_dismissed_quotes for all using (true) with check (true);
-
-create index tide_drinks_session_idx on tide_drinks(session_id);
-create index tide_sessions_started_idx on tide_sessions(started_at desc);
-```
+All tables have RLS enabled with an `anon all` policy (single-user app, no auth).
 
 Cross-app: morning-after notes optionally pushed to Still's `reflections` table (with `tags: ['tide', 'morning-after']`). Same Supabase project, same anon key.
 
@@ -92,16 +63,21 @@ Cross-app: morning-after notes optionally pushed to Still's `reflections` table 
 ## Screens
 | Screen | Purpose |
 |---|---|
-| `home` | Active session card OR idle "start a session", rotating quote, week summary |
+| `home` | Header (Profile / Patterns / History) → Oura status bar → tab strip (Water / Food / Supps / Drinks) → tab content → floating "+" FAB for log-anything |
 | `history` | Past sessions, weekly stats, tap a row to view detail or fill morning reflection |
 | `morning` | Auto-prompts on app open if a session ended 6–36hr ago and has no reflection yet |
+| `settings` | Profile (sex/age/weight/height/activity for BAC + calorie goal) and Oura PAT entry |
+| `patterns` | Joins `tide_oura_daily` against sessions → bucket comparisons (0 / 1–2 / 3–4 / 5+ drinks) for sleep / HRV / readiness / total sleep, plus a Claude-written paragraph |
 | `apikey` | First-launch API key entry, stored in `localStorage['anthropic_api_key']` |
 
+Home tabs are stored in `state.tab` (default `water`). Each tab renders its own card stack (caffeine + other-substance cards also appear under the Drinks tab).
+
 Modals (bottom sheets, no separate route):
-- Start session — intention (1–8), setting, who with
+- Start session — intention (1–3 / 4–6 / 7–10 / 12+), setting, who with
 - Log drink — type, standard units (½/1/1.5/2)
 - End session — feeling (great/good/okay/rough), optional note
 - Session detail — drinks, intention vs actual, duration, note
+- Log any (FAB) — universal intake picker
 
 ---
 
@@ -169,11 +145,29 @@ Tide pulls daily Oura snapshots (sleep score, total sleep, HRV balance, resting 
 - **PAT storage:** `localStorage['still_oura_pat']` — shared with Still since both apps run on the same `nates123-cmd.github.io` origin. Set in Profile (Oura section).
 - **Edge function:** `/functions/v1/smooth-processor` (deployed name) — wraps `api.ouraring.com/v2/usercollection/{path}` with a whitelist of `daily_sleep` / `daily_readiness` / `daily_activity` / etc. Source lives in `still-app/supabase/functions/oura-proxy/index.ts`. **Same function is used by both Still and Tide — do not re-deploy.**
 - **Sync cadence:** `syncOura()` runs on boot and from the Profile screen. Throttled to once per 4 hours via `localStorage['tide_oura_last_sync']`. Pulls last 14 days and upserts to `tide_oura_daily` with `Prefer: resolution=merge-duplicates`.
+- **Home status bar:** Three-cell grid (Sleep / Readiness / Activity) sits between the header and the tab strip on home. Reads the most recent `tide_oura_daily` row via `loadOuraToday()` (range `today-2 .. today`, limit 1). Tap → Patterns. Hidden when no PAT or no synced row. Sub-labels: sleep duration (h/m) under Sleep, `HRV n` under Readiness. Date label says "Today" or falls back to the row's date.
 - **Attribution rule:** a session whose `started_at` is ≥ noon attributes to the *next* day's Oura row (the morning that sleep ended). Before noon: same day. See `ouraDateForSession()`.
 - **Bucketing:** drinks per night → `{0, 1-2, 3-4, 5+}`. `bucketStats()` averages each Oura metric per bucket. Rendered as horizontal bars per metric card.
 - **Narrative:** `patternsNarrative()` ships the joined per-day rows to Claude (sonnet-4-6) with a JSON-only system prompt for a 1–3 pattern, ≤80-word paragraph.
 
 Migration: `migrations/2026-05-13_oura_daily.sql` is the additive migration; `schema.sql` carries the same table for fresh installs.
+
+---
+
+## PWA install (Chrome + iOS)
+The app installs from the live URL on Chrome (desktop "Install app" button in the address bar) and iOS Safari (Share → Add to Home Screen).
+
+- **Manifest icons:** `icon-192.png` + `icon-512.png` (also referenced as `purpose: maskable` for Android adaptive icons).
+- **iOS install:** `<link rel="apple-touch-icon" href="apple-touch-icon.png">` (180px PNG — iOS Safari ignores SVG data-URIs here, which was the original install bug), plus `apple-mobile-web-app-capable=yes`, `apple-mobile-web-app-status-bar-style=default`, `apple-mobile-web-app-title=Tide`.
+- **Source icon → PNGs:** edit `icon.svg`, then regenerate:
+  ```sh
+  qlmanage -t -s 1024 -o . icon.svg && mv icon.svg.png icon-1024.png
+  sips -z 512 512 icon-1024.png --out icon-512.png
+  sips -z 192 192 icon-1024.png --out icon-192.png
+  sips -z 180 180 icon-1024.png --out apple-touch-icon.png
+  rm icon-1024.png
+  ```
+- **After redeploying icons:** bump `CACHE_NAME` in `sw.js` AND include the new PNGs in `STATIC_ASSETS`, otherwise the SW will keep serving the old icons. iOS also aggressively caches `apple-touch-icon` per-URL — delete the home-screen tile and re-add after an icon change.
 
 ---
 
