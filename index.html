@@ -589,6 +589,25 @@
   .exercise-row-sets { font-family: var(--font-body); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; width: 70px; text-align: right; }
   .exercise-row-x { color: var(--muted); padding: 4px 8px; cursor: pointer; }
 
+  /* ───── v2: Progress sub-screen (chunk 9) ───── */
+  .prog-card { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 16px 18px 14px; margin-bottom: 10px; cursor: pointer; }
+  .prog-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+  .prog-name { font-family: var(--font-display); font-weight: 500; font-size: 16px; letter-spacing: -0.005em; line-height: 1.15; }
+  .prog-current { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .prog-current-unit { font-family: var(--font-body); font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; margin-left: 2px; }
+  .prog-spark { width: 100%; height: 44px; display: block; }
+  .prog-spark-line { fill: none; stroke: var(--accent-deep); stroke-width: 1.5; }
+  .prog-spark-area { fill: var(--accent-deep); opacity: 0.12; }
+  .prog-spark-dot { fill: var(--accent-deep); }
+  .prog-spark-dot.pr { fill: var(--good); }
+  .prog-foot { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .prog-delta.up   { color: var(--good); font-weight: 500; }
+  .prog-delta.down { color: var(--warn); font-weight: 500; }
+  .prog-delta.flat { color: var(--muted-soft); }
+  .prog-tag { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+  .prog-tag.pr { color: var(--good); }
+  .prog-tag.plateau { color: var(--accent-deep); }
+
   /* ───── v2: Strength set logger (chunk 8) ───── */
   .ex-last { font-family: var(--font-display); font-style: italic; font-size: 12px; color: var(--muted-soft); padding: 4px 4px 14px; }
   .ex-last strong { font-family: var(--font-body); font-style: normal; font-weight: 500; color: var(--muted); font-size: 11px; }
@@ -691,6 +710,8 @@ let state = {
   todayActivities: [],         // today's tide_activities rows
   workoutTemplates: [],        // active tide_workout_templates with embedded exercises
   templateLastUse: {},         // { template_id: last_date_iso } for quick-start chips
+  progressItems: [],           // shaped per-lift data for the Progress screen
+  progressFilter: 'all',
 };
 
 const MEAL_DEFAULTS = { breakfast: 400, lunch: 600, dinner: 700, snack: 200 };
@@ -1306,6 +1327,7 @@ function render() {
   else if (screen === 'patterns') renderPatterns();
   else if (screen === 'library') renderLibraryScreen();
   else if (screen === 'workouts') renderWorkoutsScreen();
+  else if (screen === 'progress') renderProgressScreen();
   mountBottomNav(screen === 'home' ? (state.tab || null) : null);
 }
 
@@ -2909,7 +2931,13 @@ function renderTrainTab() {
     render();
   });
   $('#train-workouts').onclick = () => { state.screen = 'workouts'; render(); };
-  $('#train-progress').onclick = () => toast('Progress lands in chunk 9');
+  $('#train-progress').onclick = async () => {
+    state.screen = 'progress';
+    render();
+    const sets = await loadProgressData();
+    state.progressItems = shapeProgress(sets);
+    if (state.screen === 'progress') renderProgressScreen();
+  };
   $('#train-body').onclick = () => toast('Body lands in chunk 10');
   $('#train-save-template')?.addEventListener('click', () => openSaveTodayAsTemplateModal());
   $$('[data-template-start]').forEach(c => c.onclick = () => {
@@ -3152,6 +3180,197 @@ function openActivityDetail(id) {
   // Strength rows get the per-set logger; cardio/recovery use the flat edit form.
   if (a.category === 'strength') openSetLoggerModal(a);
   else openLogActivityModal(a);
+}
+
+// ---------------------------------------------------------------------------
+// Progress sub-screen (v2 chunk 9) — per-lift sparklines of working weight
+// ---------------------------------------------------------------------------
+
+const PROG_FILTERS = [
+  { id: 'all',  label: 'All'   },
+  { id: 'Push', label: 'Push'  },
+  { id: 'Pull', label: 'Pull'  },
+  { id: 'Legs', label: 'Legs'  },
+  { id: 'Core', label: 'Core'  },
+];
+
+// Map an exercise name to its split using the seed library; default 'Other'.
+function exerciseGroup(name) {
+  const match = EXERCISE_LIBRARY.find(x => x.name.toLowerCase() === (name || '').toLowerCase());
+  return match ? match.group : 'Other';
+}
+
+// Pull all strength sets (last 6 months) + the activities they belong to so we
+// can group sets by activity_id and order by activity date.
+async function loadProgressData() {
+  try {
+    const since = addDays(todayISO(), -180);
+    const sets = await sbFetch(
+      `/tide_strength_sessions?logged_at=gte.${since}&order=logged_at.asc&select=*,activity:tide_activities(id,date,template_id)`
+    );
+    return sets || [];
+  } catch (e) {
+    console.warn('loadProgressData failed:', e.message);
+    return [];
+  }
+}
+
+// Group sets → exercises → sessions (one entry per activity_id).
+// Returns: [{ name, group, sessions: [{date, max_weight, top_reps, any_pr}], current, prev }]
+function shapeProgress(sets) {
+  const byEx = new Map();
+  sets.forEach(s => {
+    const ex = (s.exercise || '').trim();
+    if (!ex) return;
+    if (!byEx.has(ex)) byEx.set(ex, []);
+    byEx.get(ex).push(s);
+  });
+  const out = [];
+  for (const [name, list] of byEx.entries()) {
+    // Bucket by activity_id, keep the most representative set per activity (max weight).
+    const byActivity = new Map();
+    list.forEach(s => {
+      const aid = s.activity_id;
+      if (!byActivity.has(aid)) {
+        byActivity.set(aid, {
+          activity_id: aid,
+          date: s.activity?.date || s.logged_at?.slice(0, 10),
+          max_weight: Number(s.weight_lb) || 0,
+          top_reps: s.reps || null,
+          any_pr: !!s.is_pr,
+        });
+      } else {
+        const entry = byActivity.get(aid);
+        const w = Number(s.weight_lb) || 0;
+        if (w > entry.max_weight) { entry.max_weight = w; entry.top_reps = s.reps || entry.top_reps; }
+        if (s.is_pr) entry.any_pr = true;
+      }
+    });
+    const sessions = [...byActivity.values()].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    if (!sessions.length) continue;
+    out.push({
+      name,
+      group: exerciseGroup(name),
+      sessions,
+      current: sessions[sessions.length - 1],
+      prev: sessions.length > 1 ? sessions[sessions.length - 2] : null,
+    });
+  }
+  // Order by recency of last session — most active lifts at top.
+  out.sort((a, b) => (b.current.date || '').localeCompare(a.current.date || ''));
+  return out;
+}
+
+// Inline SVG sparkline. width is fluid via viewBox.
+function renderSparkline(sessions, width = 280, height = 44, pad = 4) {
+  if (!sessions || sessions.length === 0) return '';
+  const weights = sessions.map(s => s.max_weight || 0);
+  const max = Math.max(...weights);
+  const min = Math.min(...weights);
+  const range = Math.max(1, max - min);
+  const span = sessions.length === 1 ? 1 : sessions.length - 1;
+  const x = (i) => pad + ((width - 2 * pad) * (i / span));
+  const y = (w) => pad + (height - 2 * pad) * (1 - ((w - min) / range));
+  const points = sessions.map((s, i) => [x(i), y(s.max_weight || 0)]);
+  if (sessions.length === 1) {
+    const cx = width / 2;
+    const cy = height / 2;
+    return `<svg class="prog-spark" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><circle class="prog-spark-dot" cx="${cx}" cy="${cy}" r="3"/></svg>`;
+  }
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ');
+  const areaPath = `${linePath} L ${points[points.length - 1][0].toFixed(2)} ${height - pad} L ${points[0][0].toFixed(2)} ${height - pad} Z`;
+  const dots = points.map((p, i) => {
+    const isPr = sessions[i].any_pr;
+    const r = isPr ? 3.4 : 2.4;
+    return `<circle class="prog-spark-dot ${isPr ? 'pr' : ''}" cx="${p[0].toFixed(2)}" cy="${p[1].toFixed(2)}" r="${r}"/>`;
+  }).join('');
+  return `
+    <svg class="prog-spark" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+      <path class="prog-spark-area" d="${areaPath}"/>
+      <path class="prog-spark-line" d="${linePath}"/>
+      ${dots}
+    </svg>
+  `;
+}
+
+function describeProgress(p) {
+  const curr = p.current.max_weight;
+  const prev = p.prev?.max_weight;
+  const deltaCls = !prev ? 'flat' : (curr > prev ? 'up' : (curr < prev ? 'down' : 'flat'));
+  const deltaTxt = !prev
+    ? 'first session'
+    : (curr === prev
+        ? 'flat vs last'
+        : `${curr > prev ? '+' : '−'}${Math.abs(curr - prev)} lb vs last`);
+  // Plateau detection — last 3+ sessions same weight
+  let plateau = 0;
+  for (let i = p.sessions.length - 1; i >= 0; i--) {
+    if (p.sessions[i].max_weight === curr) plateau++;
+    else break;
+  }
+  const isPlateau = plateau >= 3 && p.sessions.length >= 3;
+  const recentPr = p.sessions.slice(-3).some(s => s.any_pr);
+  let tag = '';
+  if (recentPr) tag = '<span class="prog-tag pr">RECENT PR</span>';
+  else if (isPlateau) tag = `<span class="prog-tag plateau">PLATEAU · ${plateau}</span>`;
+  return { deltaCls, deltaTxt, tag };
+}
+
+function renderProgressScreen() {
+  const filter = state.progressFilter || 'all';
+  const items = (state.progressItems || []).filter(p => filter === 'all' || p.group === filter);
+
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="lib-back" id="prog-back">‹ Train</div>
+        <div class="tab-title">Progress</div>
+        <div class="tab-sub">${items.length} ${items.length === 1 ? 'lift' : 'lifts'}</div>
+      </div>
+      <div style="width: 60px"></div>
+    </header>
+
+    <div class="filter-row" id="prog-filters">
+      ${PROG_FILTERS.map(f => `<div class="filter-chip ${f.id === filter ? 'active' : ''}" data-filter="${f.id}">${escapeHtml(f.label)}</div>`).join('')}
+    </div>
+
+    ${items.length === 0 ? `
+      <div class="card">
+        <p class="small" style="margin: 0">${
+          (state.progressItems || []).length === 0
+            ? 'No strength data yet. Log a few sets on the Train tab and they\'ll plot here.'
+            : 'No lifts match this filter.'
+        }</p>
+      </div>
+    ` : items.map(p => {
+      const desc = describeProgress(p);
+      const top = p.current.top_reps ? `${p.current.top_reps} × ${p.current.max_weight}` : `${p.current.max_weight}`;
+      return `
+        <div class="prog-card">
+          <div class="prog-card-head">
+            <div class="prog-name">${escapeHtml(p.name)}</div>
+            <div class="prog-current">${p.current.max_weight}<span class="prog-current-unit">lb</span></div>
+          </div>
+          ${renderSparkline(p.sessions)}
+          <div class="prog-foot">
+            <span class="prog-delta ${desc.deltaCls}">${escapeHtml(desc.deltaTxt)}</span>
+            <span>·</span>
+            <span>${p.sessions.length} ${p.sessions.length === 1 ? 'session' : 'sessions'}</span>
+            ${desc.tag ? `<span style="margin-left: auto">${desc.tag}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('')}
+
+    <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
+  `;
+
+  $('#prog-back').onclick = () => { state.tab = 'train'; state.screen = 'home'; render(); };
+  $('#any-fab').onclick = openLogAny;
+  $$('[data-filter]').forEach(c => c.onclick = () => {
+    state.progressFilter = c.dataset.filter;
+    renderProgressScreen();
+  });
 }
 
 // ---------------------------------------------------------------------------
