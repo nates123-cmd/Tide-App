@@ -17,6 +17,7 @@ drop table if exists tide_other_aliases cascade;
 drop table if exists tide_oura_daily cascade;
 drop table if exists tide_indulge_entries cascade;
 drop table if exists tide_indulge_sessions cascade;
+drop table if exists tide_activities cascade;
 drop table if exists tide_stack_logs cascade;
 drop table if exists tide_stack_items cascade;
 drop table if exists tide_sessions cascade;
@@ -179,6 +180,22 @@ create table tide_stack_logs (
   created_at timestamptz not null default now()
 );
 
+-- 14. Train activities (v2 — strength + cardio + recovery)
+create table tide_activities (
+  id uuid primary key default gen_random_uuid(),
+  date date not null default current_date,
+  type text,
+  category text not null check (category in ('strength', 'cardio', 'recovery')),
+  duration_min int,
+  perceived_effort int,
+  source text not null default 'manual' check (source in ('manual', 'oura', 'apple_health')),
+  template_id uuid,
+  notes text,
+  metadata jsonb,
+  logged_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
 -- RLS on everything
 alter table tide_sessions enable row level security;
 alter table tide_drinks enable row level security;
@@ -193,6 +210,7 @@ alter table tide_indulge_sessions enable row level security;
 alter table tide_indulge_entries enable row level security;
 alter table tide_stack_items enable row level security;
 alter table tide_stack_logs enable row level security;
+alter table tide_activities enable row level security;
 
 create policy "anon all" on tide_sessions for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_drinks for all to anon, authenticated using (true) with check (true);
@@ -207,6 +225,7 @@ create policy "anon all" on tide_indulge_sessions for all to anon, authenticated
 create policy "anon all" on tide_indulge_entries for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_stack_items for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_stack_logs for all to anon, authenticated using (true) with check (true);
+create policy "anon all" on tide_activities for all to anon, authenticated using (true) with check (true);
 
 grant all on
   tide_sessions,
@@ -221,7 +240,8 @@ grant all on
   tide_indulge_sessions,
   tide_indulge_entries,
   tide_stack_items,
-  tide_stack_logs
+  tide_stack_logs,
+  tide_activities
   to anon, authenticated, service_role;
 
 -- Indexes for the queries we'll actually run
@@ -240,5 +260,7 @@ create index tide_stack_items_schedule_idx     on tide_stack_items(schedule);
 create index tide_stack_items_position_idx     on tide_stack_items(position);
 create index tide_stack_logs_item_date_idx     on tide_stack_logs(stack_item_id, log_date desc);
 create index tide_stack_logs_date_idx          on tide_stack_logs(log_date desc);
+create index tide_activities_date_idx          on tide_activities(date desc);
+create index tide_activities_category_idx      on tide_activities(category);
 
 notify pgrst, 'reload schema';

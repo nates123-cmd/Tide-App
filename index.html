@@ -559,6 +559,18 @@
   .lib-entry-add { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-left: 4px; flex-shrink: 0; }
   .lib-entry-add:active { color: var(--text); border-color: var(--text); }
 
+  /* ───── v2: Train (chunk 6) ───── */
+  .activity-card { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+  .activity-card.recovery { background: var(--card-bg-warm); border-style: dashed; border-color: var(--border); }
+  .activity-card.recovery .activity-icon { background: var(--bg); }
+  .activity-card.recovery .activity-icon svg { stroke: var(--accent-deep); }
+  .activity-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--card-bg-warm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .activity-icon svg { width: 18px; height: 18px; stroke: var(--accent-deep); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .activity-body { flex: 1; min-width: 0; }
+  .activity-title { font-family: var(--font-display); font-weight: 500; font-size: 14px; letter-spacing: -0.005em; line-height: 1.2; }
+  .activity-meta { font-family: var(--font-body); font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: 0.01em; }
+  .activity-source { font-family: var(--font-body); font-size: 9px; font-weight: 500; letter-spacing: 0.12em; color: var(--muted-soft); text-transform: uppercase; flex-shrink: 0; }
+
   /* ───── v2: Bottom nav bar (mockup-matched) ───── */
   .bottom-nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
@@ -628,6 +640,7 @@ let state = {
   libQuery: '',
   libFilter: 'all',
   libSort: 'most',
+  todayActivities: [],         // today's tide_activities rows
 };
 
 const MEAL_DEFAULTS = { breakfast: 400, lunch: 600, dinner: 700, snack: 200 };
@@ -1300,6 +1313,10 @@ function renderHome() {
     renderFuelTab();
     return;
   }
+  if (state.tab === 'train') {
+    renderTrainTab();
+    return;
+  }
 
   const tab = state.tab;
   $('#app').innerHTML = `
@@ -1357,11 +1374,6 @@ function renderBottomNav(activeTabId) {
 function wireBottomNav() {
   $$('[data-bn]').forEach(b => b.onclick = () => {
     const id = b.dataset.bn;
-    if (id === 'train') {
-      // Train tab is built in a later chunk; for now route nowhere and toast.
-      toast('Train tab coming next');
-      return;
-    }
     state.tab = id;
     state.screen = 'home';
     render();
@@ -2005,6 +2017,215 @@ function computeBacTrend(drinks, profile, currentBac) {
   if (delta > 0.005) return 'trending up';
   if (delta < -0.005) return 'trending down';
   return 'holding';
+}
+
+// ---------------------------------------------------------------------------
+// Train tab (v2 chunk 6) — manual activity log + Oura activity summary
+// ---------------------------------------------------------------------------
+const ACTIVITY_CATEGORIES = [
+  { id: 'strength', label: 'Strength' },
+  { id: 'cardio',   label: 'Cardio'   },
+  { id: 'recovery', label: 'Recovery' },
+];
+
+// Icons keyed by category — minimal SVG glyphs.
+const ACTIVITY_ICONS = {
+  strength: '<path d="M3 12h2m14 0h2M6 12h12M7 9v6M17 9v6"/>',
+  cardio:   '<path d="M4 12h4l3-7 4 14 3-7h2"/>',
+  recovery: '<path d="M7 14c0-2 1.5-3 1.5-4.5S7 7 7 5"/><path d="M12 14c0-2 1.5-3 1.5-4.5S12 7 12 5"/><path d="M17 14c0-2 1.5-3 1.5-4.5S17 7 17 5"/><path d="M4 18h16"/>',
+  oura:     '<path d="M4 12h4l3-7 4 14 3-7h2"/>',
+};
+
+async function loadTodayActivities() {
+  try {
+    const rows = await sbFetch(`/tide_activities?date=eq.${todayISO()}&order=logged_at.desc`);
+    state.todayActivities = rows || [];
+  } catch (e) {
+    console.warn('loadTodayActivities failed:', e.message);
+    state.todayActivities = [];
+  }
+}
+
+function renderTrainTab() {
+  const acts = state.todayActivities || [];
+  const oura = state.ouraToday || null;
+  // Surface today's Oura daily_activity as a single read-only card if no
+  // explicit cardio entry already covers it.
+  const showOuraCard = oura && oura.activity_score != null;
+
+  const sub = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(/,/g, ' ·');
+
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="tab-title" data-brand>Train</div>
+        <div class="tab-sub">${escapeHtml(sub)}</div>
+      </div>
+      <div style="display: flex; gap: 16px; align-self: flex-start; margin-top: 10px;">
+        <div class="head-link" id="train-progress">Progress</div>
+        <div class="head-link" id="train-body">Body</div>
+      </div>
+    </header>
+
+    ${acts.length === 0 && !showOuraCard ? `
+      <div class="card" style="margin-bottom: 14px">
+        <p class="small" style="margin: 0">Nothing logged today. Tap below to log a workout, walk, or recovery session.</p>
+      </div>
+    ` : ''}
+
+    ${acts.map(renderActivityCard).join('')}
+    ${showOuraCard ? renderOuraActivityCard(oura) : ''}
+
+    <button class="primary-btn" id="log-activity-btn" style="margin-top: 4px">
+      <span>+ Log activity</span>
+      <span class="arrow">→</span>
+    </button>
+
+    <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
+  `;
+
+  $('[data-brand]')?.addEventListener('click', () => { state.tab = null; render(); });
+  $('#any-fab').onclick = openLogAny;
+  $('#log-activity-btn').onclick = () => openLogActivityModal();
+  $$('.activity-card[data-activity-id]').forEach(c => c.onclick = () => openActivityDetail(c.dataset.activityId));
+  $('#train-progress').onclick = () => toast('Progress lands in chunk 9');
+  $('#train-body').onclick = () => toast('Body lands in chunk 10');
+}
+
+function renderActivityCard(a) {
+  const cls = a.category === 'recovery' ? 'recovery' : '';
+  const meta = [
+    a.duration_min ? `${a.duration_min} min` : null,
+    a.perceived_effort ? `RPE ${a.perceived_effort}` : null,
+    a.notes ? a.notes : null,
+  ].filter(Boolean).join(' · ');
+  const icon = ACTIVITY_ICONS[a.category] || ACTIVITY_ICONS.cardio;
+  const source = (a.source || 'manual').toUpperCase();
+  return `
+    <div class="activity-card ${cls}" data-activity-id="${a.id}">
+      <div class="activity-icon"><svg viewBox="0 0 24 24">${icon}</svg></div>
+      <div class="activity-body">
+        <div class="activity-title">${escapeHtml(a.type || ACTIVITY_CATEGORIES.find(c => c.id === a.category)?.label || 'Activity')}</div>
+        ${meta ? `<div class="activity-meta">${escapeHtml(meta)}</div>` : ''}
+      </div>
+      <div class="activity-source">${escapeHtml(source)}</div>
+    </div>
+  `;
+}
+
+function renderOuraActivityCard(oura) {
+  const m = oura.raw?.activity || {};
+  const steps = m.steps;
+  const cals  = m.total_calories;
+  const meta = [
+    `score ${oura.activity_score}`,
+    steps ? `${steps.toLocaleString()} steps` : null,
+    cals  ? `${Math.round(cals).toLocaleString()} cal` : null,
+  ].filter(Boolean).join(' · ');
+  return `
+    <div class="activity-card">
+      <div class="activity-icon"><svg viewBox="0 0 24 24">${ACTIVITY_ICONS.oura}</svg></div>
+      <div class="activity-body">
+        <div class="activity-title">Daily activity</div>
+        ${meta ? `<div class="activity-meta">${escapeHtml(meta)}</div>` : ''}
+      </div>
+      <div class="activity-source">OURA</div>
+    </div>
+  `;
+}
+
+function openLogActivityModal(existing = null) {
+  const editing = !!existing;
+  const cat = editing ? existing.category : 'strength';
+  const showFields = (id) => id === 'strength' ? 'strength' : id;
+  showModal(`
+    <h2>${editing ? 'Edit activity' : 'Log activity'}</h2>
+
+    <div class="modal-section">
+      <div class="label">Category</div>
+      <div class="grid-3" id="act-categories">
+        ${ACTIVITY_CATEGORIES.map(c => `<div class="chip ${c.id === cat ? 'selected' : ''}" data-cat="${c.id}">${c.label}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Name / type</div>
+      <input id="act-type" type="text" value="${escapeHtml(existing?.type || '')}" placeholder="Push Day, Zone 2 walk, Steam…">
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Duration (min)</div>
+        <input id="act-duration" type="number" inputmode="numeric" min="1" value="${existing?.duration_min || ''}" placeholder="45">
+      </div>
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">RPE (1–10)</div>
+        <input id="act-rpe" type="number" inputmode="numeric" min="1" max="10" value="${existing?.perceived_effort || ''}" placeholder="7">
+      </div>
+    </div>
+
+    <div class="modal-section" style="margin-top: 14px">
+      <div class="label">Notes</div>
+      <textarea id="act-notes" rows="2" placeholder="optional">${escapeHtml(existing?.notes || '')}</textarea>
+    </div>
+
+    <div class="btn-row">
+      ${editing ? '<button class="btn btn-warm" id="act-delete">Delete</button>' : '<button class="btn btn-soft" data-close>Cancel</button>'}
+      <button class="btn" id="act-save">${editing ? 'Save' : 'Log'}</button>
+    </div>
+  `, (m) => {
+    let category = cat;
+    m.querySelectorAll('[data-cat]').forEach(c => c.onclick = () => {
+      m.querySelectorAll('[data-cat]').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected'); category = c.dataset.cat;
+    });
+
+    $('#act-save').onclick = async () => {
+      const type = $('#act-type').value.trim() || null;
+      const duration_min = parseInt($('#act-duration').value, 10) || null;
+      const perceived_effort = parseInt($('#act-rpe').value, 10) || null;
+      const notes = $('#act-notes').value.trim() || null;
+      if (!type && !duration_min) { toast('Add a name or duration'); return; }
+      const payload = { category, type, duration_min, perceived_effort, notes };
+      const btn = $('#act-save');
+      btn.disabled = true; btn.textContent = editing ? 'Saving…' : 'Logging…';
+      try {
+        if (editing) {
+          const result = await sbFetch(`/tide_activities?id=eq.${existing.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+          const updated = result && result[0];
+          if (updated) state.todayActivities = state.todayActivities.map(a => a.id === existing.id ? updated : a);
+        } else {
+          const row = { ...payload, date: todayISO(), source: 'manual', logged_at: new Date().toISOString() };
+          const result = await sbFetch('/tide_activities', { method: 'POST', body: JSON.stringify(row) });
+          if (result && result[0]) state.todayActivities = [result[0]].concat(state.todayActivities);
+        }
+        closeModal();
+        render();
+      } catch (e) {
+        toast('Could not save: ' + e.message);
+        btn.disabled = false; btn.textContent = editing ? 'Save' : 'Log';
+      }
+    };
+
+    if (editing) {
+      $('#act-delete').onclick = async () => {
+        try {
+          await sbFetch(`/tide_activities?id=eq.${existing.id}`, { method: 'DELETE' });
+          state.todayActivities = state.todayActivities.filter(a => a.id !== existing.id);
+          closeModal();
+          render();
+        } catch (e) {
+          toast('Could not delete: ' + e.message);
+        }
+      };
+    }
+  });
+}
+
+function openActivityDetail(id) {
+  const a = (state.todayActivities || []).find(x => x.id === id);
+  if (!a) return;
+  openLogActivityModal(a);
 }
 
 // ---------------------------------------------------------------------------
@@ -5313,7 +5534,7 @@ async function boot() {
   // Then refresh from server
   await loadActiveSession();
   await loadHistory();
-  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther(), loadFoodLibrary()]);
+  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther(), loadFoodLibrary(), loadTodayActivities()]);
   // Pull cached Oura today + 7d for the stat grid hero, then sync in background
   await Promise.all([loadOuraToday(), loadOura7d()]);
   if (state.screen === 'home') render();
