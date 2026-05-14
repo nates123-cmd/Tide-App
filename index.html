@@ -639,6 +639,7 @@ const ACTIVITY_LEVELS = [
   { id: 'very',      label: 'Very',      mult: 1.725, note: '6–7x/week' },
 ];
 const WEIGHT_LOSS_DEFICIT_KCAL = 250; // ~0.5 lb/week — "a little"
+const FASTER_LOSS_DEFICIT_KCAL = 500; // ~1 lb/week — "leaning in"
 const DEFAULT_KCAL_GOAL = 1800;       // fallback when profile incomplete
 
 function computeBMR(p) {
@@ -654,9 +655,27 @@ function computeTDEE(p) {
   if (!mult) return null;
   return Math.round(computeBMR(p) * mult);
 }
+// Cut / maintain / surplus driven by goal_weight_lb (when set) and the
+// user-selected pace ('slow' = 250 kcal deficit, 'leaning' = 500). Defaults
+// to slow cut for backward compatibility with profiles that have no goal.
+function computeKcalAdjustment(p) {
+  if (!p || !p.weight_lb) return 0;
+  const goal = Number(p.goal_weight_lb) || null;
+  const pace = p.weight_pace || 'slow'; // 'slow' | 'leaning' | 'maintain'
+  if (pace === 'maintain') return 0;
+  if (goal == null) {
+    // No explicit goal — default to slow cut to preserve legacy behavior.
+    return -WEIGHT_LOSS_DEFICIT_KCAL;
+  }
+  const diff = p.weight_lb - goal;
+  if (Math.abs(diff) < 1) return 0; // at goal
+  const deficit = pace === 'leaning' ? FASTER_LOSS_DEFICIT_KCAL : WEIGHT_LOSS_DEFICIT_KCAL;
+  return diff > 0 ? -deficit : +deficit; // cut if over goal, surplus if under
+}
 function computeDailyCalorieGoal(p) {
   const tdee = computeTDEE(p);
-  return tdee == null ? null : tdee - WEIGHT_LOSS_DEFICIT_KCAL;
+  if (tdee == null) return null;
+  return tdee + computeKcalAdjustment(p);
 }
 
 const WATER_GOAL_ML = 2500;
@@ -2374,20 +2393,152 @@ function openMealDetail(id) {
   const r = (state.todayIntake || []).find(x => x.id === id);
   if (!r) return;
   const m = mealMacros(r);
+  const timeVal = isoToLocalDatetimeInput(r.logged_at);
   showModal(`
-    <h2>${escapeHtml(r.item_type || 'Meal')}</h2>
-    <p class="small muted">${fmtTime(r.logged_at)} · ${m.kcal} kcal · ${m.protein_g}P / ${m.carbs_g}C / ${m.fat_g}F</p>
+    <h2>Edit meal</h2>
+    <div class="modal-section">
+      <div class="label">Name</div>
+      <input id="meal-name" type="text" value="${escapeHtml(r.item_type || '')}">
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">kcal</div>
+        <input id="meal-kcal" type="number" inputmode="numeric" value="${m.kcal || ''}" placeholder="600">
+      </div>
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Protein (g)</div>
+        <input id="meal-p" type="number" inputmode="numeric" value="${m.protein_g || ''}" placeholder="g">
+      </div>
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Carbs (g)</div>
+        <input id="meal-c" type="number" inputmode="numeric" value="${m.carbs_g || ''}" placeholder="g">
+      </div>
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Fat (g)</div>
+        <input id="meal-f" type="number" inputmode="numeric" value="${m.fat_g || ''}" placeholder="g">
+      </div>
+    </div>
+    <div class="modal-section" style="margin-top: 14px">
+      <div class="label">Time</div>
+      <input id="meal-time" type="datetime-local" value="${escapeHtml(timeVal)}">
+    </div>
     <div class="btn-row">
-      <button class="btn btn-soft" data-close>Close</button>
       <button class="btn btn-warm" id="meal-delete">Delete</button>
+      <button class="btn" id="meal-save">Save</button>
     </div>
   `, () => {
+    $('#meal-save').onclick = async () => {
+      const name = $('#meal-name').value.trim() || r.item_type;
+      const kcal = parseInt($('#meal-kcal').value, 10) || 0;
+      const p = parseInt($('#meal-p').value, 10) || 0;
+      const c = parseInt($('#meal-c').value, 10) || 0;
+      const f = parseInt($('#meal-f').value, 10) || 0;
+      const newLoggedAt = localDatetimeInputToIso($('#meal-time').value) || r.logged_at;
+      const patch = {
+        item_type: name,
+        quantity: kcal,
+        logged_at: newLoggedAt,
+        log_date: newLoggedAt.slice(0, 10),
+        metadata: { ...(r.metadata || {}), kcal, protein_g: p, carbs_g: c, fat_g: f, source: r.metadata?.source || 'manual' },
+      };
+      try {
+        const result = await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+        const updated = result && result[0];
+        if (updated) {
+          state.todayIntake = state.todayIntake.map(x => x.id === id ? updated : x);
+          state.foodLibraryRows = (state.foodLibraryRows || []).map(x => x.id === id ? updated : x);
+        }
+        closeModal();
+        render();
+      } catch (e) {
+        toast('Could not save: ' + e.message);
+      }
+    };
     $('#meal-delete').onclick = async () => {
-      await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'DELETE' });
-      state.todayIntake = state.todayIntake.filter(x => x.id !== id);
-      state.foodLibraryRows = (state.foodLibraryRows || []).filter(x => x.id !== id);
-      closeModal();
-      render();
+      try {
+        await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'DELETE' });
+        state.todayIntake = state.todayIntake.filter(x => x.id !== id);
+        state.foodLibraryRows = (state.foodLibraryRows || []).filter(x => x.id !== id);
+        closeModal();
+        render();
+      } catch (e) {
+        toast('Could not delete: ' + e.message);
+      }
+    };
+  });
+}
+
+// Helpers for the <input type="datetime-local"> control (browser expects naive local-time strings).
+function isoToLocalDatetimeInput(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function localDatetimeInputToIso(s) {
+  if (!s) return null;
+  return new Date(s).toISOString();
+}
+
+// Sip timeline row tap → edit/delete modal. Works for water (quantity in ml) and caffeine (quantity in mg).
+function openIntakeDetail(id) {
+  const r = (state.todayIntake || []).find(x => x.id === id);
+  if (!r) return;
+  const isWater = r.category === 'water';
+  const isCaff  = r.category === 'caffeine';
+  if (!isWater && !isCaff) return;
+  const unit = isWater ? 'ml' : 'mg';
+  const timeVal = isoToLocalDatetimeInput(r.logged_at);
+  showModal(`
+    <h2>Edit ${isWater ? 'water' : 'caffeine'}</h2>
+    <div class="modal-section">
+      <div class="label">Amount (${unit})</div>
+      <input id="intake-qty" type="number" inputmode="numeric" min="0" value="${r.quantity || ''}">
+    </div>
+    ${isCaff ? `
+      <div class="modal-section">
+        <div class="label">Source</div>
+        <input id="intake-name" type="text" value="${escapeHtml(r.item_type || '')}" placeholder="coffee, espresso, tea…">
+      </div>
+    ` : ''}
+    <div class="modal-section">
+      <div class="label">Time</div>
+      <input id="intake-time" type="datetime-local" value="${escapeHtml(timeVal)}">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-warm" id="intake-delete">Delete</button>
+      <button class="btn" id="intake-save">Save</button>
+    </div>
+  `, () => {
+    $('#intake-save').onclick = async () => {
+      const qty = parseFloat($('#intake-qty').value) || 0;
+      const name = isCaff ? ($('#intake-name').value.trim() || r.item_type) : r.item_type;
+      const newLoggedAt = localDatetimeInputToIso($('#intake-time').value) || r.logged_at;
+      const patch = {
+        quantity: qty,
+        item_type: name,
+        logged_at: newLoggedAt,
+        log_date: newLoggedAt.slice(0, 10),
+      };
+      try {
+        const result = await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+        const updated = result && result[0];
+        if (updated) state.todayIntake = state.todayIntake.map(x => x.id === id ? updated : x);
+        closeModal();
+        render();
+      } catch (e) {
+        toast('Could not save: ' + e.message);
+      }
+    };
+    $('#intake-delete').onclick = async () => {
+      try {
+        await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'DELETE' });
+        state.todayIntake = state.todayIntake.filter(x => x.id !== id);
+        closeModal();
+        render();
+      } catch (e) {
+        toast('Could not delete: ' + e.message);
+      }
     };
   });
 }
@@ -2692,6 +2843,7 @@ function renderSipTab() {
   $$('[data-nav]').forEach(b => b.onclick = () => { state.screen = b.dataset.nav; render(); });
   $('#any-fab').onclick = openLogAny;
   $$('[data-sip]').forEach(b => b.onclick = () => { state.sipSection = b.dataset.sip; renderSipTab(); });
+  $$('[data-intake-id]').forEach(row => row.onclick = () => openIntakeDetail(row.dataset.intakeId));
 
   wireSipAdd(sub);
 }
@@ -2740,7 +2892,7 @@ function renderSipWater(rows, total) {
         const ml = Number(r.quantity) || 0;
         const pct = Math.min(70, (ml / goal) * 100);
         return `
-          <div class="timeline-row">
+          <div class="timeline-row" data-intake-id="${r.id}">
             <div class="timeline-time">${fmtTime(r.logged_at)}</div>
             <div class="timeline-bar" style="width: ${pct}%; max-width: ${pct}%"></div>
             <div class="timeline-amount">${ml}ml</div>
@@ -2789,7 +2941,7 @@ function renderSipCaffeine(rows, total) {
         const mg = Number(r.quantity) || 0;
         const pct = Math.min(70, (mg / CAFFEINE_SOFT_LIMIT_MG) * 100);
         return `
-          <div class="timeline-row">
+          <div class="timeline-row" data-intake-id="${r.id}">
             <div class="timeline-time">${fmtTime(r.logged_at)}</div>
             <div class="timeline-bar" style="width: ${pct}%; max-width: ${pct}%"></div>
             <div class="timeline-amount">${escapeHtml(r.item_type || 'caffeine')} · ${mg}mg</div>
@@ -3471,10 +3623,13 @@ function renderHistory() {
 }
 
 function renderSettings() {
-  const p = getProfile() || { age: '', gender: '', weight_lb: '', height_in: '', activity_level: '' };
+  const p = getProfile() || { age: '', gender: '', weight_lb: '', height_in: '', activity_level: '', goal_weight_lb: '', weight_pace: 'slow' };
   const heightFt = p.height_in ? Math.floor(p.height_in / 12) : '';
   const heightIn = p.height_in ? p.height_in % 12 : '';
   const goal = computeDailyCalorieGoal(p);
+  const tdee = computeTDEE(p);
+  const adj = computeKcalAdjustment(p);
+  const pace = p.weight_pace || 'slow';
   $('#app').innerHTML = `
     <header class="app-head">
       <button class="nav-btn" data-back>← Back</button>
@@ -3504,6 +3659,20 @@ function renderSettings() {
       </div>
 
       <div class="modal-section">
+        <div class="label">Goal weight (lb)</div>
+        <input id="goal-weight-input" type="number" inputmode="numeric" min="60" max="500" value="${p.goal_weight_lb || ''}" placeholder="optional — drives the deficit">
+      </div>
+
+      <div class="modal-section">
+        <div class="label">Pace</div>
+        <div class="grid-3">
+          <div class="chip ${pace === 'slow' ? 'selected' : ''}" data-pace="slow"><div>Slow</div><div class="small muted" style="margin-top: 2px">−250 kcal · ½ lb/wk</div></div>
+          <div class="chip ${pace === 'leaning' ? 'selected' : ''}" data-pace="leaning"><div>Leaning</div><div class="small muted" style="margin-top: 2px">−500 kcal · 1 lb/wk</div></div>
+          <div class="chip ${pace === 'maintain' ? 'selected' : ''}" data-pace="maintain"><div>Maintain</div><div class="small muted" style="margin-top: 2px">TDEE</div></div>
+        </div>
+      </div>
+
+      <div class="modal-section">
         <div class="label">Height</div>
         <div class="grid-2">
           <input id="height-ft-input" type="number" inputmode="numeric" min="4" max="7" value="${heightFt}" placeholder="ft">
@@ -3523,10 +3692,15 @@ function renderSettings() {
         </div>
       </div>
 
-      ${goal != null ? `<p class="small" style="margin-bottom: 14px"><span class="muted">Calorie goal:</span> <strong>${goal} kcal/day</strong> <span class="muted">(TDEE ${computeTDEE(p)} − ${WEIGHT_LOSS_DEFICIT_KCAL} for slow loss)</span></p>` : ''}
+      ${goal != null ? `
+        <p class="small" style="margin-bottom: 14px">
+          <span class="muted">Calorie goal:</span> <strong>${goal} kcal/day</strong>
+          <span class="muted">(TDEE ${tdee}${adj === 0 ? ' · maintain' : ` ${adj > 0 ? '+' : '−'} ${Math.abs(adj)} kcal`})</span>
+        </p>
+      ` : ''}
 
       <button class="btn" id="profile-save">Save</button>
-      <p class="small muted" style="margin-top: 16px; margin-bottom: 0">BAC is a Widmark estimate, ±20%. Don't use for legal or driving decisions. Calorie target uses Mifflin-St Jeor with a 250 kcal deficit (~½ lb/week).</p>
+      <p class="small muted" style="margin-top: 16px; margin-bottom: 0">BAC is a Widmark estimate, ±20%. Don't use for legal or driving decisions. Calorie target uses Mifflin-St Jeor with the deficit you choose above (skip both for maintenance).</p>
     </div>
 
     <div class="card" style="margin-top: 16px">
@@ -3541,7 +3715,7 @@ function renderSettings() {
     </div>
   `;
 
-  let sel = { gender: p.gender || null, activity: p.activity_level || null };
+  let sel = { gender: p.gender || null, activity: p.activity_level || null, pace: p.weight_pace || 'slow' };
   $$('[data-gender]').forEach(c => c.onclick = () => {
     $$('[data-gender]').forEach(x => x.classList.remove('selected'));
     c.classList.add('selected'); sel.gender = c.dataset.gender;
@@ -3550,19 +3724,34 @@ function renderSettings() {
     $$('[data-activity]').forEach(x => x.classList.remove('selected'));
     c.classList.add('selected'); sel.activity = c.dataset.activity;
   });
+  $$('[data-pace]').forEach(c => c.onclick = () => {
+    $$('[data-pace]').forEach(x => x.classList.remove('selected'));
+    c.classList.add('selected'); sel.pace = c.dataset.pace;
+  });
   $$('[data-back]').forEach(b => b.onclick = () => { state.screen = 'home'; render(); });
   $('#profile-save').onclick = () => {
     const age = parseInt($('#age-input').value, 10);
     const weight_lb = parseFloat($('#weight-input').value);
+    const goal_weight_lb_raw = parseFloat($('#goal-weight-input').value);
+    const goal_weight_lb = Number.isFinite(goal_weight_lb_raw) ? goal_weight_lb_raw : null;
     const hFt = parseInt($('#height-ft-input').value, 10);
     const hIn = parseInt($('#height-in-input').value, 10);
     const height_in = (Number.isFinite(hFt) ? hFt * 12 : 0) + (Number.isFinite(hIn) ? hIn : 0);
     if (!sel.gender) { toast('Pick a sex'); return; }
     if (!age || age < 16 || age > 100) { toast('Enter a valid age'); return; }
     if (!weight_lb || weight_lb < 60 || weight_lb > 500) { toast('Enter a valid weight'); return; }
+    if (goal_weight_lb != null && (goal_weight_lb < 60 || goal_weight_lb > 500)) { toast('Enter a valid goal weight'); return; }
     if (!height_in || height_in < 48 || height_in > 90) { toast('Enter a valid height'); return; }
     if (!sel.activity) { toast('Pick an activity level'); return; }
-    setProfile({ age, gender: sel.gender, weight_lb, height_in, activity_level: sel.activity });
+    setProfile({
+      age,
+      gender: sel.gender,
+      weight_lb,
+      goal_weight_lb,
+      weight_pace: sel.pace,
+      height_in,
+      activity_level: sel.activity,
+    });
     toast('Profile saved');
     state.screen = 'home';
     render();
