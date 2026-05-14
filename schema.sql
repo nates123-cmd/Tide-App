@@ -15,6 +15,8 @@ drop table if exists tide_supplements cascade;
 drop table if exists tide_other_substances cascade;
 drop table if exists tide_other_aliases cascade;
 drop table if exists tide_oura_daily cascade;
+drop table if exists tide_indulge_entries cascade;
+drop table if exists tide_indulge_sessions cascade;
 drop table if exists tide_sessions cascade;
 
 -- 1. Drinking sessions
@@ -120,6 +122,37 @@ create table tide_oura_daily (
   fetched_at timestamptz not null default now()
 );
 
+-- 10. Indulge sessions (v2 unified — replaces tide_sessions after cleanup migration)
+create table tide_indulge_sessions (
+  id uuid primary key default gen_random_uuid(),
+  started_at timestamptz not null default now(),
+  ended_at timestamptz,
+  duration_min int,
+  intention int,
+  intention_text text,
+  setting text,
+  who_with text,
+  feeling text,
+  note text,
+  log_date date not null default current_date,
+  created_at timestamptz not null default now()
+);
+
+-- 11. Indulge entries (v2 unified — alcohol + coded in one table, replaces tide_drinks + tide_other_substances)
+create table tide_indulge_entries (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid references tide_indulge_sessions(id) on delete cascade,
+  entry_at timestamptz not null default now(),
+  kind text not null check (kind in ('alcohol', 'coded')),
+  alias_id uuid references tide_other_aliases(id),
+  drink_type text,
+  standard_units numeric,
+  amount text,
+  notes text,
+  log_date date not null default current_date,
+  created_at timestamptz not null default now()
+);
+
 -- RLS on everything
 alter table tide_sessions enable row level security;
 alter table tide_drinks enable row level security;
@@ -130,6 +163,8 @@ alter table tide_supplements enable row level security;
 alter table tide_other_substances enable row level security;
 alter table tide_other_aliases enable row level security;
 alter table tide_oura_daily enable row level security;
+alter table tide_indulge_sessions enable row level security;
+alter table tide_indulge_entries enable row level security;
 
 create policy "anon all" on tide_sessions for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_drinks for all to anon, authenticated using (true) with check (true);
@@ -140,6 +175,8 @@ create policy "anon all" on tide_supplements for all to anon, authenticated usin
 create policy "anon all" on tide_other_substances for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_other_aliases for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_oura_daily for all to anon, authenticated using (true) with check (true);
+create policy "anon all" on tide_indulge_sessions for all to anon, authenticated using (true) with check (true);
+create policy "anon all" on tide_indulge_entries for all to anon, authenticated using (true) with check (true);
 
 grant all on
   tide_sessions,
@@ -150,7 +187,9 @@ grant all on
   tide_supplements,
   tide_other_substances,
   tide_other_aliases,
-  tide_oura_daily
+  tide_oura_daily,
+  tide_indulge_sessions,
+  tide_indulge_entries
   to anon, authenticated, service_role;
 
 -- Indexes for the queries we'll actually run
@@ -160,5 +199,10 @@ create index tide_intake_logs_log_date_idx     on tide_intake_logs(log_date);
 create index tide_intake_logs_category_idx     on tide_intake_logs(category);
 create index tide_other_substances_log_date_idx on tide_other_substances(log_date);
 create index tide_oura_daily_date_idx          on tide_oura_daily(date desc);
+create index tide_indulge_sessions_started_idx on tide_indulge_sessions(started_at desc);
+create index tide_indulge_sessions_active_idx  on tide_indulge_sessions(ended_at) where ended_at is null;
+create index tide_indulge_entries_session_idx  on tide_indulge_entries(session_id);
+create index tide_indulge_entries_log_date_idx on tide_indulge_entries(log_date);
+create index tide_indulge_entries_kind_idx     on tide_indulge_entries(kind);
 
 notify pgrst, 'reload schema';

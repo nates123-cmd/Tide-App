@@ -248,6 +248,77 @@
   .digest-chevron { font-size: 18px; color: var(--muted); font-weight: 400; flex-shrink: 0; }
   .digest-card.dim { opacity: 0.7; }
 
+  /* ───── v2: Tab header (used on Indulge; will extend to other tabs in later chunks) ───── */
+  .tab-head { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 4px 20px; gap: 12px; }
+  .tab-head .tab-title { font-family: var(--font-display); font-weight: 600; font-size: 28px; letter-spacing: -0.02em; line-height: 1; }
+  .tab-head .tab-sub { font-family: var(--font-body); font-size: 12px; font-weight: 500; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; margin-top: 6px; }
+  .tab-head .head-link { font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.01em; align-self: flex-start; margin-top: 10px; cursor: pointer; }
+  .tab-head .head-link:active { color: var(--text); }
+
+  /* ───── v2: Indulge empty state (mockup-matched) ───── */
+  .empty-eyebrow { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-soft); font-weight: 600; margin-bottom: 8px; }
+  .empty-prompt { font-family: var(--font-display); font-weight: 500; font-size: 22px; line-height: 1.25; letter-spacing: -0.015em; margin-bottom: 6px; }
+  .empty-sub { font-family: var(--font-display); font-weight: 400; font-style: italic; font-size: 14px; line-height: 1.45; color: var(--muted); letter-spacing: -0.005em; margin-bottom: 18px; }
+
+  .form-card { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 20px 20px 18px; margin-bottom: 14px; }
+  .form-row { margin-bottom: 16px; }
+  .form-row:last-child { margin-bottom: 0; }
+  .form-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; margin-bottom: 8px; }
+  .form-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-family: var(--font-display); font-size: 15px; font-weight: 400; color: var(--text); letter-spacing: -0.005em; outline: none; line-height: 1.4; }
+  .form-input::placeholder { color: var(--muted-soft); font-style: italic; }
+  .form-input:focus { border-color: var(--text); }
+  .form-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .form-chip { padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0.01em; cursor: pointer; }
+  .form-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  .primary-btn { width: 100%; padding: 14px 18px; background: var(--text); color: var(--bg); border: none; border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 14px; font-weight: 500; letter-spacing: 0.01em; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: opacity 0.15s; }
+  .primary-btn:active { opacity: 0.88; }
+  .primary-btn .arrow { font-size: 18px; }
+
+  .section-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; margin: 12px 2px 10px; }
+  .past-row { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 13px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+  .past-left { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+  .past-title { font-family: var(--font-display); font-weight: 500; font-size: 14px; letter-spacing: -0.005em; line-height: 1.2; }
+  .past-meta { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .past-right { text-align: right; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
+  .past-units { font-family: var(--font-display); font-weight: 500; font-size: 16px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.005em; }
+  .past-units-label { font-family: var(--font-body); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+
+  /* ───── v2: Indulge active session (mockup-matched) ───── */
+  .pace-fused { background: var(--card-bg-warm); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 20px 20px 16px; margin-bottom: 14px; }
+  .pace-fused-stats { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 18px; align-items: stretch; margin-bottom: 4px; }
+  .pace-fused-stats.single { grid-template-columns: 1fr; gap: 0; }
+  .pace-fused-divider { background: var(--border-soft); width: 1px; height: auto; }
+  .pace-fused-stat { display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+  .pace-fused-stat-label { font-family: var(--font-body); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+  .pace-fused-num { font-family: var(--font-display); font-weight: 500; font-size: 44px; line-height: 0.95; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; }
+  .pace-fused-num-suffix { font-family: var(--font-display); font-weight: 400; font-size: 18px; color: var(--muted); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .pace-fused-stat-detail { font-family: var(--font-body); font-size: 10px; color: var(--muted); letter-spacing: 0.02em; margin-top: 2px; }
+  .pace-fused-stat-detail.muted-soft { color: var(--muted-soft); }
+  .pace-fused-status-row { display: flex; justify-content: flex-end; margin-top: 2px; }
+  .pace-fused-status { font-family: var(--font-body); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-deep); }
+  .pace-fused-status.fast { color: var(--warn); }
+  .pace-fused-intention { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 15px; line-height: 1.4; color: var(--accent-deep); letter-spacing: -0.005em; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-soft); }
+  .pace-fused-meta { display: flex; align-items: center; gap: 6px; font-family: var(--font-body); font-size: 11px; color: var(--muted); margin-top: 8px; letter-spacing: 0.02em; }
+  .pace-fused-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-soft); display: inline-block; }
+
+  .entries-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; margin: 4px 2px 10px; }
+  .ind-entry { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+  .ind-entry-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+  .ind-entry-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--card-bg-warm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font-display); font-size: 13px; font-weight: 500; color: var(--accent-deep); }
+  .ind-entry-icon.coded { background: var(--bg); border: 1px dashed var(--border); color: var(--muted); }
+  .ind-entry-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .ind-entry-title { font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: -0.005em; line-height: 1.2; }
+  .ind-entry-meta { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.01em; }
+  .ind-entry-time { font-family: var(--font-body); font-size: 11px; color: var(--muted-soft); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+
+  .ind-quick-chips { display: flex; gap: 6px; margin-bottom: 10px; }
+  .ind-chip { flex: 1; padding: 11px 4px; background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: 10px; font-family: var(--font-display); font-size: 14px; font-weight: 500; text-align: center; color: var(--text); cursor: pointer; font-variant-numeric: tabular-nums; transition: background 0.15s; }
+  .ind-chip:active { background: var(--card-bg-warm); }
+  .ind-chip-label { display: block; font-family: var(--font-body); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; margin-top: 2px; }
+  .more-btn { width: 100%; padding: 11px; background: transparent; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-family: var(--font-body); font-size: 12px; font-weight: 500; letter-spacing: 0.02em; margin-bottom: 16px; cursor: pointer; }
+  .more-btn:active { color: var(--text); border-color: var(--muted); }
+
   /* ───── v2: Bottom nav bar (mockup-matched) ───── */
   .bottom-nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
@@ -308,7 +379,8 @@ let state = {
   todayIntake: [],             // today's tide_intake_logs rows
   supplements: [],             // user's stack
   aliases: [],                 // user's substance aliases
-  todayOther: [],              // today's tide_other_substances rows
+  todayOther: [],              // today's coded entries (kind=coded, session_id=null) from tide_indulge_entries
+  activeCoded: [],             // coded entries inside the active session
 };
 
 const MEAL_DEFAULTS = { breakfast: 400, lunch: 600, dinner: 700, snack: 200 };
@@ -945,6 +1017,10 @@ function renderHome() {
     renderPulseHome();
     return;
   }
+  if (state.tab === 'drinks') {
+    renderIndulgeTab();
+    return;
+  }
 
   const tab = state.tab;
   $('#app').innerHTML = `
@@ -1195,6 +1271,383 @@ function renderDigestHeadlinePlaceholder() {
   // Real digest pipeline ships in chunk 11. Until then, surface a neutral placeholder
   // that points the user to the existing Patterns screen.
   return 'Last 7 days — tap to see the joined view.';
+}
+
+// ---------------------------------------------------------------------------
+// Indulge tab (v2 chunk 2) — unified alcohol + coded session ritual
+// ---------------------------------------------------------------------------
+const INDULGE_SETTINGS = ['Out', 'Home', 'Event', 'Travel'];
+
+function dayLabel(now = new Date()) {
+  return now.toLocaleDateString('en-US', { weekday: 'short' });
+}
+
+function renderIndulgeTab() {
+  if (state.activeSession) {
+    renderIndulgeActive();
+  } else {
+    renderIndulgeEmpty();
+  }
+  // Pace re-render timer (refreshes elapsed + since-last + BAC trend).
+  if (state.paceTimer) clearInterval(state.paceTimer);
+  if (state.activeSession) {
+    state.paceTimer = setInterval(() => {
+      if (state.screen === 'home' && state.tab === 'drinks' && state.activeSession) renderIndulgeActive();
+    }, 60000);
+  }
+}
+
+function renderIndulgeEmpty() {
+  const now = new Date();
+  const sub = now.getHours() >= 17 ? `${dayLabel(now)} night` : `${dayLabel(now)} day`;
+  const recent = (state.history || []).slice(0, 6);
+
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="tab-title" data-brand>Indulge</div>
+        <div class="tab-sub">${escapeHtml(sub)}</div>
+      </div>
+      <div class="head-link" data-nav="history">History</div>
+    </header>
+
+    <div class="empty-eyebrow">Set tonight's intention</div>
+    <div class="empty-prompt">What's tonight for?</div>
+    <div class="empty-sub">Set the shape now and the rest writes itself.</div>
+
+    <div class="form-card" id="indulge-form">
+      <div class="form-row">
+        <div class="form-label">Intention</div>
+        <input class="form-input" id="ind-intention" type="text" placeholder="Stay present, drinks max, home by midnight…" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">Drinks ceiling</div>
+        <div class="form-chips" id="ind-ceiling">
+          ${INTENTION_RANGES.map(r => `<div class="form-chip" data-max="${r.max}">${r.label}</div>`).join('')}
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">Setting</div>
+        <div class="form-chips" id="ind-setting">
+          ${INDULGE_SETTINGS.map(s => `<div class="form-chip" data-set="${s}">${s}</div>`).join('')}
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">With</div>
+        <input class="form-input" id="ind-with" type="text" placeholder="Sam &amp; Jules, or solo" />
+      </div>
+    </div>
+
+    <button class="primary-btn" id="ind-start" disabled style="opacity: 0.5">
+      Start session
+      <span class="arrow">→</span>
+    </button>
+
+    ${recent.length ? `
+      <div class="section-label">Recent nights</div>
+      ${recent.map(s => renderPastNightRow(s)).join('')}
+    ` : ''}
+
+    <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
+  `;
+
+  $('[data-brand]')?.addEventListener('click', () => { state.tab = null; render(); });
+  $$('[data-nav]').forEach(b => b.onclick = () => { state.screen = b.dataset.nav; render(); });
+  $('#any-fab').onclick = openLogAny;
+  $$('.past-row').forEach(r => r.onclick = () => {
+    const id = r.dataset.sessionId;
+    const s = (state.history || []).find(x => x.id === id);
+    if (s) openSessionDetail(s);
+  });
+
+  // Wire form state — chips + inputs gate the Start button on intention+ceiling+setting.
+  const sel = { max: null, setting: null };
+  const checkReady = () => {
+    const ok = sel.max != null && sel.setting != null;
+    const btn = $('#ind-start');
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? 1 : 0.5;
+  };
+  $$('#ind-ceiling .form-chip').forEach(c => c.onclick = () => {
+    $$('#ind-ceiling .form-chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active'); sel.max = +c.dataset.max; checkReady();
+  });
+  $$('#ind-setting .form-chip').forEach(c => c.onclick = () => {
+    $$('#ind-setting .form-chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active'); sel.setting = c.dataset.set; checkReady();
+  });
+  $('#ind-start').onclick = async () => {
+    if (sel.max == null || sel.setting == null) return;
+    const btn = $('#ind-start');
+    btn.disabled = true; btn.querySelector('span').textContent = '…';
+    try {
+      await startSession({
+        intention: sel.max,
+        intention_text: $('#ind-intention').value.trim() || null,
+        setting: sel.setting,
+        who_with: $('#ind-with').value.trim() || null,
+      });
+    } catch (e) {
+      toast('Could not start: ' + e.message);
+      btn.disabled = false; btn.querySelector('span').textContent = '→';
+    }
+  };
+}
+
+function renderPastNightRow(s) {
+  const date = new Date(s.started_at);
+  const dStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const setting = s.setting ? `${s.setting === s.setting.toLowerCase() ? s.setting : s.setting.toLowerCase()}` : '';
+  const who = s.who_with ? `with ${s.who_with}` : '';
+  const titleBits = [dStr, setting && `at ${setting}`, who].filter(Boolean).join(' · ');
+  const drinks = s.drink_count || 0;
+  const units = (s.unit_total != null ? s.unit_total : drinks).toFixed(drinks ? 1 : 0);
+  return `
+    <div class="past-row" data-session-id="${s.id}">
+      <div class="past-left">
+        <div class="past-title">${escapeHtml(titleBits)}</div>
+        <div class="past-meta">${drinks} alcohol${s.feeling ? ' · felt ' + escapeHtml(s.feeling) : ''}</div>
+      </div>
+      <div class="past-right">
+        <div class="past-units">${units}</div>
+        <div class="past-units-label">units</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderIndulgeActive() {
+  const s = state.activeSession;
+  const profile = getProfile();
+  const pace = computePace(state.drinks);
+  const elapsed = Date.now() - new Date(s.started_at).getTime();
+  const bac = computeBAC(state.drinks, profile);
+  const trend = computeBacTrend(state.drinks, profile, bac && bac.bac);
+  const totalUnits = state.drinks.reduce((sum, d) => sum + (Number(d.standard_units) || 1), 0);
+  const ceilingLabel = intentionLabel(s.intention);
+  const ceilingMax = (s.intention && s.intention < 99) ? s.intention : null;
+  const ceilingShow = ceilingMax ? `/ ${ceilingMax}` : (ceilingLabel ? `/ ${ceilingLabel}` : '');
+
+  // Status word — accent-deep for moderate/easy, warn for fast
+  let statusWord, statusCls = '';
+  if (pace.status === 'fast') { statusWord = 'Fast'; statusCls = 'fast'; }
+  else if (pace.status === 'moderate') { statusWord = 'Moderate'; }
+  else if (pace.status === 'easy') { statusWord = 'Easy'; }
+  else { statusWord = ''; }
+
+  // Sub label: day + setting/who-with
+  const headerSub = [
+    dayLabel(new Date(s.started_at)),
+    s.who_with ? `with ${s.who_with}` : (s.setting || ''),
+  ].filter(Boolean).join(' · ');
+
+  // Entries: merge alcohol + coded by entry_at desc
+  const merged = [
+    ...state.drinks.map(d => ({ ...d, _kind: 'alcohol' })),
+    ...(state.activeCoded || []).map(c => ({ ...c, _kind: 'coded' })),
+  ].sort((a, b) => new Date(a.entry_at || a.drink_at).getTime() - new Date(b.entry_at || b.drink_at).getTime());
+
+  // BAC card column shows only if profile has weight + sex
+  const showBac = !!(profile && profile.weight_lb && profile.gender);
+
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="tab-title" data-brand>Indulge</div>
+        <div class="tab-sub">${escapeHtml(headerSub || 'Tonight')}</div>
+      </div>
+      <div class="head-link" id="ind-end-link">End</div>
+    </header>
+
+    <div class="pace-fused">
+      <div class="pace-fused-stats ${showBac ? '' : 'single'}">
+        <div class="pace-fused-stat">
+          <div class="pace-fused-stat-label">Pace</div>
+          <div class="pace-fused-num">${totalUnits.toFixed(totalUnits % 1 === 0 ? 0 : 1)}${ceilingShow ? `<span class="pace-fused-num-suffix">${escapeHtml(ceilingShow)}</span>` : ''}</div>
+          <div class="pace-fused-stat-detail">${pace.perHour.toFixed(1)} / hr</div>
+        </div>
+        ${showBac ? `
+          <div class="pace-fused-divider"></div>
+          <div class="pace-fused-stat">
+            <div class="pace-fused-stat-label">BAC · est</div>
+            <div class="pace-fused-num">${bac ? bac.bac.toFixed(2).replace(/^0/, '') : '—'}</div>
+            <div class="pace-fused-stat-detail muted-soft">${escapeHtml(trend || (bac ? 'first read' : 'no drinks yet'))}</div>
+          </div>
+        ` : ''}
+      </div>
+      ${statusWord ? `
+        <div class="pace-fused-status-row">
+          <div class="pace-fused-status ${statusCls}">${statusWord}</div>
+        </div>
+      ` : ''}
+      ${s.intention_text ? `
+        <div class="pace-fused-intention">${escapeHtml(s.intention_text)}</div>
+      ` : ''}
+      <div class="pace-fused-meta">
+        <span>${fmtDuration(elapsed)} in</span>
+        ${pace.minSinceLast != null ? `<span class="dot"></span><span>${pace.minSinceLast}m since last</span>` : ''}
+      </div>
+    </div>
+
+    <div class="entries-label">Tonight</div>
+    ${merged.length === 0
+      ? '<div class="muted small" style="padding: 6px 2px 12px">No entries yet — tap a unit chip below.</div>'
+      : merged.map(e => renderIndulgeEntry(e)).join('')
+    }
+
+    <div class="entries-label" style="margin-top: 18px;">Add another</div>
+    <div class="ind-quick-chips" id="ind-chips">
+      <div class="ind-chip" data-units="0.5">½<span class="ind-chip-label">unit</span></div>
+      <div class="ind-chip" data-units="1">1<span class="ind-chip-label">unit</span></div>
+      <div class="ind-chip" data-units="1.5">1½<span class="ind-chip-label">unit</span></div>
+      <div class="ind-chip" data-units="2">2<span class="ind-chip-label">unit</span></div>
+    </div>
+    <button class="more-btn" id="ind-more">+ Type or coded entry</button>
+
+    <button class="primary-btn" id="ind-end">
+      End session
+      <span class="arrow">→</span>
+    </button>
+
+    <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
+  `;
+
+  $('[data-brand]')?.addEventListener('click', () => { state.tab = null; render(); });
+  $('#any-fab').onclick = openLogAny;
+
+  $('#ind-end-link').onclick = openEndSession;
+  $('#ind-end').onclick = openEndSession;
+
+  $$('#ind-chips .ind-chip').forEach(c => c.onclick = async () => {
+    const units = parseFloat(c.dataset.units);
+    const lastAlc = [...state.drinks].reverse()[0];
+    const drink_type = lastAlc ? lastAlc.drink_type : 'beer';
+    try {
+      await logDrink({ drink_type, standard_units: units });
+    } catch (e) {
+      toast('Could not log: ' + e.message);
+    }
+  });
+
+  $('#ind-more').onclick = openIndulgeMore;
+
+  $$('.ind-entry').forEach(row => row.onclick = () => {
+    const id = row.dataset.entryId;
+    const kind = row.dataset.entryKind;
+    openIndulgeEntryDetail(id, kind);
+  });
+}
+
+function renderIndulgeEntry(e) {
+  const time = fmtTime(e.entry_at || e.drink_at || e.logged_at);
+  if (e._kind === 'alcohol') {
+    const label = DRINK_LABELS[e.drink_type] || e.drink_type;
+    const initial = (label || '?').charAt(0).toUpperCase();
+    const units = Number(e.standard_units) || 1;
+    const unitsLabel = units === 1 ? '1 standard' : `${units} standard`;
+    return `
+      <div class="ind-entry" data-entry-id="${e.id}" data-entry-kind="alcohol">
+        <div class="ind-entry-left">
+          <div class="ind-entry-icon">${escapeHtml(initial)}</div>
+          <div class="ind-entry-body">
+            <div class="ind-entry-title">${escapeHtml(label)}</div>
+            <div class="ind-entry-meta">${escapeHtml(unitsLabel)}</div>
+          </div>
+        </div>
+        <div class="ind-entry-time">${time}</div>
+      </div>
+    `;
+  }
+  // coded
+  const aliasText = e.alias_text || e.alias || '?';
+  const initial = String(aliasText).charAt(0).toUpperCase();
+  return `
+    <div class="ind-entry" data-entry-id="${e.id}" data-entry-kind="coded">
+      <div class="ind-entry-left">
+        <div class="ind-entry-icon coded">${escapeHtml(initial)}</div>
+        <div class="ind-entry-body">
+          <div class="ind-entry-title">${escapeHtml(aliasText)}</div>
+          <div class="ind-entry-meta">${escapeHtml(e.amount || '1 entry')}</div>
+        </div>
+      </div>
+      <div class="ind-entry-time">${time}</div>
+    </div>
+  `;
+}
+
+// "+ Type or coded entry" — picks between full alcohol-type sheet and coded-entry sheet.
+function openIndulgeMore() {
+  showModal(`
+    <h2>Add another</h2>
+    <div class="btn-row" style="gap: 10px">
+      <button class="btn btn-soft" id="more-alcohol" style="flex: 1">Alcohol type</button>
+      <button class="btn btn-soft" id="more-coded" style="flex: 1">Coded entry</button>
+    </div>
+  `, () => {
+    $('#more-alcohol').onclick = () => { closeModal(); setTimeout(openLogDrink, 60); };
+    $('#more-coded').onclick = () => { closeModal(); setTimeout(() => openLogOther(), 60); };
+  });
+}
+
+function openIndulgeEntryDetail(id, kind) {
+  if (kind === 'alcohol') {
+    const e = state.drinks.find(d => d.id === id);
+    if (!e) return;
+    const label = DRINK_LABELS[e.drink_type] || e.drink_type;
+    showModal(`
+      <h2>${escapeHtml(label)}</h2>
+      <p class="small muted">${e.standard_units} standard · ${fmtTime(e.entry_at || e.drink_at)}</p>
+      <div class="btn-row">
+        <button class="btn btn-soft" data-close>Close</button>
+        <button class="btn btn-warm" id="entry-delete">Delete</button>
+      </div>
+    `, () => {
+      $('#entry-delete').onclick = async () => {
+        await undoDrink(id);
+        closeModal();
+      };
+    });
+  } else {
+    const e = (state.activeCoded || []).find(c => c.id === id);
+    if (!e) return;
+    const alias = e.alias_text || '(coded)';
+    showModal(`
+      <h2>${escapeHtml(alias)}</h2>
+      <p class="small muted">${escapeHtml(e.amount || '1 entry')} · ${fmtTime(e.entry_at)}</p>
+      <div class="btn-row">
+        <button class="btn btn-soft" data-close>Close</button>
+        <button class="btn btn-warm" id="entry-delete">Delete</button>
+      </div>
+    `, () => {
+      $('#entry-delete').onclick = async () => {
+        await sbFetch(`/tide_indulge_entries?id=eq.${id}`, { method: 'DELETE' });
+        state.activeCoded = (state.activeCoded || []).filter(x => x.id !== id);
+        closeModal();
+        render();
+      };
+    });
+  }
+}
+
+// BAC trend: compare current BAC to what we'd compute 15 minutes ago.
+// Returns "trending up" / "trending down" / "holding" / etc.
+function computeBacTrend(drinks, profile, currentBac) {
+  if (!profile || !drinks.length || currentBac == null) return '';
+  // Re-run BAC with all drinks logged in the last 15min REMOVED to model the past state.
+  const past = drinks.filter(d => {
+    const t = new Date(d.entry_at || d.drink_at).getTime();
+    return Date.now() - t > 15 * 60 * 1000;
+  });
+  if (!past.length) return 'first read';
+  const pastBac = computeBAC(past, profile);
+  if (!pastBac) return 'first read';
+  const delta = currentBac - pastBac.bac;
+  if (delta > 0.005) return 'trending up';
+  if (delta < -0.005) return 'trending down';
+  return 'holding';
 }
 
 function renderTabContent(tab) {
@@ -1901,12 +2354,14 @@ async function startSession(sel) {
   const row = {
     started_at: new Date().toISOString(),
     intention: sel.intention,
+    intention_text: sel.intention_text || null,
     setting: sel.setting,
     who_with: sel.who_with,
   };
-  const result = await sbFetch('/tide_sessions', { method: 'POST', body: JSON.stringify(row) });
+  const result = await sbFetch('/tide_indulge_sessions', { method: 'POST', body: JSON.stringify(row) });
   state.activeSession = result[0];
   state.drinks = [];
+  state.activeCoded = [];
   saveLocal();
   loadQuote(true);
   render();
@@ -1994,18 +2449,21 @@ function openLogDrink() {
 async function logDrink(sel) {
   const row = {
     session_id: state.activeSession.id,
+    kind: 'alcohol',
     drink_type: sel.drink_type,
     standard_units: sel.standard_units,
-    drink_at: new Date().toISOString(),
+    entry_at: new Date().toISOString(),
   };
-  const result = await sbFetch('/tide_drinks', { method: 'POST', body: JSON.stringify(row) });
-  state.drinks.push(result[0]);
+  const result = await sbFetch('/tide_indulge_entries', { method: 'POST', body: JSON.stringify(row) });
+  // Keep drink_at alias for computePace/computeBAC/renderDrinkList compatibility.
+  const r = result[0];
+  state.drinks.push({ ...r, drink_at: r.entry_at });
   saveLocal();
   render();
 }
 
 async function undoDrink(id) {
-  await sbFetch(`/tide_drinks?id=eq.${id}`, { method: 'DELETE' });
+  await sbFetch(`/tide_indulge_entries?id=eq.${id}`, { method: 'DELETE' });
   state.drinks = state.drinks.filter(d => d.id !== id);
   saveLocal();
   render();
@@ -2157,7 +2615,7 @@ async function undoIntake(id) {
 
 async function undoOther(id) {
   try {
-    await sbFetch(`/tide_other_substances?id=eq.${id}`, { method: 'DELETE' });
+    await sbFetch(`/tide_indulge_entries?id=eq.${id}`, { method: 'DELETE' });
     state.todayOther = state.todayOther.filter(r => r.id !== id);
     render();
   } catch (e) {
@@ -2523,9 +2981,38 @@ function openLogOther(preselectedAlias = null) {
 }
 
 async function logOther(row) {
-  row.logged_at = new Date().toISOString();
-  const result = await sbFetch('/tide_other_substances', { method: 'POST', body: JSON.stringify(row) });
-  state.todayOther.push(result[0]);
+  // v1 row shape: { alias, dose_amount, dose_unit, route, setting, who_with, mood_before, notes }
+  // Map to v2 tide_indulge_entries (kind=coded, session_id=current if any).
+  const aliasObj = (state.aliases || []).find(a => a.alias === row.alias);
+  const amount = (row.dose_amount != null)
+    ? `${row.dose_amount}${row.dose_unit ? ' ' + row.dose_unit : ''}`
+    : null;
+  const notesParts = [row.setting, row.who_with, row.mood_before, row.notes].filter(Boolean);
+  const v2 = {
+    session_id: state.activeSession ? state.activeSession.id : null,
+    kind: 'coded',
+    alias_id: aliasObj ? aliasObj.id : null,
+    amount,
+    notes: notesParts.length ? notesParts.join(' · ') : null,
+    entry_at: new Date().toISOString(),
+  };
+  const result = await sbFetch('/tide_indulge_entries', { method: 'POST', body: JSON.stringify(v2) });
+  // Keep v1-shaped fields on the row so existing renderers work.
+  const r = {
+    ...result[0],
+    alias: row.alias,
+    dose_amount: row.dose_amount,
+    dose_unit: row.dose_unit,
+    setting: row.setting,
+    who_with: row.who_with,
+    mood_before: row.mood_before,
+    logged_at: result[0].entry_at,
+  };
+  if (state.activeSession) {
+    state.activeCoded = (state.activeCoded || []).concat([r]);
+  } else {
+    state.todayOther.push(r);
+  }
   render();
 }
 
@@ -2580,12 +3067,13 @@ async function endSession(feeling, note) {
   const ended_at = new Date().toISOString();
   const duration_min = Math.round((Date.now() - new Date(state.activeSession.started_at).getTime()) / 60000);
   const update = { ended_at, feeling, note: note || null, duration_min };
-  await sbFetch(`/tide_sessions?id=eq.${state.activeSession.id}`, {
+  await sbFetch(`/tide_indulge_sessions?id=eq.${state.activeSession.id}`, {
     method: 'PATCH',
     body: JSON.stringify(update),
   });
   state.activeSession = null;
   state.drinks = [];
+  state.activeCoded = [];
   saveLocal();
   await loadHistory();
   render();
@@ -2635,13 +3123,13 @@ async function loadPatternsData(days) {
   const startedAfter = addDays(startDate, -1) + 'T00:00:00';
   const [ouraRows, sessions] = await Promise.all([
     loadOuraRange(startDate, endDate),
-    sbFetch(`/tide_sessions?started_at=gte.${encodeURIComponent(startedAfter)}&order=started_at.asc`).catch(() => []),
+    sbFetch(`/tide_indulge_sessions?started_at=gte.${encodeURIComponent(startedAfter)}&order=started_at.asc`).catch(() => []),
   ]);
   const sessIds = (sessions || []).map(s => s.id);
   let drinkCounts = {};
   if (sessIds.length) {
-    const drinks = await sbFetch(`/tide_drinks?session_id=in.(${sessIds.join(',')})&select=session_id`).catch(() => []);
-    (drinks || []).forEach(d => { drinkCounts[d.session_id] = (drinkCounts[d.session_id] || 0) + 1; });
+    const entries = await sbFetch(`/tide_indulge_entries?session_id=in.(${sessIds.join(',')})&kind=eq.alcohol&select=session_id`).catch(() => []);
+    (entries || []).forEach(d => { drinkCounts[d.session_id] = (drinkCounts[d.session_id] || 0) + 1; });
   }
   // Map oura_date → drink count (summed if multiple sessions land on same night)
   const drinksByOuraDate = {};
@@ -2977,16 +3465,25 @@ function loadLocal() {
 // Data load
 // ---------------------------------------------------------------------------
 async function loadActiveSession() {
-  // Server source of truth: last session with no ended_at
+  // Server source of truth: last indulge session with no ended_at.
   try {
-    const sessions = await sbFetch('/tide_sessions?ended_at=is.null&order=started_at.desc&limit=1');
+    const sessions = await sbFetch('/tide_indulge_sessions?ended_at=is.null&order=started_at.desc&limit=1');
     if (sessions && sessions.length) {
       state.activeSession = sessions[0];
-      const drinks = await sbFetch(`/tide_drinks?session_id=eq.${sessions[0].id}&order=drink_at.asc`);
-      state.drinks = drinks || [];
+      const entries = await sbFetch(
+        `/tide_indulge_entries?session_id=eq.${sessions[0].id}&order=entry_at.asc&select=*,alias:tide_other_aliases(alias)`
+      );
+      const alc = (entries || []).filter(e => e.kind === 'alcohol');
+      const coded = (entries || []).filter(e => e.kind === 'coded');
+      // Preserve drink_at alias on alcohol rows so computePace/computeBAC and the v1
+      // renderers keep working without per-call mapping.
+      state.drinks = alc.map(d => ({ ...d, drink_at: d.entry_at }));
+      // Surface alias text on coded rows for the renderer.
+      state.activeCoded = coded.map(c => ({ ...c, alias_text: c.alias ? c.alias.alias : null }));
     } else {
       state.activeSession = null;
       state.drinks = [];
+      state.activeCoded = [];
     }
     saveLocal();
   } catch (e) {
@@ -3026,9 +3523,19 @@ async function loadAliases() {
 }
 
 async function loadTodayOther() {
+  // v2: today's coded entries that aren't attached to a session.
   try {
-    const rows = await sbFetch(`/tide_other_substances?log_date=eq.${todayISO()}&order=logged_at.asc`);
-    state.todayOther = rows || [];
+    const rows = await sbFetch(
+      `/tide_indulge_entries?kind=eq.coded&session_id=is.null&log_date=eq.${todayISO()}&order=entry_at.asc&select=*,alias:tide_other_aliases(alias)`
+    );
+    // Map to the v1 row shape the existing renderOtherSection consumes.
+    state.todayOther = (rows || []).map(r => ({
+      ...r,
+      alias: r.alias ? r.alias.alias : '(unknown)',
+      logged_at: r.entry_at,
+      dose_amount: r.amount,
+      dose_unit: null,
+    }));
   } catch (e) {
     console.warn('loadTodayOther failed:', e.message);
     state.todayOther = [];
@@ -3037,29 +3544,37 @@ async function loadTodayOther() {
 
 async function loadHistory() {
   try {
-    // Pull last 30 sessions with drink counts (computed via two queries — keep it simple)
-    const sessions = await sbFetch('/tide_sessions?order=started_at.desc&limit=30');
+    // Pull last 30 indulge sessions with alcohol entry counts (two queries; simple is fine).
+    const sessions = await sbFetch('/tide_indulge_sessions?order=started_at.desc&limit=30');
     if (!sessions) { state.history = []; return; }
-    // Get drink counts in one query and merge
     const ids = sessions.map(s => s.id);
-    let drinks = [];
+    let entries = [];
     if (ids.length) {
-      drinks = await sbFetch(`/tide_drinks?session_id=in.(${ids.join(',')})&select=session_id`) || [];
+      entries = await sbFetch(`/tide_indulge_entries?session_id=in.(${ids.join(',')})&kind=eq.alcohol&select=session_id,standard_units`) || [];
     }
     const counts = {};
-    drinks.forEach(d => { counts[d.session_id] = (counts[d.session_id] || 0) + 1; });
+    const units = {};
+    entries.forEach(e => {
+      counts[e.session_id] = (counts[e.session_id] || 0) + 1;
+      units[e.session_id]  = (units[e.session_id]  || 0) + (Number(e.standard_units) || 0);
+    });
 
-    // Fetch existing morning reflections to know what's already done
+    // Fetch existing morning reflections to know what's already done.
     const refls = await sbFetch(`/tide_reflections?session_id=in.(${ids.join(',')})&select=session_id`) || [];
     const reflected = new Set(refls.map(r => r.session_id));
 
     state.history = sessions
-      .filter(s => s.ended_at) // exclude active
+      .filter(s => s.ended_at)
       .map(s => {
         const sessionDate = new Date(s.started_at);
         const hoursAgo = (Date.now() - sessionDate.getTime()) / 3600000;
         const morningWindow = hoursAgo >= 6 && hoursAgo <= 36 && !reflected.has(s.id);
-        return { ...s, drink_count: counts[s.id] || 0, morning_pending: morningWindow };
+        return {
+          ...s,
+          drink_count: counts[s.id] || 0,
+          unit_total:  units[s.id]  || 0,
+          morning_pending: morningWindow,
+        };
       });
   } catch (e) {
     console.warn('loadHistory failed:', e.message);
