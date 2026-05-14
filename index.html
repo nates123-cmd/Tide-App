@@ -2835,7 +2835,8 @@ function renderTrainTab() {
         <div class="tab-title" data-brand>Train</div>
         <div class="tab-sub">${escapeHtml(sub)}</div>
       </div>
-      <div style="display: flex; gap: 16px; align-self: flex-start; margin-top: 10px;">
+      <div style="display: flex; gap: 16px; align-self: flex-start; margin-top: 10px; flex-wrap: wrap; justify-content: flex-end;">
+        ${hasStrengthToday ? '<div class="head-link" id="train-save-template">Save as template</div>' : ''}
         <div class="head-link" id="train-workouts">Workouts</div>
         <div class="head-link" id="train-progress">Progress</div>
         <div class="head-link" id="train-body">Body</div>
@@ -2891,6 +2892,7 @@ function renderTrainTab() {
   $('#train-workouts').onclick = () => { state.screen = 'workouts'; render(); };
   $('#train-progress').onclick = () => toast('Progress lands in chunk 9');
   $('#train-body').onclick = () => toast('Body lands in chunk 10');
+  $('#train-save-template')?.addEventListener('click', () => openSaveTodayAsTemplateModal());
   $$('[data-template-start]').forEach(c => c.onclick = () => {
     const t = state.workoutTemplates.find(x => x.id === c.dataset.templateStart);
     if (t) startSessionFromTemplate(t);
@@ -3100,6 +3102,119 @@ function openActivityDetail(id) {
   const a = (state.todayActivities || []).find(x => x.id === id);
   if (!a) return;
   openLogActivityModal(a);
+}
+
+// Promote today's strength activities into a reusable template. User picks
+// the subset to include (all checked by default), names the template, saves.
+function openSaveTodayAsTemplateModal() {
+  const strength = (state.todayActivities || [])
+    .filter(a => a.category === 'strength' && (a.type || '').trim())
+    .slice()
+    .reverse(); // chronological top-to-bottom
+  if (!strength.length) {
+    toast('No strength activities to save');
+    return;
+  }
+  // Default-suggest a name from the first activity's source_template name if
+  // every activity came from the same template, otherwise leave blank.
+  const sources = new Set(strength.map(a => a.metadata?.source_template).filter(Boolean));
+  const suggestedName = sources.size === 1 ? [...sources][0] : '';
+
+  // Track which row ids are selected. Default = all.
+  const selected = new Set(strength.map(a => a.id));
+
+  const renderRows = () => strength.map(a => {
+    const m = a.metadata || {};
+    const meta = (m.sets || m.reps || m.weight_lb)
+      ? `${m.sets || '?'} × ${m.reps || '?'}${m.weight_lb != null ? ` @ ${m.weight_lb} lb` : ''}`
+      : '—';
+    const checked = selected.has(a.id);
+    return `
+      <div class="stack-item ${checked ? 'taken' : ''}" data-sat-id="${a.id}">
+        <div class="stack-cb">${checked ? '✓' : ''}</div>
+        <div class="stack-item-body">
+          <div class="stack-item-name">${escapeHtml(a.type)}</div>
+          <div class="stack-item-meta">${escapeHtml(meta)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  showModal(`
+    <h2>Save today as template</h2>
+    <p class="small muted" style="margin-bottom: 12px">Pick the exercises to include. Sets/reps/weight are captured as the template's targets.</p>
+
+    <div class="modal-section">
+      <div class="label">Template name</div>
+      <input id="sat-name" type="text" value="${escapeHtml(suggestedName)}" placeholder="Push Day, Pull A, …">
+    </div>
+
+    <div id="sat-list" style="max-height: 40vh; overflow-y: auto; margin-bottom: 14px">
+      ${renderRows()}
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="sat-save">Save (${selected.size})</button>
+    </div>
+  `, (m) => {
+    const refreshBtn = () => {
+      const n = selected.size;
+      const btn = $('#sat-save');
+      btn.textContent = `Save (${n})`;
+      btn.disabled = n === 0 || !$('#sat-name').value.trim();
+      btn.style.opacity = btn.disabled ? 0.5 : 1;
+    };
+    const wireRows = () => {
+      m.querySelectorAll('[data-sat-id]').forEach(row => row.onclick = () => {
+        const id = row.dataset.satId;
+        if (selected.has(id)) {
+          selected.delete(id);
+          row.classList.remove('taken');
+          row.querySelector('.stack-cb').textContent = '';
+        } else {
+          selected.add(id);
+          row.classList.add('taken');
+          row.querySelector('.stack-cb').textContent = '✓';
+        }
+        refreshBtn();
+      });
+    };
+    wireRows();
+    $('#sat-name').oninput = refreshBtn;
+    refreshBtn();
+
+    $('#sat-save').onclick = async () => {
+      const name = $('#sat-name').value.trim();
+      if (!name || selected.size === 0) return;
+      const btn = $('#sat-save');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const created = await createWorkoutTemplate(name);
+        if (!created) throw new Error('template create returned no row');
+        const items = strength
+          .filter(a => selected.has(a.id))
+          .map(a => {
+            const meta = a.metadata || {};
+            return {
+              exercise_name: a.type,
+              set_count: meta.sets || 3,
+              target_reps: meta.reps ?? null,
+              target_weight_lb: meta.weight_lb ?? null,
+            };
+          });
+        await addTemplateExercisesBulk(created.id, items);
+        await loadRecentTemplateUses();
+        closeModal();
+        toast(`Saved · ${name}`);
+        render();
+      } catch (e) {
+        toast('Could not save: ' + e.message);
+        btn.disabled = false;
+        refreshBtn();
+      }
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
