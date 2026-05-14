@@ -67,11 +67,12 @@ create table tide_dismissed_quotes (
 -- 5. Water / food / supplement intake logs
 create table tide_intake_logs (
   id uuid primary key default gen_random_uuid(),
-  category text not null,           -- 'water' | 'food' | 'supplement'
-  item_type text,                   -- meal type, supplement name, etc.
-  quantity numeric,                 -- ml for water, count for supplement, null for food
-  unit text,                        -- 'ml' | 'count' | etc.
+  category text not null,           -- 'water' | 'food' | 'supplement' | 'caffeine'
+  item_type text,                   -- meal name, supplement name, etc.
+  quantity numeric,                 -- ml for water, count for supplement, kcal for food (or use metadata.kcal), mg for caffeine
+  unit text,                        -- 'ml' | 'count' | 'kcal' | 'mg' | ...
   note text,
+  metadata jsonb,                   -- food: { kcal, protein_g, carbs_g, fat_g, source } — null for other categories
   logged_at timestamptz not null default now(),
   log_date date not null default current_date
 );

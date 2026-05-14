@@ -463,6 +463,102 @@
   .asneeded-log-btn { padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; background: transparent; font-family: var(--font-body); font-size: 11px; font-weight: 500; color: var(--text); letter-spacing: 0.02em; cursor: pointer; }
   .asneeded-log-btn:active { background: var(--card-bg-warm); }
 
+  /* ───── v2: Fuel — Today (mockup-matched) ───── */
+  .summary-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 22px 20px 20px;
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 20px;
+    align-items: center;
+  }
+  .ring-wrap { width: 130px; height: 130px; position: relative; }
+  .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-bg   { fill: none; stroke: var(--border-soft); stroke-width: 10; }
+  .ring-fill { fill: none; stroke: var(--text); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 400ms; }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .ring-num { font-family: var(--font-display); font-weight: 500; font-size: 32px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .ring-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+  .ring-total { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+  .macros { display: flex; flex-direction: column; gap: 12px; }
+  .macro { display: flex; flex-direction: column; gap: 5px; }
+  .macro-row { display: flex; align-items: baseline; justify-content: space-between; }
+  .macro-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+  .macro-value { font-family: var(--font-display); font-weight: 500; font-size: 13px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.005em; }
+  .macro-value .target { color: var(--muted); font-weight: 400; font-size: 11px; }
+  .macro-bar-track { height: 4px; background: var(--border-soft); border-radius: 2px; overflow: hidden; }
+  .macro-bar-fill { height: 100%; background: var(--text); border-radius: 2px; transition: width 0.3s; }
+  .macro-bar-fill.protein { background: var(--text); }
+  .macro-bar-fill.carbs   { background: var(--accent-deep); }
+  .macro-bar-fill.fat     { background: var(--accent); }
+
+  .recents-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; margin: 0 -2px; }
+  .recents-row::-webkit-scrollbar { display: none; }
+  .recent-chip { flex-shrink: 0; background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: 999px; padding: 8px 14px 8px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .recent-chip:active { background: var(--card-bg-warm); }
+  .recent-chip-name { font-family: var(--font-display); font-size: 13px; font-weight: 500; color: var(--text); letter-spacing: -0.005em; }
+  .recent-chip-kcal { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
+  .recent-chip-dot  { width: 3px; height: 3px; background: var(--muted-soft); border-radius: 50%; }
+  .recent-chip.lib  { background: transparent; border-style: dashed; }
+  .recent-chip.lib .recent-chip-name { color: var(--muted); font-style: italic; }
+
+  .meal-input-wrap { margin-top: 10px; position: relative; }
+  .meal-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 54px 14px 18px; font-family: var(--font-body); font-size: 14px; color: var(--text); letter-spacing: 0.01em; outline: none; }
+  .meal-input::placeholder { color: var(--muted-soft); }
+  .meal-input:focus { border-color: var(--text); }
+  .meal-input-icon { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%; background: var(--text); color: var(--bg); display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; padding: 0; }
+  .meal-input-icon svg { width: 14px; height: 14px; stroke: var(--bg); fill: none; stroke-width: 2; }
+  .meal-input-hint { margin-top: 8px; padding-left: 4px; font-family: var(--font-display); font-size: 11px; font-style: italic; color: var(--muted-soft); font-weight: 400; line-height: 1.3; }
+
+  .meal { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+  .meal-left { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+  .meal-top-row { display: flex; align-items: baseline; gap: 8px; }
+  .meal-title { font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: -0.005em; line-height: 1.2; }
+  .meal-time { font-family: var(--font-body); font-size: 11px; color: var(--muted-soft); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+  .meal-macros { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .meal-kcal { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+  .meal-kcal-num { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .meal-kcal-label { font-family: var(--font-body); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+
+  .remaining-hint { background: var(--card-bg-warm); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; margin-top: 14px; margin-bottom: 12px; }
+  .remaining-hint-text { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 13px; line-height: 1.35; color: var(--accent-deep); letter-spacing: -0.005em; }
+
+  /* ───── v2: Fuel — Library (mockup-matched) ───── */
+  .lib-back { font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; }
+  .lib-back:active { color: var(--text); }
+  .search-wrap { position: relative; margin-bottom: 14px; }
+  .search-input { width: 100%; background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 12px 14px 12px 40px; font-family: var(--font-body); font-size: 14px; color: var(--text); outline: none; }
+  .search-input::placeholder { color: var(--muted-soft); }
+  .search-input:focus { border-color: var(--text); background: var(--bg); }
+  .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; pointer-events: none; }
+  .search-icon svg { stroke: var(--muted-soft); fill: none; stroke-width: 1.5; }
+
+  .filter-row { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding: 2px; }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip { flex-shrink: 0; padding: 7px 12px; background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: 999px; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0.01em; cursor: pointer; }
+  .filter-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  .sort-row { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; margin-bottom: 10px; }
+  .sort-count { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+  .sort-toggle { display: flex; align-items: center; gap: 4px; font-family: var(--font-body); font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; cursor: pointer; padding: 0; background: none; border: none; }
+  .sort-toggle .caret { font-size: 9px; }
+
+  .group-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-soft); font-weight: 600; margin: 14px 2px 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border-soft); }
+  .group-label:first-of-type { margin-top: 4px; }
+
+  .lib-entry { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+  .lib-entry-left { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+  .lib-entry-top { display: flex; align-items: baseline; gap: 8px; }
+  .lib-entry-name { font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: -0.005em; line-height: 1.2; }
+  .lib-entry-freq { font-family: var(--font-body); font-size: 10px; color: var(--muted-soft); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+  .lib-entry-macros { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .lib-entry-add { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-left: 4px; flex-shrink: 0; }
+  .lib-entry-add:active { color: var(--text); border-color: var(--text); }
+
   /* ───── v2: Bottom nav bar (mockup-matched) ───── */
   .bottom-nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
@@ -528,6 +624,10 @@ let state = {
   todayOther: [],              // today's coded entries (kind=coded, session_id=null) from tide_indulge_entries
   activeCoded: [],             // coded entries inside the active session
   sipSection: 'water',         // 'water' | 'caffeine' — Sip tab's active sub-section
+  foodLibraryRows: [],         // last 90 days of food intake rows for the Fuel library
+  libQuery: '',
+  libFilter: 'all',
+  libSort: 'most',
 };
 
 const MEAL_DEFAULTS = { breakfast: 400, lunch: 600, dinner: 700, snack: 200 };
@@ -1122,6 +1222,7 @@ function render() {
   else if (screen === 'morning') renderMorning(state.morningSession);
   else if (screen === 'settings') renderSettings();
   else if (screen === 'patterns') renderPatterns();
+  else if (screen === 'library') renderLibraryScreen();
   mountBottomNav(screen === 'home' ? (state.tab || null) : null);
 }
 
@@ -1174,6 +1275,10 @@ function renderHome() {
   }
   if (state.tab === 'supplements') {
     renderStackTab();
+    return;
+  }
+  if (state.tab === 'food') {
+    renderFuelTab();
     return;
   }
 
@@ -1881,6 +1986,632 @@ function computeBacTrend(drinks, profile, currentBac) {
   if (delta > 0.005) return 'trending up';
   if (delta < -0.005) return 'trending down';
   return 'holding';
+}
+
+// ---------------------------------------------------------------------------
+// Fuel tab (v2 chunk 5) — kcal ring + macros + Claude-estimated meal logging
+// ---------------------------------------------------------------------------
+
+// Default macro split, applied to a Mifflin-derived kcal goal when profile is set.
+// Cut-friendly: 0.75g protein / lb bodyweight, 25% fat, remainder carbs.
+function computeMacroGoals(profile) {
+  const kcalGoal = computeDailyCalorieGoal(profile) || DEFAULT_KCAL_GOAL;
+  const proteinG = profile && profile.weight_lb ? Math.round(profile.weight_lb * 0.75) : Math.round(kcalGoal * 0.25 / 4);
+  const fatG     = Math.round(kcalGoal * 0.25 / 9);
+  const carbsG   = Math.max(0, Math.round((kcalGoal - proteinG * 4 - fatG * 9) / 4));
+  return { kcal: kcalGoal, protein_g: proteinG, carbs_g: carbsG, fat_g: fatG };
+}
+
+function mealMacros(row) {
+  const m = (row && row.metadata) || {};
+  return {
+    kcal: Number(m.kcal) || 0,
+    protein_g: Number(m.protein_g) || 0,
+    carbs_g: Number(m.carbs_g) || 0,
+    fat_g: Number(m.fat_g) || 0,
+  };
+}
+
+function todayFoodTotals() {
+  // Template rows (recipes imported but not eaten today) don't count toward today's intake.
+  const rows = (state.todayIntake || []).filter(r => r.category === 'food' && !r.metadata?.template);
+  return rows.reduce((acc, r) => {
+    const m = mealMacros(r);
+    acc.kcal += m.kcal;
+    acc.protein_g += m.protein_g;
+    acc.carbs_g += m.carbs_g;
+    acc.fat_g += m.fat_g;
+    return acc;
+  }, { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 });
+}
+
+// Normalize a meal name into a library key — lowercased + collapsed whitespace.
+function libraryKey(name) {
+  return (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// Build the library (derived from all food intake rows). Returns ordered list of
+// { key, name, count, kcal, protein_g, carbs_g, fat_g, last_at, recent_30d }.
+function buildFoodLibrary(allFoodRows) {
+  const map = new Map();
+  const since30 = addDays(todayISO(), -30);
+  (allFoodRows || []).forEach(r => {
+    if (r.category !== 'food') return;
+    const key = libraryKey(r.item_type);
+    if (!key) return;
+    const m = mealMacros(r);
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        name: r.item_type,
+        count: 0,
+        kcal_sum: 0, p_sum: 0, c_sum: 0, f_sum: 0, n_with_macros: 0,
+        last_at: r.logged_at,
+        recent_30d: false,
+      });
+    }
+    const e = map.get(key);
+    e.count += 1;
+    if (m.kcal) { e.kcal_sum += m.kcal; e.n_with_macros += 1; }
+    e.p_sum += m.protein_g;
+    e.c_sum += m.carbs_g;
+    e.f_sum += m.fat_g;
+    if (r.logged_at > e.last_at) e.last_at = r.logged_at;
+    if ((r.log_date || r.logged_at?.slice(0, 10)) >= since30) e.recent_30d = true;
+  });
+  return [...map.values()].map(e => {
+    const n = e.n_with_macros || 1;
+    return {
+      key: e.key, name: e.name, count: e.count, last_at: e.last_at, recent_30d: e.recent_30d,
+      kcal: Math.round(e.kcal_sum / n),
+      protein_g: Math.round(e.p_sum / e.count),
+      carbs_g:   Math.round(e.c_sum / e.count),
+      fat_g:     Math.round(e.f_sum / e.count),
+    };
+  });
+}
+
+// Pull last-90d food rows to seed the library. Cached in state.foodLibraryRows.
+async function loadFoodLibrary() {
+  try {
+    const since = addDays(todayISO(), -90);
+    const rows = await sbFetch(`/tide_intake_logs?category=eq.food&log_date=gte.${since}&order=logged_at.desc`);
+    state.foodLibraryRows = rows || [];
+  } catch (e) {
+    console.warn('loadFoodLibrary failed:', e.message);
+    state.foodLibraryRows = [];
+  }
+}
+
+// Generate a per-day "remaining" planning sentence. Cached in localStorage by date+totals.
+async function fuelRemainingHint(totals, goal) {
+  const left = Math.max(0, goal.kcal - totals.kcal);
+  const proteinLeft = Math.max(0, goal.protein_g - totals.protein_g);
+  if (left <= 0) {
+    return 'You\'re at goal. Tomorrow opens with a clean ring.';
+  }
+  const ctx = {
+    kcal_left: left,
+    protein_left: proteinLeft,
+    hour: new Date().getHours(),
+    logged_meals: (state.todayIntake || []).filter(r => r.category === 'food').length,
+  };
+  const cacheKey = `tide_fuel_hint_${todayISO()}_${left}_${proteinLeft}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) return cached;
+  const fallback = { text: `~${left} kcal left. Aim for ${proteinLeft}g more protein.` };
+  const pj = await callClaudeJSON(
+    `Write ONE planning sentence for someone about to plan their next meal. Tight, imperative, single sentence, under 20 words. Use the numbers literally. Return JSON: {"text": "..."}\n\nData: ${JSON.stringify(ctx)}`,
+    fallback
+  );
+  const text = pj.text || fallback.text;
+  try { localStorage.setItem(cacheKey, text); } catch {}
+  return text;
+}
+
+function renderFuelTab() {
+  const profile = getProfile();
+  const goal = computeMacroGoals(profile);
+  const totals = todayFoodTotals();
+  const todayMeals = (state.todayIntake || [])
+    .filter(r => r.category === 'food' && !r.metadata?.template)
+    .sort((a, b) => new Date(a.logged_at) - new Date(b.logged_at));
+
+  // Recents = top-5 distinct food names from the last 30d
+  const lib = buildFoodLibrary(state.foodLibraryRows || []);
+  const recents = lib
+    .filter(e => e.recent_30d)
+    .sort((a, b) => (b.count - a.count) || (new Date(b.last_at) - new Date(a.last_at)))
+    .slice(0, 6);
+
+  // Ring math (radius 42 → circumference 263.89)
+  const pct = Math.min(1, totals.kcal / Math.max(1, goal.kcal));
+  const dashoffset = 263.89 * (1 - pct);
+  const kcalLeft = Math.max(0, goal.kcal - totals.kcal);
+
+  const sub = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(/,/g, ' ·');
+
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="tab-title" data-brand>Fuel</div>
+        <div class="tab-sub">${escapeHtml(sub)}</div>
+      </div>
+      <div style="display: flex; gap: 16px; align-self: flex-start; margin-top: 10px;">
+        <div class="head-link" id="fuel-library">Library</div>
+        <div class="head-link" id="fuel-goal">Goal</div>
+      </div>
+    </header>
+
+    <div class="summary-card">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" class="ring-bg" />
+          <circle cx="50" cy="50" r="42" class="ring-fill"
+            stroke-dasharray="263.89"
+            stroke-dashoffset="${dashoffset.toFixed(2)}" />
+        </svg>
+        <div class="ring-center">
+          <div class="ring-num">${kcalLeft}</div>
+          <div class="ring-label">left</div>
+          <div class="ring-total">${totals.kcal.toLocaleString()} / ${goal.kcal.toLocaleString()}</div>
+        </div>
+      </div>
+      <div class="macros">
+        ${renderMacroRow('Protein', totals.protein_g, goal.protein_g, 'protein')}
+        ${renderMacroRow('Carbs',   totals.carbs_g,   goal.carbs_g,   'carbs')}
+        ${renderMacroRow('Fat',     totals.fat_g,     goal.fat_g,     'fat')}
+      </div>
+    </div>
+
+    ${recents.length ? `
+      <div class="section-label">Recents</div>
+      <div class="recents-row" id="recents-row">
+        ${recents.map(e => `
+          <div class="recent-chip" data-recent-key="${escapeHtml(e.key)}">
+            <span class="recent-chip-name">${escapeHtml(e.name)}</span>
+            <span class="recent-chip-dot"></span>
+            <span class="recent-chip-kcal">${e.kcal || '—'}</span>
+          </div>
+        `).join('')}
+        <div class="recent-chip lib" id="recent-library">
+          <span class="recent-chip-name">All in Library</span>
+          <span style="font-size: 14px; line-height: 1; color: var(--muted);">›</span>
+        </div>
+      </div>
+    ` : ''}
+
+    <div class="meal-input-wrap">
+      <input type="text" class="meal-input" id="meal-input" placeholder="Log a meal — or describe it" />
+      <button class="meal-input-icon" id="meal-input-go" aria-label="Estimate">
+        <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>
+      </button>
+    </div>
+    <div class="meal-input-hint">Describe what you ate — Claude estimates calories and macros.</div>
+
+    ${todayMeals.length ? `
+      <div class="section-label" style="margin-top: 16px">Today</div>
+      ${todayMeals.map(r => renderMealRow(r)).join('')}
+    ` : ''}
+
+    <div class="remaining-hint">
+      <div class="remaining-hint-text" id="fuel-hint">${escapeHtml(`~${kcalLeft} kcal left.`)}</div>
+    </div>
+
+    <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
+  `;
+
+  $('[data-brand]')?.addEventListener('click', () => { state.tab = null; render(); });
+  $('#any-fab').onclick = openLogAny;
+  $('#fuel-library').onclick = () => { state.screen = 'library'; render(); };
+  $('#fuel-goal').onclick = () => { state.screen = 'settings'; render(); };
+
+  $('#meal-input-go').onclick = () => submitMealDescription($('#meal-input').value.trim());
+  $('#meal-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitMealDescription($('#meal-input').value.trim());
+  });
+
+  $$('[data-recent-key]').forEach(c => c.onclick = () => {
+    const key = c.dataset.recentKey;
+    const e = lib.find(x => x.key === key);
+    if (e) logMealFromLibrary(e);
+  });
+  $('#recent-library')?.addEventListener('click', () => { state.screen = 'library'; render(); });
+
+  $$('.meal').forEach(row => row.onclick = () => openMealDetail(row.dataset.mealId));
+
+  // Async hint refresh (Claude). Don't block initial paint.
+  fuelRemainingHint(totals, goal).then(t => {
+    if (state.screen === 'home' && state.tab === 'food') {
+      const el = $('#fuel-hint');
+      if (el) el.textContent = t;
+    }
+  });
+}
+
+function renderMacroRow(label, current, target, key) {
+  const pct = target ? Math.min(100, (current / target) * 100) : 0;
+  return `
+    <div class="macro">
+      <div class="macro-row">
+        <div class="macro-label">${escapeHtml(label)}</div>
+        <div class="macro-value">${Math.round(current)} <span class="target">/ ${target} g</span></div>
+      </div>
+      <div class="macro-bar-track">
+        <div class="macro-bar-fill ${key}" style="width: ${pct.toFixed(1)}%"></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMealRow(r) {
+  const m = mealMacros(r);
+  const time = fmtTime(r.logged_at).replace(/ /g, '');
+  const t = time.toLowerCase().replace(':00', '');
+  return `
+    <div class="meal" data-meal-id="${r.id}">
+      <div class="meal-left">
+        <div class="meal-top-row">
+          <div class="meal-title">${escapeHtml(r.item_type || 'Meal')}</div>
+          <div class="meal-time">${escapeHtml(t)}</div>
+        </div>
+        ${(m.protein_g || m.carbs_g || m.fat_g) ? `<div class="meal-macros">${Math.round(m.protein_g)} P · ${Math.round(m.carbs_g)} C · ${Math.round(m.fat_g)} F</div>` : ''}
+      </div>
+      <div class="meal-kcal">
+        <div class="meal-kcal-num">${m.kcal || '—'}</div>
+        <div class="meal-kcal-label">kcal</div>
+      </div>
+    </div>
+  `;
+}
+
+async function submitMealDescription(text) {
+  if (!text) return;
+  openMealEstimateSheet(text);
+}
+
+function openMealEstimateSheet(description) {
+  showModal(`
+    <h2>Logging…</h2>
+    <p class="small muted">Estimating macros for "<em>${escapeHtml(description)}</em>"</p>
+    <div id="estimate-body" style="min-height: 120px"><p class="muted small" style="text-align:center; padding: 30px 0">Reading the plate…</p></div>
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="estimate-confirm" disabled style="opacity: 0.5">Log</button>
+    </div>
+  `, async () => {
+    const fallback = {
+      name: description,
+      kcal: null,
+      protein_g: null,
+      carbs_g: null,
+      fat_g: null,
+      confidence: 'low',
+    };
+    let result = null;
+    try {
+      const pj = await callClaudeJSON(
+        `Estimate the calories and macros for the following meal. Be honest about uncertainty. Return JSON with: name (short label, 2-5 words), kcal (int), protein_g (int), carbs_g (int), fat_g (int), confidence ("high"|"medium"|"low"). If the description is too vague, set confidence "low" and use conservative central estimates. Description: "${description}"`,
+        fallback
+      );
+      result = { ...fallback, ...pj };
+    } catch (e) {
+      result = fallback;
+    }
+    $('#estimate-body').innerHTML = `
+      <div class="modal-section">
+        <div class="label">Name</div>
+        <input id="est-name" type="text" value="${escapeHtml(result.name || description)}" />
+      </div>
+      <div class="grid-2">
+        <div>
+          <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">kcal</div>
+          <input id="est-kcal" type="number" inputmode="numeric" value="${result.kcal ?? ''}" placeholder="e.g., 600">
+        </div>
+        <div>
+          <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Protein (g)</div>
+          <input id="est-p" type="number" inputmode="numeric" value="${result.protein_g ?? ''}" placeholder="g">
+        </div>
+        <div>
+          <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Carbs (g)</div>
+          <input id="est-c" type="number" inputmode="numeric" value="${result.carbs_g ?? ''}" placeholder="g">
+        </div>
+        <div>
+          <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Fat (g)</div>
+          <input id="est-f" type="number" inputmode="numeric" value="${result.fat_g ?? ''}" placeholder="g">
+        </div>
+      </div>
+      <p class="small muted" style="margin-top: 10px; font-style: italic">${escapeHtml(result.confidence === 'high' ? 'High-confidence estimate.' : result.confidence === 'medium' ? 'Rough estimate — tweak if you know better.' : 'Low confidence — please verify.')}</p>
+    `;
+    $('#estimate-confirm').disabled = false; $('#estimate-confirm').style.opacity = 1;
+    $('#estimate-confirm').onclick = async () => {
+      const name = $('#est-name').value.trim() || description;
+      const kcal = parseInt($('#est-kcal').value, 10) || 0;
+      const p = parseInt($('#est-p').value, 10) || 0;
+      const c = parseInt($('#est-c').value, 10) || 0;
+      const f = parseInt($('#est-f').value, 10) || 0;
+      try {
+        await logMealRow({ name, kcal, protein_g: p, carbs_g: c, fat_g: f, source: 'claude' });
+        closeModal();
+        $('#meal-input').value = '';
+      } catch (e) {
+        toast('Could not log: ' + e.message);
+      }
+    };
+  });
+}
+
+async function logMealRow({ name, kcal, protein_g, carbs_g, fat_g, source = 'manual' }) {
+  const row = {
+    category: 'food',
+    item_type: name,
+    quantity: kcal,
+    unit: 'kcal',
+    logged_at: new Date().toISOString(),
+    metadata: { kcal, protein_g, carbs_g, fat_g, source },
+  };
+  const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(row) });
+  if (result && result[0]) {
+    state.todayIntake.push(result[0]);
+    state.foodLibraryRows = [result[0]].concat(state.foodLibraryRows || []);
+  }
+  toast('Logged');
+  render();
+}
+
+async function logMealFromLibrary(entry) {
+  await logMealRow({
+    name: entry.name,
+    kcal: entry.kcal,
+    protein_g: entry.protein_g,
+    carbs_g: entry.carbs_g,
+    fat_g: entry.fat_g,
+    source: 'library',
+  });
+}
+
+function openMealDetail(id) {
+  const r = (state.todayIntake || []).find(x => x.id === id);
+  if (!r) return;
+  const m = mealMacros(r);
+  showModal(`
+    <h2>${escapeHtml(r.item_type || 'Meal')}</h2>
+    <p class="small muted">${fmtTime(r.logged_at)} · ${m.kcal} kcal · ${m.protein_g}P / ${m.carbs_g}C / ${m.fat_g}F</p>
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Close</button>
+      <button class="btn btn-warm" id="meal-delete">Delete</button>
+    </div>
+  `, () => {
+    $('#meal-delete').onclick = async () => {
+      await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'DELETE' });
+      state.todayIntake = state.todayIntake.filter(x => x.id !== id);
+      state.foodLibraryRows = (state.foodLibraryRows || []).filter(x => x.id !== id);
+      closeModal();
+      render();
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Library screen (v2 chunk 5) — search + filter + sort + grouped meal list
+// ---------------------------------------------------------------------------
+const LIB_FILTERS = ['all', 'meals', 'snacks', 'drinks', 'high_protein'];
+const LIB_SORTS = [
+  { id: 'most',   label: 'Most logged'    },
+  { id: 'recent', label: 'Recently logged'},
+  { id: 'name',   label: 'A–Z'            },
+  { id: 'kcal',   label: 'Highest kcal'   },
+];
+
+function libFilterPredicate(filterId) {
+  if (filterId === 'all') return () => true;
+  if (filterId === 'meals')   return e => e.kcal >= 300;
+  if (filterId === 'snacks')  return e => e.kcal > 0 && e.kcal < 300;
+  if (filterId === 'drinks')  return e => /shake|coffee|tea|smoothie|drink|water|juice/i.test(e.name);
+  if (filterId === 'high_protein') return e => e.protein_g >= 25;
+  return () => true;
+}
+
+function libSortFn(sortId) {
+  if (sortId === 'most')   return (a, b) => b.count - a.count;
+  if (sortId === 'recent') return (a, b) => new Date(b.last_at) - new Date(a.last_at);
+  if (sortId === 'name')   return (a, b) => a.name.localeCompare(b.name);
+  if (sortId === 'kcal')   return (a, b) => b.kcal - a.kcal;
+  return () => 0;
+}
+
+function renderLibraryScreen() {
+  const q = (state.libQuery || '').trim().toLowerCase();
+  const filter = state.libFilter || 'all';
+  const sort   = state.libSort   || 'most';
+
+  const all = buildFoodLibrary(state.foodLibraryRows || []);
+  const filtered = all
+    .filter(libFilterPredicate(filter))
+    .filter(e => !q || e.name.toLowerCase().includes(q))
+    .sort(libSortFn(sort));
+
+  // Group by activity. "Most logged" tier = top 5 by count; "Last 30 days" = recent_30d minus above; "Earlier" = rest.
+  const mostLogged = filtered.filter(e => e.count >= 3).slice(0, 5);
+  const mostIds = new Set(mostLogged.map(e => e.key));
+  const recent  = filtered.filter(e => e.recent_30d && !mostIds.has(e.key));
+  const recentIds = new Set([...mostIds, ...recent.map(e => e.key)]);
+  const earlier = filtered.filter(e => !recentIds.has(e.key));
+
+  const sortLabel = (LIB_SORTS.find(s => s.id === sort) || LIB_SORTS[0]).label;
+
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="lib-back" id="lib-back">‹ Fuel</div>
+        <div class="tab-title">Library</div>
+        <div class="tab-sub">${all.length} meals</div>
+      </div>
+      <div class="head-link" id="lib-add-recipe">+ Recipe</div>
+    </header>
+
+    <div class="search-wrap">
+      <div class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16 16l4 4"/></svg></div>
+      <input class="search-input" id="lib-search" type="text" placeholder="Search meals" value="${escapeHtml(q)}">
+    </div>
+
+    <div class="filter-row" id="lib-filters">
+      ${LIB_FILTERS.map(f => `<div class="filter-chip ${f === filter ? 'active' : ''}" data-filter="${f}">${escapeHtml(f === 'high_protein' ? 'High protein' : f[0].toUpperCase() + f.slice(1))}</div>`).join('')}
+    </div>
+
+    <div class="sort-row">
+      <div class="sort-count">${filtered.length} entries</div>
+      <button class="sort-toggle" id="lib-sort">${escapeHtml(sortLabel)} <span class="caret">▾</span></button>
+    </div>
+
+    ${filtered.length === 0
+      ? `<div class="muted small" style="text-align: center; padding: 30px 0">${q ? 'No matches.' : 'No meals logged yet.'}</div>`
+      : `
+        ${mostLogged.length ? `<div class="group-label">Most logged</div>${mostLogged.map(renderLibEntry).join('')}` : ''}
+        ${recent.length     ? `<div class="group-label">Last 30 days</div>${recent.map(renderLibEntry).join('')}` : ''}
+        ${earlier.length    ? `<div class="group-label">Earlier</div>${earlier.map(renderLibEntry).join('')}` : ''}
+      `
+    }
+  `;
+
+  $('#lib-back').onclick = () => { state.screen = 'home'; state.tab = 'food'; render(); };
+  $('#lib-add-recipe').onclick = openAddRecipeSheet;
+  $('#lib-search').oninput = (e) => { state.libQuery = e.target.value; renderLibraryScreen(); };
+  $$('[data-filter]').forEach(c => c.onclick = () => { state.libFilter = c.dataset.filter; renderLibraryScreen(); });
+  $('#lib-sort').onclick = () => openLibSortPicker();
+  $$('.lib-entry').forEach(row => {
+    row.onclick = () => {
+      const key = row.dataset.libKey;
+      const e = all.find(x => x.key === key);
+      if (e) logMealFromLibrary(e);
+    };
+  });
+  $$('.lib-entry-add').forEach(b => b.onclick = (ev) => {
+    ev.stopPropagation();
+    const key = b.closest('.lib-entry').dataset.libKey;
+    const e = all.find(x => x.key === key);
+    if (e) logMealFromLibrary(e);
+  });
+}
+
+function renderLibEntry(e) {
+  return `
+    <div class="lib-entry" data-lib-key="${escapeHtml(e.key)}">
+      <div class="lib-entry-left">
+        <div class="lib-entry-top">
+          <div class="lib-entry-name">${escapeHtml(e.name)}</div>
+          <div class="lib-entry-freq">${e.count}×</div>
+        </div>
+        <div class="lib-entry-macros">${e.protein_g} P · ${e.carbs_g} C · ${e.fat_g} F · ${e.kcal || '—'} kcal</div>
+      </div>
+      <button class="lib-entry-add">+</button>
+    </div>
+  `;
+}
+
+// Paste ingredients + servings, get per-serving macro estimate, save to library.
+// The library entry is stored as a "template" intake_log (metadata.template=true).
+// Templates don't count toward today's totals or appear in Today; they only seed
+// the library so the user can tap to log a serving when they actually eat one.
+function openAddRecipeSheet() {
+  showModal(`
+    <h2>Add recipe</h2>
+    <p class="small muted" style="margin-bottom: 12px">Paste ingredients + servings. Claude estimates per-serving macros. Adds to your library without counting today.</p>
+
+    <div class="modal-section">
+      <div class="label">Recipe name</div>
+      <input id="rec-name" type="text" placeholder="e.g., Sheet-pan salmon &amp; broccoli" autocomplete="off">
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Servings</div>
+      <input id="rec-servings" type="number" inputmode="numeric" min="1" value="4">
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Ingredients (paste)</div>
+      <textarea id="rec-text" rows="8" placeholder="Paste the ingredients list. Quantities matter — '1 lb salmon' lands better than 'salmon'."></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="rec-estimate" disabled style="opacity: 0.5">Estimate</button>
+    </div>
+  `, (m) => {
+    const refresh = () => {
+      const name = $('#rec-name').value.trim();
+      const text = $('#rec-text').value.trim();
+      const servings = parseInt($('#rec-servings').value, 10);
+      const ok = name && text && servings && servings > 0;
+      $('#rec-estimate').disabled = !ok;
+      $('#rec-estimate').style.opacity = ok ? 1 : 0.5;
+    };
+    $('#rec-name').oninput = refresh;
+    $('#rec-text').oninput = refresh;
+    $('#rec-servings').oninput = refresh;
+
+    $('#rec-estimate').onclick = async () => {
+      const name = $('#rec-name').value.trim();
+      const servings = parseInt($('#rec-servings').value, 10) || 1;
+      const ingredients = $('#rec-text').value.trim();
+      const btn = $('#rec-estimate');
+      btn.disabled = true; btn.textContent = 'Estimating…';
+      try {
+        const fallback = { kcal_per_serving: null, protein_g: null, carbs_g: null, fat_g: null, confidence: 'low' };
+        const pj = await callClaudeJSON(
+          `Estimate the per-serving nutrition for a recipe. The recipe name is "${name}". It makes ${servings} servings. Ingredients:\n${ingredients}\n\nReturn JSON: {"kcal_per_serving": int, "protein_g": int, "carbs_g": int, "fat_g": int, "confidence": "high"|"medium"|"low"}. Be honest if quantities are ambiguous — use "low" confidence and conservative central estimates.`,
+          fallback
+        );
+        const kcal = pj.kcal_per_serving ?? 0;
+        const p = pj.protein_g ?? 0;
+        const c = pj.carbs_g ?? 0;
+        const f = pj.fat_g ?? 0;
+        // Save as template intake_log (doesn't count toward today).
+        const row = {
+          category: 'food',
+          item_type: name,
+          quantity: kcal,
+          unit: 'kcal',
+          logged_at: new Date().toISOString(),
+          metadata: {
+            kcal, protein_g: p, carbs_g: c, fat_g: f,
+            source: 'recipe',
+            template: true,
+            servings_count: servings,
+            ingredients_preview: ingredients.slice(0, 600),
+            confidence: pj.confidence || 'low',
+          },
+        };
+        const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(row) });
+        if (result && result[0]) {
+          state.foodLibraryRows = [result[0]].concat(state.foodLibraryRows || []);
+          // Don't push to state.todayIntake — templates aren't "today" meals.
+        }
+        closeModal();
+        toast(`Saved · ${kcal} kcal/serving`);
+        render();
+      } catch (e) {
+        toast('Could not estimate: ' + e.message);
+        btn.disabled = false; btn.textContent = 'Estimate';
+      }
+    };
+  });
+}
+
+function openLibSortPicker() {
+  showModal(`
+    <h2>Sort by</h2>
+    ${LIB_SORTS.map(s => `<div class="chip" data-sort="${s.id}" style="display: block; margin-bottom: 8px; text-align: left; padding: 12px 14px">${escapeHtml(s.label)}</div>`).join('')}
+    <div class="btn-row" style="margin-top: 14px">
+      <button class="btn btn-soft" data-close>Cancel</button>
+    </div>
+  `, (m) => {
+    m.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => {
+      state.libSort = b.dataset.sort;
+      closeModal();
+      renderLibraryScreen();
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -4393,7 +5124,7 @@ async function boot() {
   // Then refresh from server
   await loadActiveSession();
   await loadHistory();
-  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther()]);
+  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther(), loadFoodLibrary()]);
   // Pull cached Oura today + 7d for the stat grid hero, then sync in background
   await Promise.all([loadOuraToday(), loadOura7d()]);
   if (state.screen === 'home') render();
