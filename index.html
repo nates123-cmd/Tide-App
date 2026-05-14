@@ -618,6 +618,31 @@
   .meas-cell-delta.warn { color: var(--warn); }
   .meas-cell-delta.flat { color: var(--muted-soft); }
 
+  .photos-add-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .photos-add-btn { flex: 1; padding: 12px 14px; background: var(--text); color: var(--bg); border: none; border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 13px; font-weight: 500; letter-spacing: 0.01em; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+  .photos-add-btn:active { opacity: 0.88; }
+  .photos-lock-btn { padding: 12px 16px; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; }
+  .photos-lock-btn:active { color: var(--text); }
+  .photos-day { margin-bottom: 16px; }
+  .photos-day-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; margin-bottom: 8px; padding: 0 2px; }
+  .photos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .photo-thumb { position: relative; aspect-ratio: 1 / 1; background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: 10px; overflow: hidden; cursor: pointer; }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-thumb.hidden { background: var(--card-bg-warm); }
+  .photo-thumb.hidden img { display: none; }
+  .photo-thumb.hidden::after { content: '◍'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted-soft); font-size: 18px; }
+  .photo-thumb.loading::after { content: '…'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted-soft); font-size: 18px; }
+
+  .photo-fullscreen { position: fixed; inset: 0; background: #000; z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; animation: fade 0.18s; }
+  .photo-fullscreen img { max-width: 100%; max-height: 80vh; object-fit: contain; }
+  .photo-fullscreen .pfs-close { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.15); color: white; border: none; font-size: 22px; line-height: 1; cursor: pointer; }
+  .photo-fullscreen .pfs-meta { position: absolute; bottom: calc(24px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-family: var(--font-body); color: rgba(255,255,255,0.7); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .photo-fullscreen .pfs-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.12); color: white; border: none; font-size: 22px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .photo-fullscreen .pfs-prev { left: 12px; }
+  .photo-fullscreen .pfs-next { right: 12px; }
+  .photo-fullscreen .pfs-actions { position: absolute; bottom: calc(70px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+  .photo-fullscreen .pfs-act { padding: 9px 18px; border-radius: 999px; background: rgba(255,255,255,0.12); color: white; border: none; font-family: var(--font-body); font-size: 12px; font-weight: 500; letter-spacing: 0.04em; cursor: pointer; }
+
   .photos-gate { background: var(--card-bg-warm); border: 1px dashed var(--border); border-radius: var(--radius); padding: 32px 22px; margin-bottom: 14px; text-align: center; }
   .photos-gate-icon { width: 28px; height: 28px; margin: 0 auto 14px; border: 1.5px solid var(--muted); border-radius: 6px; position: relative; }
   .photos-gate-icon::before { content: ''; position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); width: 16px; height: 12px; border: 1.5px solid var(--muted); border-bottom: none; border-radius: 8px 8px 0 0; }
@@ -3394,11 +3419,123 @@ function renderWeightChart(asc) {
   `;
 }
 
+const BODY_PHOTO_BUCKET = 'tide-body-photos';
+const SIGNED_URL_TTL_SEC = 60 * 30; // 30 min — refreshed each render
+
+// In-memory signed-URL cache keyed by path. We discard the cache when the
+// Body screen unmounts (state.screen changes away from 'body').
+let signedUrlCache = {};
+
+function normalizePhotoEntries(raw) {
+  // Forward-compat: paths can be plain strings or { path, hidden, uploaded_at }.
+  if (!Array.isArray(raw)) return [];
+  return raw.map(p => typeof p === 'string' ? { path: p, hidden: false } : { path: p.path, hidden: !!p.hidden, uploaded_at: p.uploaded_at });
+}
+
+async function getSignedUrl(path) {
+  if (!path) return null;
+  if (signedUrlCache[path]) return signedUrlCache[path];
+  const r = await fetch(`${SB_URL}/storage/v1/object/sign/${BODY_PHOTO_BUCKET}/${encodeURIComponent(path)}`, {
+    method: 'POST',
+    headers: {
+      apikey: SB_KEY,
+      Authorization: `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ expiresIn: SIGNED_URL_TTL_SEC }),
+  });
+  if (!r.ok) {
+    const txt = await r.text();
+    console.warn('Sign failed:', txt);
+    return null;
+  }
+  const data = await r.json();
+  const url = `${SB_URL}/storage/v1${data.signedURL || data.signedUrl || ''}`;
+  signedUrlCache[path] = url;
+  return url;
+}
+
+async function uploadBodyPhoto(file, dateISO) {
+  // Random path so we never collide.
+  const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const path = `body/${dateISO}/${crypto.randomUUID()}.${ext || 'jpg'}`;
+  const r = await fetch(`${SB_URL}/storage/v1/object/${BODY_PHOTO_BUCKET}/${path}`, {
+    method: 'POST',
+    headers: {
+      apikey: SB_KEY,
+      Authorization: `Bearer ${SB_KEY}`,
+      'x-upsert': 'true',
+      'Content-Type': file.type || 'application/octet-stream',
+    },
+    body: file,
+  });
+  if (!r.ok) {
+    let detail = '';
+    try { detail = (await r.json()).message || ''; } catch {}
+    throw new Error(`Upload ${r.status}${detail ? ': ' + detail : ''}`);
+  }
+  return path;
+}
+
+async function deletePhotoFromStorage(path) {
+  await fetch(`${SB_URL}/storage/v1/object/${BODY_PHOTO_BUCKET}/${encodeURIComponent(path)}`, {
+    method: 'DELETE',
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+  });
+  delete signedUrlCache[path];
+}
+
+// Persist a patched photo_paths array onto a tide_body_metrics row.
+async function setRowPhotoPaths(row, paths) {
+  const result = await sbFetch(`/tide_body_metrics?id=eq.${row.id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ photo_paths: paths }),
+  });
+  const updated = result && result[0];
+  if (updated) {
+    state.bodyMetrics = state.bodyMetrics.map(r => r.id === row.id ? updated : r);
+  }
+  return updated;
+}
+
+// Add a photo to today's body_metric (create the row if needed).
+async function addPhotoForToday(file) {
+  const date = todayISO();
+  let row = (state.bodyMetrics || []).find(r => r.date === date);
+  if (!row) {
+    const created = await sbFetch('/tide_body_metrics', {
+      method: 'POST',
+      body: JSON.stringify({ date, photo_paths: [] }),
+    });
+    row = created && created[0];
+    if (row) {
+      state.bodyMetrics = [row].concat(state.bodyMetrics);
+      state.bodyMetrics.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    }
+  }
+  const path = await uploadBodyPhoto(file, date);
+  const next = normalizePhotoEntries(row.photo_paths).concat([{ path, hidden: false, uploaded_at: new Date().toISOString() }]);
+  await setRowPhotoPaths(row, next);
+}
+
+async function togglePhotoHidden(row, path) {
+  const next = normalizePhotoEntries(row.photo_paths).map(p =>
+    p.path === path ? { ...p, hidden: !p.hidden } : p
+  );
+  await setRowPhotoPaths(row, next);
+}
+
+async function deletePhoto(row, path) {
+  await deletePhotoFromStorage(path);
+  const next = normalizePhotoEntries(row.photo_paths).filter(p => p.path !== path);
+  await setRowPhotoPaths(row, next);
+}
+
 function renderPhotosSection() {
   if (!pinSet()) {
     return `
       <div class="section-label">Photos</div>
-      <div class="photos-gate" id="photos-set-pin">
+      <div class="photos-gate">
         <div class="photos-gate-icon"></div>
         <div class="photos-gate-title">Progress photos are locked</div>
         <div class="photos-gate-sub">Set a 4-digit PIN to enable the photo album.</div>
@@ -3409,7 +3546,7 @@ function renderPhotosSection() {
   if (!pinUnlocked()) {
     return `
       <div class="section-label">Photos</div>
-      <div class="photos-gate" id="photos-unlock">
+      <div class="photos-gate">
         <div class="photos-gate-icon"></div>
         <div class="photos-gate-title">Progress photos are locked</div>
         <div class="photos-gate-sub">Enter your PIN to view the album.</div>
@@ -3417,17 +3554,162 @@ function renderPhotosSection() {
       </div>
     `;
   }
+
+  // Unlocked: render grid grouped by date. Newest date first.
+  const groups = [];
+  (state.bodyMetrics || []).forEach(row => {
+    const photos = normalizePhotoEntries(row.photo_paths);
+    if (!photos.length) return;
+    groups.push({ row, photos });
+  });
+
   return `
     <div class="section-label">Photos</div>
-    <div class="card">
-      <p class="small" style="margin: 0">Photos unlocked. Photo uploads land in chunk 10.5 — schema already supports them, UI is a quick follow-up.</p>
+    <div class="photos-add-row">
+      <button class="photos-add-btn" id="photos-add">+ Add photo</button>
+      <button class="photos-lock-btn" id="photos-lock">Lock</button>
     </div>
+    <input id="photos-input" type="file" accept="image/*" capture="environment" style="display:none">
+    ${groups.length === 0 ? `
+      <div class="card"><p class="small" style="margin: 0">No photos yet. Tap <strong>+ Add photo</strong> to start the album.</p></div>
+    ` : groups.map(g => {
+      const dateLabel = fmtDate(g.row.date + 'T12:00:00');
+      return `
+        <div class="photos-day">
+          <div class="photos-day-label">${escapeHtml(dateLabel)}</div>
+          <div class="photos-grid">
+            ${g.photos.map(p => `
+              <div class="photo-thumb loading${p.hidden ? ' hidden' : ''}" data-photo-path="${escapeHtml(p.path)}" data-row-id="${g.row.id}"></div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('')}
   `;
 }
 
 function wirePhotosSection() {
   $('#photos-set-pin-btn')?.addEventListener('click', () => openSetPinModal());
   $('#photos-unlock-btn')?.addEventListener('click', () => openUnlockPinModal());
+  $('#photos-lock')?.addEventListener('click', () => {
+    sessionStorage.removeItem('tide_body_unlocked');
+    signedUrlCache = {};
+    renderBodyScreen();
+  });
+  $('#photos-add')?.addEventListener('click', () => $('#photos-input')?.click());
+  $('#photos-input')?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    toast('Uploading…');
+    try {
+      await addPhotoForToday(file);
+      renderBodyScreen();
+    } catch (err) {
+      toast('Upload failed: ' + err.message);
+    } finally {
+      e.target.value = '';
+    }
+  });
+
+  // Async-resolve signed URLs for each thumb. Wire tap/long-press.
+  $$('.photo-thumb[data-photo-path]').forEach(thumb => {
+    const path = thumb.dataset.photoPath;
+    const rowId = thumb.dataset.rowId;
+    if (!thumb.classList.contains('hidden')) {
+      getSignedUrl(path).then(url => {
+        if (!url) {
+          thumb.classList.remove('loading');
+          thumb.classList.add('hidden');
+          return;
+        }
+        const img = document.createElement('img');
+        img.src = url;
+        img.onload = () => thumb.classList.remove('loading');
+        img.onerror = () => { thumb.classList.remove('loading'); thumb.classList.add('hidden'); };
+        thumb.appendChild(img);
+      });
+    } else {
+      thumb.classList.remove('loading');
+    }
+
+    // Long-press → toggle hidden flag
+    let pressTimer = null;
+    let longPressed = false;
+    const onPressStart = () => {
+      longPressed = false;
+      pressTimer = setTimeout(async () => {
+        longPressed = true;
+        const row = state.bodyMetrics.find(r => r.id === rowId);
+        if (!row) return;
+        await togglePhotoHidden(row, path);
+        renderBodyScreen();
+      }, 500);
+    };
+    const onPressEnd = () => {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    };
+    thumb.addEventListener('touchstart', onPressStart, { passive: true });
+    thumb.addEventListener('touchend', onPressEnd);
+    thumb.addEventListener('touchcancel', onPressEnd);
+    thumb.addEventListener('mousedown', onPressStart);
+    thumb.addEventListener('mouseup', onPressEnd);
+    thumb.addEventListener('mouseleave', onPressEnd);
+
+    thumb.addEventListener('click', () => {
+      if (longPressed) return;
+      openPhotoViewer(path);
+    });
+  });
+}
+
+// Flatten all unhidden photos into a chronological list and open the viewer
+// starting at the tapped path.
+function openPhotoViewer(startPath) {
+  const flat = [];
+  (state.bodyMetrics || []).slice().reverse().forEach(row => {
+    normalizePhotoEntries(row.photo_paths).forEach(p => {
+      if (!p.hidden) flat.push({ path: p.path, date: row.date, row });
+    });
+  });
+  if (!flat.length) return;
+  const startIndex = Math.max(0, flat.findIndex(p => p.path === startPath));
+  let idx = startIndex;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'photo-fullscreen';
+  document.body.appendChild(wrap);
+
+  const render = async () => {
+    const cur = flat[idx];
+    const url = await getSignedUrl(cur.path);
+    wrap.innerHTML = `
+      <button class="pfs-close" aria-label="Close">×</button>
+      ${idx > 0 ? '<button class="pfs-nav pfs-prev" aria-label="Previous">‹</button>' : ''}
+      ${idx < flat.length - 1 ? '<button class="pfs-nav pfs-next" aria-label="Next">›</button>' : ''}
+      ${url ? `<img src="${url}" alt="">` : '<div style="color: rgba(255,255,255,0.5)">Could not load image.</div>'}
+      <div class="pfs-actions">
+        <button class="pfs-act" data-pfs-hide>Hide</button>
+        <button class="pfs-act" data-pfs-delete>Delete</button>
+      </div>
+      <div class="pfs-meta">${escapeHtml(fmtDate(cur.date + 'T12:00:00'))} · ${idx + 1} / ${flat.length}</div>
+    `;
+    wrap.querySelector('.pfs-close').onclick = close;
+    wrap.querySelector('.pfs-prev')?.addEventListener('click', () => { idx--; render(); });
+    wrap.querySelector('.pfs-next')?.addEventListener('click', () => { idx++; render(); });
+    wrap.querySelector('[data-pfs-hide]').onclick = async () => {
+      await togglePhotoHidden(cur.row, cur.path);
+      close();
+      renderBodyScreen();
+    };
+    wrap.querySelector('[data-pfs-delete]').onclick = async () => {
+      if (!confirm('Delete this photo? This cannot be undone.')) return;
+      await deletePhoto(cur.row, cur.path);
+      close();
+      renderBodyScreen();
+    };
+  };
+  const close = () => { wrap.remove(); };
+  render();
 }
 
 function openSetPinModal() {
