@@ -3363,13 +3363,26 @@ function openManageSupplements(preselectSchedule = null, addOnly = false) {
   `).join('');
 
   const sectionLabel = preselectSchedule ? preselectSchedule.replace('_', ' ') : null;
+  // De-duplicated history names for the datalist (most recently used first).
+  const historyNames = [];
+  const seenNames = new Set();
+  (state.allStackItems || []).slice().reverse().forEach(s => {
+    const key = (s.name || '').trim();
+    if (key && !seenNames.has(key.toLowerCase())) {
+      seenNames.add(key.toLowerCase());
+      historyNames.push(key);
+    }
+  });
   showModal(`
     <h2>${addOnly ? `Add to ${escapeHtml(sectionLabel || 'stack')}` : 'Your stack'}</h2>
     ${addOnly ? '' : `<div id="supp-list">${(state.stackItems || []).length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No items yet.</div>'}</div>`}
 
     <div class="modal-section">
       ${addOnly ? '' : '<div class="label">Add</div>'}
-      <input id="supp-name" type="text" placeholder="e.g., magnesium glycinate" autocomplete="off">
+      <input id="supp-name" type="text" placeholder="e.g., magnesium glycinate" autocomplete="off" list="supp-name-history">
+      <datalist id="supp-name-history">
+        ${historyNames.map(n => `<option value="${escapeHtml(n)}"></option>`).join('')}
+      </datalist>
       <input id="supp-dose" type="text" placeholder="dose (e.g., 300mg, optional)" autocomplete="off" style="margin-top: 8px">
       <div class="grid-3" style="margin-top: 8px">
         ${SUPP_TIMINGS.map(t => `<div class="chip" data-timing="${t}" style="text-transform: capitalize">${t.replace('_', ' ')}</div>`).join('')}
@@ -3404,7 +3417,28 @@ function openManageSupplements(preselectSchedule = null, addOnly = false) {
       const ok = !!name && !!timing;
       $('#supp-add').disabled = !ok; $('#supp-add').style.opacity = ok ? 1 : 0.5;
     };
-    $('#supp-name').oninput = refreshAddBtn;
+    const applyHistoryMatch = () => {
+      const match = findStackHistoryMatch($('#supp-name').value);
+      if (!match) return;
+      // Only autofill fields the user hasn't edited yet (don't clobber typed dose).
+      if (!$('#supp-dose').value && match.dose) $('#supp-dose').value = match.dose;
+      // Schedule: respect preselect if caller set one; else use history's schedule
+      if (!timing && match.schedule) {
+        timing = match.schedule;
+        m.querySelectorAll('[data-timing]').forEach(x => x.classList.toggle('selected', x.dataset.timing === match.schedule));
+      }
+      // Category
+      if (match.category) {
+        category = match.category;
+        m.querySelectorAll('[data-category]').forEach(x => x.classList.toggle('selected', x.dataset.category === match.category));
+      }
+      // Required
+      required = !!match.required;
+      m.querySelectorAll('[data-required-toggle]').forEach(x => x.classList.toggle('selected', x.dataset.requiredToggle === (match.required ? '1' : '0')));
+      refreshAddBtn();
+    };
+    $('#supp-name').oninput = () => { refreshAddBtn(); applyHistoryMatch(); };
+    $('#supp-name').onchange = applyHistoryMatch; // fires after picking from datalist
     m.querySelectorAll('[data-timing]').forEach(c => c.onclick = () => {
       m.querySelectorAll('[data-timing]').forEach(x => x.classList.remove('selected'));
       c.classList.add('selected'); timing = c.dataset.timing;
@@ -3477,16 +3511,50 @@ function openManageSupplements(preselectSchedule = null, addOnly = false) {
   });
 }
 
+// Look up a name in the user's full stack history (active + inactive).
+// Match is case-insensitive on trimmed name. Returns the row or null.
+function findStackHistoryMatch(name) {
+  const needle = (name || '').trim().toLowerCase();
+  if (!needle) return null;
+  return (state.allStackItems || []).find(s => (s.name || '').trim().toLowerCase() === needle) || null;
+}
+
 async function addSupplement(name, schedule, dose = null, category = 'supplement', required = false) {
+  // If this name already exists, revive/update instead of creating a duplicate.
+  const existing = findStackHistoryMatch(name);
+  if (existing) {
+    const patch = {
+      schedule, dose, category, required,
+      active: true,
+    };
+    const result = await sbFetch(`/tide_stack_items?id=eq.${existing.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    });
+    const updated = result && result[0];
+    if (updated) {
+      state.allStackItems = state.allStackItems.map(s => s.id === updated.id ? updated : s);
+      state.stackItems = state.allStackItems.filter(s => s.active !== false);
+      state.supplements = state.stackItems;
+    }
+    return updated;
+  }
   const row = { name, schedule, dose, category, required, active: true };
   const result = await sbFetch('/tide_stack_items', { method: 'POST', body: JSON.stringify(row) });
-  state.stackItems.push(result[0]);
-  state.supplements = state.stackItems;
+  const created = result && result[0];
+  if (created) {
+    state.allStackItems.push(created);
+    state.stackItems = state.allStackItems.filter(s => s.active !== false);
+    state.supplements = state.stackItems;
+  }
+  return created;
 }
 
 async function removeSupplement(id) {
-  await sbFetch(`/tide_stack_items?id=eq.${id}`, { method: 'DELETE' });
-  state.stackItems = state.stackItems.filter(s => s.id !== id);
+  // Soft delete — preserves history for autocomplete and per-item streaks.
+  await sbFetch(`/tide_stack_items?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ active: false }) });
+  state.allStackItems = state.allStackItems.map(s => s.id === id ? { ...s, active: false } : s);
+  state.stackItems = state.allStackItems.filter(s => s.active !== false);
   state.supplements = state.stackItems;
 }
 
@@ -3497,7 +3565,8 @@ async function updateStackItem(id, patch) {
   });
   const updated = result && result[0];
   if (updated) {
-    state.stackItems = state.stackItems.map(s => s.id === id ? updated : s);
+    state.allStackItems = (state.allStackItems || []).map(s => s.id === id ? updated : s);
+    state.stackItems = state.allStackItems.filter(s => s.active !== false);
     state.supplements = state.stackItems;
   }
   return updated;
@@ -4190,14 +4259,16 @@ async function loadTodayIntake() {
 }
 
 async function loadSupplements() {
-  // v2: load tide_stack_items. Falls back to empty list if the v2 table isn't there yet
-  // (during the chunk-4 rollout window before the migration runs).
+  // v2: load tide_stack_items. Pulls all rows (active + inactive) so the add-form
+  // autocomplete can suggest from history.
   try {
-    const rows = await sbFetch('/tide_stack_items?active=eq.true&order=position.asc,created_at.asc');
-    state.stackItems = rows || [];
+    const rows = await sbFetch('/tide_stack_items?order=position.asc,created_at.asc');
+    state.allStackItems = rows || [];
+    state.stackItems = state.allStackItems.filter(s => s.active !== false);
     state.supplements = state.stackItems; // keep v1 alias for any legacy reader
   } catch (e) {
     console.warn('loadStackItems failed:', e.message);
+    state.allStackItems = [];
     state.stackItems = [];
     state.supplements = [];
   }
