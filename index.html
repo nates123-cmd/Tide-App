@@ -248,6 +248,65 @@
   .digest-chevron { font-size: 18px; color: var(--muted); font-weight: 400; flex-shrink: 0; }
   .digest-card.dim { opacity: 0.7; }
 
+  /* ───── v2: Reflection prompt (dashed soft card on Pulse home) ───── */
+  .reflect-prompt {
+    background: var(--card-bg-warm);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 18px 18px 16px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .reflect-prompt-dismiss {
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 1px solid var(--border-soft);
+    background: transparent;
+    color: var(--muted-soft);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+  }
+  .reflect-prompt-dismiss:active { color: var(--text); border-color: var(--muted); }
+  .reflect-prompt-eyebrow {
+    font-family: var(--font-body);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .reflect-prompt-text {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--accent-deep);
+    letter-spacing: -0.005em;
+    margin-bottom: 14px;
+    padding-right: 32px;
+  }
+  .reflect-prompt-actions { display: flex; gap: 8px; }
+  .reflect-btn {
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border: none;
+  }
+  .reflect-btn.primary { background: var(--text); color: var(--bg); }
+  .reflect-btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .reflect-btn.ghost:active { color: var(--text); border-color: var(--muted); }
+
   /* ───── v2: Tab header (used on Indulge; will extend to other tabs in later chunks) ───── */
   .tab-head { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 4px 20px; gap: 12px; }
   .tab-head .tab-title { font-family: var(--font-display); font-weight: 600; font-size: 28px; letter-spacing: -0.02em; line-height: 1; }
@@ -1103,6 +1162,7 @@ function renderPulseHome() {
     : `<span class="pulse-loading">Reading the signal…</span>`;
 
   const action = computePulseAction();
+  const pendingReflection = findPendingReflection();
 
   $('#app').innerHTML = `
     <header class="pulse-head">
@@ -1118,6 +1178,8 @@ function renderPulseHome() {
     </header>
 
     <div id="pulse-stat-grid">${renderPulseStatGrid()}</div>
+
+    ${renderReflectPromptCard(pendingReflection)}
 
     <div class="pulse-card">
       <div class="pulse-interp" id="pulse-interp">${initialPulseHtml}</div>
@@ -1139,6 +1201,9 @@ function renderPulseHome() {
   // Wire header links + brand (brand is a no-op on Pulse home but keeps the gesture consistent)
   $$('[data-nav]').forEach(b => b.onclick = () => { state.screen = b.dataset.nav; render(); });
   $('[data-brand]')?.addEventListener('click', () => { state.tab = null; render(); });
+
+  // Reflection prompt actions (if present)
+  wireReflectPrompt(pendingReflection);
 
   // Action button
   $('#pulse-action').onclick = () => routePulseAction(action.target);
@@ -1271,6 +1336,78 @@ function renderDigestHeadlinePlaceholder() {
   // Real digest pipeline ships in chunk 11. Until then, surface a neutral placeholder
   // that points the user to the existing Patterns screen.
   return 'Last 7 days — tap to see the joined view.';
+}
+
+// ---------------------------------------------------------------------------
+// Reflection prompt card — surfaces when a session ended 6-36hr ago has no
+// reflection yet. Dashed warm-bg card with × (permanent), Not now (today),
+// and Reflect (opens the morning reflection sheet).
+// ---------------------------------------------------------------------------
+const REFLECT_DISMISS_KEY = 'tide_reflect_dismissed';
+const REFLECT_NOTNOW_KEY  = 'tide_reflect_notnow';
+
+function getReflectDismissed() {
+  try { return new Set(JSON.parse(localStorage.getItem(REFLECT_DISMISS_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function addReflectDismiss(id) {
+  const set = getReflectDismissed();
+  set.add(id);
+  localStorage.setItem(REFLECT_DISMISS_KEY, JSON.stringify([...set]));
+}
+
+function getReflectNotNow() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(REFLECT_NOTNOW_KEY) || '{}');
+    if (raw.date !== todayISO()) return new Set();
+    return new Set(raw.ids || []);
+  } catch { return new Set(); }
+}
+function addReflectNotNow(id) {
+  const set = getReflectNotNow();
+  set.add(id);
+  localStorage.setItem(REFLECT_NOTNOW_KEY, JSON.stringify({ date: todayISO(), ids: [...set] }));
+}
+
+function findPendingReflection() {
+  if (!state.history || state.activeSession) return null;
+  const dismissed = getReflectDismissed();
+  const notNow = getReflectNotNow();
+  return state.history.find(s =>
+    s.morning_pending && !dismissed.has(s.id) && !notNow.has(s.id)
+  ) || null;
+}
+
+function renderReflectPromptCard(pending) {
+  if (!pending) return '';
+  return `
+    <div class="reflect-prompt" id="reflect-prompt">
+      <button class="reflect-prompt-dismiss" id="reflect-x" aria-label="Dismiss permanently">×</button>
+      <div class="reflect-prompt-eyebrow">Last night</div>
+      <div class="reflect-prompt-text">How did last night land? A quick note now would catch what you'd lose by tonight.</div>
+      <div class="reflect-prompt-actions">
+        <button class="reflect-btn primary" id="reflect-go">Reflect</button>
+        <button class="reflect-btn ghost"   id="reflect-not-now">Not now</button>
+      </div>
+    </div>
+  `;
+}
+
+function wireReflectPrompt(pending) {
+  if (!pending) return;
+  $('#reflect-x')?.addEventListener('click', () => {
+    addReflectDismiss(pending.id);
+    render();
+  });
+  $('#reflect-not-now')?.addEventListener('click', () => {
+    addReflectNotNow(pending.id);
+    render();
+  });
+  $('#reflect-go')?.addEventListener('click', () => {
+    state.morningSession = pending;
+    state.screen = 'morning';
+    renderMorning(pending);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -3606,15 +3743,8 @@ async function boot() {
       });
     }
   }).catch(() => {});
-  // Auto-prompt morning-after if there's a recently-ended session pending
-  const pending = state.history.find(s => s.morning_pending);
-  if (pending && !state.activeSession && !sessionStorage.getItem('morning_dismissed_' + pending.id)) {
-    sessionStorage.setItem('morning_dismissed_' + pending.id, '1');
-    state.morningSession = pending;
-    state.screen = 'morning';
-    renderMorning(pending);
-    return;
-  }
+  // v2 chunk 3: morning-after no longer auto-routes. The Pulse home surfaces a
+  // dismissable reflection prompt card via findPendingReflection() / renderReflectPromptCard().
   render();
 }
 
