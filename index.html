@@ -578,7 +578,7 @@ function waterPaceTarget(now = new Date()) {
   return Math.round(frac * WATER_GOAL_ML);
 }
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
-const SUPP_TIMINGS = ['morning', 'evening', 'as_needed'];
+const SUPP_TIMINGS = ['morning', 'afternoon', 'evening'];
 const ROUTES = ['oral', 'inhaled', 'other'];
 
 function todayISO() { return new Date().toISOString().slice(0, 10); }
@@ -2104,7 +2104,8 @@ function stackItemStreak(itemId) {
 function fullStackStreak() {
   // Number of consecutive days where every REQUIRED active item has at least one log.
   // Required is opt-in per item — if nothing is marked required, no streak fires.
-  const required = (state.stackItems || []).filter(s => s.required);
+  // Skip as_needed since they're legacy/hidden in v2.
+  const required = (state.stackItems || []).filter(s => s.required && s.schedule !== 'as_needed');
   if (!required.length) return 0;
   const requiredIds = required.map(s => s.id);
   // Group logs by date → Set of stack_item_ids
@@ -2138,11 +2139,12 @@ function renderStackTab() {
       .map(l => l.stack_item_id)
   );
 
-  const morning = items.filter(s => s.schedule === 'morning');
-  const evening = items.filter(s => s.schedule === 'evening');
-  const asneeded = items.filter(s => s.schedule === 'as_needed');
+  const morning   = items.filter(s => s.schedule === 'morning');
+  const afternoon = items.filter(s => s.schedule === 'afternoon');
+  const evening   = items.filter(s => s.schedule === 'evening');
+  // as_needed rows still exist in the DB for legacy items; we just don't render them.
 
-  const scheduledItems = [...morning, ...evening];
+  const scheduledItems = [...morning, ...afternoon, ...evening];
   const requiredScheduled = scheduledItems.filter(s => s.required);
   const requiredDone = requiredScheduled.filter(s => takenSet.has(s.id)).length;
   // Fall back to all scheduled when nothing is marked required, so the count
@@ -2153,8 +2155,9 @@ function renderStackTab() {
     : scheduledItems.filter(s => takenSet.has(s.id)).length;
   const progressLabel = requiredScheduled.length ? 'Required today' : 'Today';
   const fullStreak = fullStackStreak();
-  const morningDone = morning.filter(s => takenSet.has(s.id)).length;
-  const eveningDone = evening.filter(s => takenSet.has(s.id)).length;
+  const morningDone   = morning.filter(s => takenSet.has(s.id)).length;
+  const afternoonDone = afternoon.filter(s => takenSet.has(s.id)).length;
+  const eveningDone   = evening.filter(s => takenSet.has(s.id)).length;
 
   $('#app').innerHTML = `
     <header class="tab-head">
@@ -2179,8 +2182,8 @@ function renderStackTab() {
     </div>
 
     ${renderStackGroup('Morning', morning, takenSet, morningDone, 'morning')}
+    ${renderStackGroup('Afternoon', afternoon, takenSet, afternoonDone, 'afternoon')}
     ${renderStackGroup('Evening', evening, takenSet, eveningDone, 'evening')}
-    ${renderAsNeededGroup(asneeded)}
 
     ${items.length === 0 ? `
       <div class="card" style="margin-top: 14px">
@@ -3432,7 +3435,10 @@ function openManageSupplements(preselectSchedule = null) {
     $('#supp-add').onclick = async () => {
       const name = $('#supp-name').value.trim();
       const dose = $('#supp-dose').value.trim() || null;
-      if (!name || !timing) return;
+      if (!name || !timing) {
+        toast(!name ? 'Add a name' : 'Pick a schedule');
+        return;
+      }
       const btn = $('#supp-add');
       btn.disabled = true; btn.textContent = 'Adding…';
       try {
@@ -3445,6 +3451,7 @@ function openManageSupplements(preselectSchedule = null) {
         m.querySelector('[data-required-toggle="0"]')?.classList.add('selected');
         $('#supp-list').innerHTML = renderRows();
         wireRows();
+        toast('Added');
       } catch (e) {
         toast('Could not add: ' + e.message);
         console.warn('addSupplement failed:', e);

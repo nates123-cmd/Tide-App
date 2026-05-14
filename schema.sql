@@ -160,7 +160,7 @@ create table tide_stack_items (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   dose text,
-  schedule text not null check (schedule in ('morning', 'evening', 'as_needed')),
+  schedule text not null check (schedule in ('morning', 'afternoon', 'evening', 'as_needed')),
   category text not null default 'supplement' check (category in ('supplement', 'medication')),
   required boolean not null default false,  -- counts toward day total + streak when true
   notes text,
