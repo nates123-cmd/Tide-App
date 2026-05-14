@@ -2178,13 +2178,13 @@ function renderStackTab() {
       ` : ''}
     </div>
 
-    ${morning.length ? renderStackGroup('Morning', morning, takenSet, morningDone) : ''}
-    ${evening.length ? renderStackGroup('Evening', evening, takenSet, eveningDone) : ''}
-    ${asneeded.length ? renderAsNeededGroup(asneeded) : ''}
+    ${renderStackGroup('Morning', morning, takenSet, morningDone, 'morning')}
+    ${renderStackGroup('Evening', evening, takenSet, eveningDone, 'evening')}
+    ${renderAsNeededGroup(asneeded)}
 
     ${items.length === 0 ? `
       <div class="card" style="margin-top: 14px">
-        <p class="small" style="margin: 0">No stack items yet. Tap <strong>Manage</strong> to add a supplement or medication.</p>
+        <p class="small" style="margin: 0">No stack items yet. Tap a <strong>+ Add</strong> button below, or open <strong>Manage</strong> in the header.</p>
       </div>
     ` : ''}
 
@@ -2193,21 +2193,23 @@ function renderStackTab() {
 
   $('[data-brand]')?.addEventListener('click', () => { state.tab = null; render(); });
   $('#any-fab').onclick = openLogAny;
-  $('#stack-manage')?.addEventListener('click', openManageSupplements);
+  $('#stack-manage')?.addEventListener('click', () => openManageSupplements());
   $$('[data-stack-toggle]').forEach(c => c.onclick = () => toggleStackItem(c.dataset.stackToggle));
   $$('[data-asneeded-log]').forEach(b => b.onclick = (ev) => {
     ev.stopPropagation();
     logAsNeeded(b.dataset.asneededLog);
   });
+  $$('[data-add-to]').forEach(b => b.onclick = () => openManageSupplements(b.dataset.addTo));
 }
 
-function renderStackGroup(label, items, takenSet, doneCount) {
+function renderStackGroup(label, items, takenSet, doneCount, scheduleId) {
   return `
     <div class="stack-group-header">
       <div class="stack-group-title">${escapeHtml(label)}</div>
-      <div class="stack-group-meta">${doneCount} / ${items.length} taken</div>
+      ${items.length ? `<div class="stack-group-meta">${doneCount} / ${items.length} taken</div>` : ''}
     </div>
     ${items.map(s => renderStackItem(s, takenSet.has(s.id))).join('')}
+    <button class="more-btn" data-add-to="${escapeHtml(scheduleId)}">+ Add to ${escapeHtml(label.toLowerCase())}</button>
   `;
 }
 
@@ -2237,7 +2239,7 @@ function renderAsNeededGroup(items) {
   return `
     <div class="stack-group-header">
       <div class="stack-group-title">As needed</div>
-      <div class="stack-group-meta">Tap to log</div>
+      ${items.length ? '<div class="stack-group-meta">Tap to log</div>' : ''}
     </div>
     ${items.map(s => {
       const lastLog = (state.stackLogs || []).find(l => l.stack_item_id === s.id);
@@ -2254,6 +2256,7 @@ function renderAsNeededGroup(items) {
         </div>
       `;
     }).join('')}
+    <button class="more-btn" data-add-to="as_needed">+ Add as-needed</button>
   `;
 }
 
@@ -3342,7 +3345,7 @@ async function logFood(item_type, note, kcal) {
 // ---------------------------------------------------------------------------
 // Supplements
 // ---------------------------------------------------------------------------
-function openManageSupplements() {
+function openManageSupplements(preselectSchedule = null) {
   const renderRows = () => (state.stackItems || []).map(s => `
     <div class="intake-item" style="align-items: flex-start">
       <div style="flex: 1; min-width: 0">
@@ -3382,9 +3385,16 @@ function openManageSupplements() {
       <button class="btn" id="supp-add" disabled style="opacity: 0.5">Add</button>
     </div>
   `, (m) => {
-    let timing = null;
+    let timing = preselectSchedule || null;
     let category = 'supplement';
     let required = false;
+    // Pre-highlight the schedule chip if caller asked us to.
+    if (preselectSchedule) {
+      const pre = m.querySelector(`[data-timing="${preselectSchedule}"]`);
+      if (pre) pre.classList.add('selected');
+      // Scroll the Add section into view so the user lands there.
+      setTimeout(() => $('#supp-name')?.focus(), 60);
+    }
     const refreshAddBtn = () => {
       const name = $('#supp-name').value.trim();
       const ok = !!name && !!timing;
@@ -3423,17 +3433,25 @@ function openManageSupplements() {
       const name = $('#supp-name').value.trim();
       const dose = $('#supp-dose').value.trim() || null;
       if (!name || !timing) return;
-      await addSupplement(name, timing, dose, category, required);
-      $('#supp-name').value = ''; $('#supp-dose').value = '';
-      m.querySelectorAll('[data-timing]').forEach(x => x.classList.remove('selected'));
-      timing = null;
-      // reset required to false default in add form
-      required = false;
-      m.querySelectorAll('[data-required-toggle]').forEach(x => x.classList.remove('selected'));
-      m.querySelector('[data-required-toggle="0"]')?.classList.add('selected');
-      $('#supp-list').innerHTML = renderRows();
-      refreshAddBtn();
-      wireRows();
+      const btn = $('#supp-add');
+      btn.disabled = true; btn.textContent = 'Adding…';
+      try {
+        await addSupplement(name, timing, dose, category, required);
+        $('#supp-name').value = ''; $('#supp-dose').value = '';
+        m.querySelectorAll('[data-timing]').forEach(x => x.classList.remove('selected'));
+        timing = null;
+        required = false;
+        m.querySelectorAll('[data-required-toggle]').forEach(x => x.classList.remove('selected'));
+        m.querySelector('[data-required-toggle="0"]')?.classList.add('selected');
+        $('#supp-list').innerHTML = renderRows();
+        wireRows();
+      } catch (e) {
+        toast('Could not add: ' + e.message);
+        console.warn('addSupplement failed:', e);
+      } finally {
+        btn.textContent = 'Add';
+        refreshAddBtn();
+      }
     };
   });
 }
