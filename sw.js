@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tide-v46';
+const CACHE_NAME = 'tide-v47';
 const STATIC_ASSETS = ['./', './index.html', './manifest.json', './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {

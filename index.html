@@ -918,6 +918,9 @@ const el = (html) => { const t = document.createElement('template'); t.innerHTML
 function getKey() { return localStorage.getItem('anthropic_api_key'); }
 function setKey(k) { localStorage.setItem('anthropic_api_key', k); }
 
+const PROFILE_ID = '00000000-0000-0000-0000-000000000001';
+const PROFILE_FIELDS = ['age', 'gender', 'weight_lb', 'goal_weight_lb', 'weight_pace', 'height_in', 'activity_level'];
+
 function getProfile() {
   try {
     const raw = localStorage.getItem('tide_profile');
@@ -927,7 +930,63 @@ function getProfile() {
     return p;
   } catch { return null; }
 }
-function setProfile(p) { localStorage.setItem('tide_profile', JSON.stringify(p)); }
+function setProfile(p) {
+  localStorage.setItem('tide_profile', JSON.stringify(p));
+  // Fire-and-forget cloud upsert. Failures are non-fatal — local is the source.
+  saveProfileToCloud(p).catch(e => console.warn('profile cloud sync failed:', e.message));
+}
+
+async function saveProfileToCloud(p) {
+  const patch = { id: PROFILE_ID, updated_at: new Date().toISOString() };
+  PROFILE_FIELDS.forEach(k => { if (p[k] != null) patch[k] = p[k]; });
+  // Include the current PAT so we don't blow it away by patching the row.
+  const pat = getOuraPat();
+  if (pat) patch.oura_pat = pat;
+  await sbFetch('/tide_profile?on_conflict=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(patch),
+  });
+}
+
+async function loadProfileFromCloud() {
+  try {
+    const rows = await sbFetch(`/tide_profile?id=eq.${PROFILE_ID}&limit=1`);
+    return (rows && rows[0]) || null;
+  } catch (e) {
+    console.warn('loadProfileFromCloud failed:', e.message);
+    return null;
+  }
+}
+
+// On boot: cloud is source of truth when it has data; localStorage wins when
+// cloud row is still empty (first-time setup). Push local up in that case so
+// other devices pick it up too.
+async function syncProfileOnBoot() {
+  const cloud = await loadProfileFromCloud();
+  if (!cloud) return;
+  const cloudHasData = PROFILE_FIELDS.some(k => cloud[k] != null);
+  if (cloudHasData) {
+    const profile = {};
+    PROFILE_FIELDS.forEach(k => { if (cloud[k] != null) profile[k] = cloud[k]; });
+    if (profile.age && profile.gender && profile.weight_lb) {
+      localStorage.setItem('tide_profile', JSON.stringify(profile));
+    }
+    if (cloud.oura_pat && !getOuraPat()) {
+      localStorage.setItem('still_oura_pat', cloud.oura_pat);
+    }
+  } else {
+    // Cloud row empty — push whatever local has so other devices pick it up.
+    const local = getProfile();
+    if (local) await saveProfileToCloud(local).catch(() => {});
+    const pat = getOuraPat();
+    if (pat) await sbFetch('/tide_profile?on_conflict=id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ id: PROFILE_ID, oura_pat: pat, updated_at: new Date().toISOString() }),
+    }).catch(() => {});
+  }
+}
 
 function toast(msg, ms = 2400) {
   document.querySelectorAll('.toast').forEach(t => t.remove());
@@ -1040,7 +1099,16 @@ const OURA_PROXY_PATH = '/functions/v1/smooth-processor';
 const OURA_SYNC_MS = 4 * 60 * 60 * 1000;
 
 function getOuraPat() { return localStorage.getItem('still_oura_pat') || ''; }
-function setOuraPat(v) { localStorage.setItem('still_oura_pat', (v || '').trim()); }
+function setOuraPat(v) {
+  const trimmed = (v || '').trim();
+  localStorage.setItem('still_oura_pat', trimmed);
+  // Sync to cloud profile so other devices pick it up.
+  sbFetch('/tide_profile?on_conflict=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ id: PROFILE_ID, oura_pat: trimmed || null, updated_at: new Date().toISOString() }),
+  }).catch(e => console.warn('PAT cloud sync failed:', e.message));
+}
 
 function addDays(iso, n) {
   const d = new Date(iso + 'T00:00:00');
@@ -8349,6 +8417,9 @@ async function boot() {
   state.tab = null;
   state.screen = 'home';
   render();
+  // Profile + PAT sync — non-blocking, but kicked off early so the rest of
+  // boot can grab the latest values from localStorage after it lands.
+  await syncProfileOnBoot().catch(() => {});
   // Then refresh from server
   await loadActiveSession();
   await loadHistory();

@@ -17,6 +17,7 @@ drop table if exists tide_other_aliases cascade;
 drop table if exists tide_oura_daily cascade;
 drop table if exists tide_indulge_entries cascade;
 drop table if exists tide_indulge_sessions cascade;
+drop table if exists tide_profile cascade;
 drop table if exists tide_digests cascade;
 drop table if exists tide_body_metrics cascade;
 drop table if exists tide_strength_sessions cascade;
@@ -195,6 +196,20 @@ create table tide_workout_templates (
   created_at timestamptz not null default now()
 );
 
+-- 20. Profile singleton — synced across devices
+create table tide_profile (
+  id uuid primary key,
+  age int,
+  gender text,
+  weight_lb numeric,
+  goal_weight_lb numeric,
+  weight_pace text,
+  height_in int,
+  activity_level text,
+  oura_pat text,
+  updated_at timestamptz not null default now()
+);
+
 -- 19. Weekly digests — Sunday-generated magazine article
 create table tide_digests (
   id uuid primary key default gen_random_uuid(),
@@ -291,6 +306,7 @@ alter table tide_workout_template_exercises enable row level security;
 alter table tide_strength_sessions enable row level security;
 alter table tide_body_metrics enable row level security;
 alter table tide_digests enable row level security;
+alter table tide_profile enable row level security;
 
 create policy "anon all" on tide_sessions for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_drinks for all to anon, authenticated using (true) with check (true);
@@ -311,6 +327,7 @@ create policy "anon all" on tide_workout_template_exercises for all to anon, aut
 create policy "anon all" on tide_strength_sessions for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_body_metrics for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_digests for all to anon, authenticated using (true) with check (true);
+create policy "anon all" on tide_profile for all to anon, authenticated using (true) with check (true);
 
 grant all on
   tide_sessions,
@@ -331,8 +348,13 @@ grant all on
   tide_workout_template_exercises,
   tide_strength_sessions,
   tide_body_metrics,
-  tide_digests
+  tide_digests,
+  tide_profile
   to anon, authenticated, service_role;
+
+-- Seed the singleton row
+insert into tide_profile (id) values ('00000000-0000-0000-0000-000000000001'::uuid)
+on conflict (id) do nothing;
 
 -- Indexes for the queries we'll actually run
 create index tide_drinks_session_idx           on tide_drinks(session_id);
