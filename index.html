@@ -2912,7 +2912,7 @@ function renderActivityCard(a) {
     : null;
   const meta = [
     strengthBit,
-    a.duration_min ? `${a.duration_min} min` : null,
+    (a.category !== 'strength' && a.duration_min) ? `${a.duration_min} min` : null,
     a.category === 'strength' && a.perceived_effort ? `RPE ${a.perceived_effort}` : null,
     cardioFeel,
     a.notes ? a.notes : null,
@@ -3000,7 +3000,7 @@ function openLogActivityModal(existing = null) {
       </div>
     </div>
 
-    <div class="modal-section" style="margin-top: 14px">
+    <div id="act-duration-wrap" class="modal-section" style="${cat === 'strength' ? 'display:none' : 'margin-top: 14px'}">
       <div class="label">Duration (min)</div>
       <input id="act-duration" type="number" inputmode="numeric" min="1" value="${existing?.duration_min || ''}" placeholder="45">
     </div>
@@ -3030,6 +3030,8 @@ function openLogActivityModal(existing = null) {
       $('#act-strength').style.display = (category === 'strength') ? '' : 'none';
       const cardioBlock = $('#act-cardio');
       if (cardioBlock) cardioBlock.style.display = (category === 'cardio') ? '' : 'none';
+      const durationBlock = $('#act-duration-wrap');
+      if (durationBlock) durationBlock.style.display = (category === 'strength') ? 'none' : '';
     });
     m.querySelectorAll('[data-feeling]').forEach(c => c.onclick = () => {
       m.querySelectorAll('[data-feeling]').forEach(x => x.classList.remove('selected'));
@@ -3063,7 +3065,8 @@ function openLogActivityModal(existing = null) {
 
     $('#act-save').onclick = async () => {
       const type = $('#act-type').value.trim() || null;
-      const duration_min = parseInt($('#act-duration').value, 10) || null;
+      // Strength rows don't track duration — many small sets aren't usefully timed.
+      const duration_min = (category === 'strength') ? null : (parseInt($('#act-duration').value, 10) || null);
       // RPE only applies to strength
       const rpeInput = $('#act-rpe');
       const perceived_effort = (category === 'strength' && rpeInput) ? (parseInt(rpeInput.value, 10) || null) : null;
