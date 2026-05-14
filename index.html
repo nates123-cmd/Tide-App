@@ -589,6 +589,42 @@
   .exercise-row-sets { font-family: var(--font-body); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; width: 70px; text-align: right; }
   .exercise-row-x { color: var(--muted); padding: 4px 8px; cursor: pointer; }
 
+  /* ───── v2: Body sub-screen (chunk 10) ───── */
+  .body-hero { background: var(--card-bg-warm); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 20px 22px 18px; margin-bottom: 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .body-hero-num { font-family: var(--font-display); font-weight: 500; font-size: 44px; line-height: 1; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; }
+  .body-hero-unit { font-family: var(--font-body); font-size: 16px; color: var(--muted); font-weight: 500; }
+  .body-hero-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; margin-top: 8px; }
+  .body-hero-delta { font-family: var(--font-body); font-size: 11px; font-weight: 500; margin-top: 4px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .body-hero-delta.good { color: var(--good); }
+  .body-hero-delta.warn { color: var(--warn); }
+  .body-hero-delta.flat { color: var(--muted-soft); }
+  .body-hero-log { padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--text); background: var(--bg); cursor: pointer; flex-shrink: 0; }
+  .body-hero-log:active { background: var(--card-bg); }
+
+  .body-chart { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px 12px; margin-bottom: 14px; }
+  .body-chart-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .body-chart-title { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+  .body-chart-svg { width: 100%; height: 80px; display: block; }
+
+  .meas-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .meas-cell { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 12px; cursor: pointer; transition: background 0.15s; }
+  .meas-cell:active { background: var(--card-bg-warm); }
+  .meas-cell-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+  .meas-cell-val { font-family: var(--font-display); font-weight: 500; font-size: 22px; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; margin-top: 6px; display: flex; align-items: baseline; gap: 3px; }
+  .meas-cell-val .unit { font-family: var(--font-body); font-size: 11px; color: var(--muted); font-weight: 500; }
+  .meas-cell-val.dim { color: var(--muted-soft); font-weight: 400; }
+  .meas-cell-delta { font-family: var(--font-body); font-size: 10px; margin-top: 3px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .meas-cell-delta.good { color: var(--good); }
+  .meas-cell-delta.warn { color: var(--warn); }
+  .meas-cell-delta.flat { color: var(--muted-soft); }
+
+  .photos-gate { background: var(--card-bg-warm); border: 1px dashed var(--border); border-radius: var(--radius); padding: 32px 22px; margin-bottom: 14px; text-align: center; }
+  .photos-gate-icon { width: 28px; height: 28px; margin: 0 auto 14px; border: 1.5px solid var(--muted); border-radius: 6px; position: relative; }
+  .photos-gate-icon::before { content: ''; position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); width: 16px; height: 12px; border: 1.5px solid var(--muted); border-bottom: none; border-radius: 8px 8px 0 0; }
+  .photos-gate-title { font-family: var(--font-display); font-weight: 500; font-size: 16px; letter-spacing: -0.005em; }
+  .photos-gate-sub { font-family: var(--font-body); font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .photos-gate-btn { margin-top: 16px; padding: 10px 22px; border: none; border-radius: 999px; background: var(--text); color: var(--bg); font-family: var(--font-body); font-size: 12px; font-weight: 500; letter-spacing: 0.02em; cursor: pointer; }
+
   /* ───── v2: Progress sub-screen (chunk 9) ───── */
   .prog-card { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 16px 18px 14px; margin-bottom: 10px; cursor: pointer; }
   .prog-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
@@ -712,6 +748,8 @@ let state = {
   templateLastUse: {},         // { template_id: last_date_iso } for quick-start chips
   progressItems: [],           // shaped per-lift data for the Progress screen
   progressFilter: 'all',
+  bodyMetrics: [],             // tide_body_metrics rows, date desc
+  bodyRange: '3M',
 };
 
 const MEAL_DEFAULTS = { breakfast: 400, lunch: 600, dinner: 700, snack: 200 };
@@ -1328,6 +1366,7 @@ function render() {
   else if (screen === 'library') renderLibraryScreen();
   else if (screen === 'workouts') renderWorkoutsScreen();
   else if (screen === 'progress') renderProgressScreen();
+  else if (screen === 'body') renderBodyScreen();
   mountBottomNav(screen === 'home' ? (state.tab || null) : null);
 }
 
@@ -2938,7 +2977,12 @@ function renderTrainTab() {
     state.progressItems = shapeProgress(sets);
     if (state.screen === 'progress') renderProgressScreen();
   };
-  $('#train-body').onclick = () => toast('Body lands in chunk 10');
+  $('#train-body').onclick = async () => {
+    state.screen = 'body';
+    render();
+    await loadBodyMetrics();
+    if (state.screen === 'body') renderBodyScreen();
+  };
   $('#train-save-template')?.addEventListener('click', () => openSaveTodayAsTemplateModal());
   $$('[data-template-start]').forEach(c => c.onclick = () => {
     const t = state.workoutTemplates.find(x => x.id === c.dataset.templateStart);
@@ -3180,6 +3224,358 @@ function openActivityDetail(id) {
   // Strength rows get the per-set logger; cardio/recovery use the flat edit form.
   if (a.category === 'strength') openSetLoggerModal(a);
   else openLogActivityModal(a);
+}
+
+// ---------------------------------------------------------------------------
+// Body sub-screen (v2 chunk 10) — weight + measurements + PIN-gated photos
+// ---------------------------------------------------------------------------
+
+const BODY_RANGES = [
+  { id: '1M', days: 30 },
+  { id: '3M', days: 90 },
+  { id: '6M', days: 180 },
+  { id: '1Y', days: 365 },
+];
+const MEAS_KEYS = [
+  { key: 'chest_in',  label: 'Chest'  },
+  { key: 'waist_in',  label: 'Waist'  },
+  { key: 'hips_in',   label: 'Hips'   },
+  { key: 'arms_in',   label: 'Arms'   },
+  { key: 'thighs_in', label: 'Thighs' },
+  { key: 'neck_in',   label: 'Neck'   },
+];
+
+async function loadBodyMetrics() {
+  try {
+    const rows = await sbFetch('/tide_body_metrics?order=date.desc&limit=400');
+    state.bodyMetrics = rows || [];
+  } catch (e) {
+    console.warn('loadBodyMetrics failed:', e.message);
+    state.bodyMetrics = [];
+  }
+}
+
+// Pick the most recent non-null value for a given column across all rows.
+function latestField(rows, key) {
+  for (const r of rows) if (r[key] != null) return r;
+  return null;
+}
+
+function pinSet() { return !!localStorage.getItem('tide_body_pin'); }
+function pinUnlocked() { return sessionStorage.getItem('tide_body_unlocked') === '1'; }
+function pinSetValue(v) { localStorage.setItem('tide_body_pin', btoa(unescape(encodeURIComponent(v)))); }
+function pinMatches(v) {
+  const stored = localStorage.getItem('tide_body_pin');
+  if (!stored) return false;
+  try { return atob(stored) === unescape(encodeURIComponent(v)); } catch { return false; }
+}
+
+function renderBodyScreen() {
+  const rows = state.bodyMetrics || []; // already date-desc
+  const profile = getProfile() || {};
+  const goalWeight = Number(profile.goal_weight_lb) || null;
+
+  const currentWeight = latestField(rows, 'weight_lb')?.weight_lb ?? null;
+
+  // Weight delta over the chosen range
+  const range = state.bodyRange || '3M';
+  const days = (BODY_RANGES.find(r => r.id === range) || BODY_RANGES[1]).days;
+  const cutoff = addDays(todayISO(), -days);
+  const inRange = rows.filter(r => r.weight_lb != null && r.date >= cutoff).slice().reverse(); // ascending
+  const startWeight = inRange[0]?.weight_lb ?? null;
+  const weightDelta = (currentWeight != null && startWeight != null) ? (currentWeight - startWeight) : null;
+  // Cut intent: dropping is good if you have a goal below current OR no goal set
+  const cutIntent = !goalWeight || (currentWeight != null && currentWeight > goalWeight);
+  const deltaCls = (weightDelta == null)
+    ? 'flat'
+    : Math.abs(weightDelta) < 0.5
+      ? 'flat'
+      : (weightDelta < 0
+          ? (cutIntent ? 'good' : 'warn')
+          : (cutIntent ? 'warn' : 'good'));
+  const deltaTxt = (weightDelta == null)
+    ? 'first entry'
+    : (Math.abs(weightDelta) < 0.5
+        ? `flat in ${range}`
+        : `${weightDelta > 0 ? '+' : '−'}${Math.abs(weightDelta).toFixed(1)} lb in ${range}`);
+
+  // Latest measurement values + deltas (vs oldest in range)
+  const measDelta = (key) => {
+    const latest = latestField(rows, key)?.[key] ?? null;
+    if (latest == null) return { latest: null, delta: null };
+    const earlier = inRange.find(r => r[key] != null && r[key] !== latest)?.[key] ?? null;
+    return { latest, delta: earlier != null ? (latest - earlier) : null };
+  };
+
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="lib-back" id="body-back">‹ Train</div>
+        <div class="tab-title">Body</div>
+        <div class="tab-sub">${rows.length ? `${rows.length} ${rows.length === 1 ? 'entry' : 'entries'}` : 'no entries yet'}</div>
+      </div>
+      <div style="width: 60px"></div>
+    </header>
+
+    <div class="body-hero">
+      <div>
+        <div class="body-hero-num">${currentWeight != null ? currentWeight : '—'}<span class="body-hero-unit">${currentWeight != null ? 'lb' : ''}</span></div>
+        <div class="body-hero-label">Current</div>
+        <div class="body-hero-delta ${deltaCls}">${escapeHtml(deltaTxt)}</div>
+        ${goalWeight ? `<div class="body-hero-delta flat" style="margin-top: 2px">Goal · ${goalWeight} lb</div>` : ''}
+      </div>
+      <button class="body-hero-log" id="body-log-weight">Log weight</button>
+    </div>
+
+    <div class="body-chart">
+      <div class="body-chart-head">
+        <div class="body-chart-title">Weight · ${range}</div>
+        <div class="filter-row" style="margin-bottom: 0; padding: 0">
+          ${BODY_RANGES.map(r => `<div class="filter-chip ${r.id === range ? 'active' : ''}" data-body-range="${r.id}">${r.id}</div>`).join('')}
+        </div>
+      </div>
+      ${renderWeightChart(inRange)}
+    </div>
+
+    <div class="section-label">Measurements</div>
+    <div class="meas-grid">
+      ${MEAS_KEYS.map(m => {
+        const { latest, delta } = measDelta(m.key);
+        const deltaTxt = (delta == null) ? '—' : (Math.abs(delta) < 0.1 ? 'flat' : `${delta > 0 ? '+' : '−'}${Math.abs(delta).toFixed(1)}″`);
+        // For body measurements default-direction is "smaller = good" (recomp/cut)
+        const deltaCls = (delta == null || Math.abs(delta) < 0.1) ? 'flat' : (delta < 0 ? 'good' : 'warn');
+        return `
+          <div class="meas-cell" data-meas-edit="${m.key}">
+            <div class="meas-cell-label">${escapeHtml(m.label)}</div>
+            <div class="meas-cell-val ${latest == null ? 'dim' : ''}">${latest != null ? latest : '—'}${latest != null ? '<span class="unit">″</span>' : ''}</div>
+            <div class="meas-cell-delta ${deltaCls}">${escapeHtml(deltaTxt)}</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+
+    ${renderPhotosSection()}
+
+    <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
+  `;
+
+  $('#body-back').onclick = () => { state.tab = 'train'; state.screen = 'home'; render(); };
+  $('#any-fab').onclick = openLogAny;
+  $('#body-log-weight').onclick = () => openLogWeightModal();
+  $$('[data-body-range]').forEach(c => c.onclick = () => { state.bodyRange = c.dataset.bodyRange; renderBodyScreen(); });
+  $$('[data-meas-edit]').forEach(c => c.onclick = () => openLogMeasurementsModal(c.dataset.measEdit));
+  wirePhotosSection();
+}
+
+function renderWeightChart(asc) {
+  if (!asc || asc.length === 0) {
+    return '<div class="muted small" style="text-align: center; padding: 22px 0">Log a few weights to see the trend.</div>';
+  }
+  const width = 280;
+  const height = 80;
+  const pad = 6;
+  const weights = asc.map(r => Number(r.weight_lb));
+  const max = Math.max(...weights);
+  const min = Math.min(...weights);
+  const range = Math.max(1, max - min);
+  const span = asc.length === 1 ? 1 : asc.length - 1;
+  const x = (i) => pad + (width - 2 * pad) * (i / span);
+  const y = (w) => pad + (height - 2 * pad) * (1 - ((w - min) / range));
+  const points = asc.map((r, i) => [x(i), y(Number(r.weight_lb))]);
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ');
+  const areaPath = `${linePath} L ${points[points.length - 1][0].toFixed(2)} ${height - pad} L ${points[0][0].toFixed(2)} ${height - pad} Z`;
+  const dots = points.map((p) => `<circle class="prog-spark-dot" cx="${p[0].toFixed(2)}" cy="${p[1].toFixed(2)}" r="2"/>`).join('');
+  return `
+    <svg class="body-chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+      <path class="prog-spark-area" d="${areaPath}"/>
+      <path class="prog-spark-line" d="${linePath}"/>
+      ${dots}
+    </svg>
+  `;
+}
+
+function renderPhotosSection() {
+  if (!pinSet()) {
+    return `
+      <div class="section-label">Photos</div>
+      <div class="photos-gate" id="photos-set-pin">
+        <div class="photos-gate-icon"></div>
+        <div class="photos-gate-title">Progress photos are locked</div>
+        <div class="photos-gate-sub">Set a 4-digit PIN to enable the photo album.</div>
+        <button class="photos-gate-btn" id="photos-set-pin-btn">Set PIN</button>
+      </div>
+    `;
+  }
+  if (!pinUnlocked()) {
+    return `
+      <div class="section-label">Photos</div>
+      <div class="photos-gate" id="photos-unlock">
+        <div class="photos-gate-icon"></div>
+        <div class="photos-gate-title">Progress photos are locked</div>
+        <div class="photos-gate-sub">Enter your PIN to view the album.</div>
+        <button class="photos-gate-btn" id="photos-unlock-btn">Unlock</button>
+      </div>
+    `;
+  }
+  return `
+    <div class="section-label">Photos</div>
+    <div class="card">
+      <p class="small" style="margin: 0">Photos unlocked. Photo uploads land in chunk 10.5 — schema already supports them, UI is a quick follow-up.</p>
+    </div>
+  `;
+}
+
+function wirePhotosSection() {
+  $('#photos-set-pin-btn')?.addEventListener('click', () => openSetPinModal());
+  $('#photos-unlock-btn')?.addEventListener('click', () => openUnlockPinModal());
+}
+
+function openSetPinModal() {
+  showModal(`
+    <h2>Set a PIN</h2>
+    <p class="small muted" style="margin-bottom: 12px">4 digits. Stored only on this device. You can clear it by clearing the app's local data.</p>
+    <input id="pin-new" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off" placeholder="••••" style="font-family: var(--font-display); font-size: 24px; text-align: center; letter-spacing: 12px;">
+    <div class="btn-row" style="margin-top: 14px">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="pin-save">Save</button>
+    </div>
+  `, () => {
+    $('#pin-new').focus();
+    $('#pin-save').onclick = () => {
+      const v = $('#pin-new').value.trim();
+      if (!/^\d{4}$/.test(v)) { toast('Enter 4 digits'); return; }
+      pinSetValue(v);
+      sessionStorage.setItem('tide_body_unlocked', '1');
+      closeModal();
+      render();
+    };
+  });
+}
+
+function openUnlockPinModal() {
+  showModal(`
+    <h2>Unlock</h2>
+    <input id="pin-enter" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off" placeholder="••••" style="font-family: var(--font-display); font-size: 24px; text-align: center; letter-spacing: 12px;">
+    <div class="btn-row" style="margin-top: 14px">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="pin-check">Unlock</button>
+    </div>
+  `, () => {
+    $('#pin-enter').focus();
+    $('#pin-check').onclick = () => {
+      const v = $('#pin-enter').value.trim();
+      if (!pinMatches(v)) { toast('Wrong PIN'); return; }
+      sessionStorage.setItem('tide_body_unlocked', '1');
+      closeModal();
+      render();
+    };
+  });
+}
+
+async function upsertBodyMetric(patch) {
+  // Use today's date if not specified. Find existing row for that date, PATCH if present, else POST.
+  const date = patch.date || todayISO();
+  const existing = (state.bodyMetrics || []).find(r => r.date === date);
+  try {
+    if (existing) {
+      const result = await sbFetch(`/tide_body_metrics?id=eq.${existing.id}`, {
+        method: 'PATCH', body: JSON.stringify(patch),
+      });
+      if (result && result[0]) {
+        state.bodyMetrics = state.bodyMetrics.map(r => r.id === existing.id ? result[0] : r);
+      }
+    } else {
+      const result = await sbFetch('/tide_body_metrics', {
+        method: 'POST', body: JSON.stringify({ date, ...patch }),
+      });
+      if (result && result[0]) {
+        state.bodyMetrics = [result[0]].concat(state.bodyMetrics);
+        state.bodyMetrics.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      }
+    }
+  } catch (e) {
+    toast('Could not save: ' + e.message);
+    throw e;
+  }
+}
+
+function openLogWeightModal() {
+  const latestRow = (state.bodyMetrics || []).find(r => r.weight_lb != null);
+  const latest = latestRow?.weight_lb ?? '';
+  showModal(`
+    <h2>Log weight</h2>
+    <div class="modal-section">
+      <div class="label">Date</div>
+      <input id="bw-date" type="date" value="${todayISO()}">
+    </div>
+    <div class="modal-section">
+      <div class="label">Weight (lb)</div>
+      <input id="bw-weight" type="number" inputmode="decimal" step="0.1" min="60" max="500" value="${latest}" placeholder="lb">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="bw-save">Save</button>
+    </div>
+  `, () => {
+    setTimeout(() => $('#bw-weight').focus(), 60);
+    $('#bw-save').onclick = async () => {
+      const date = $('#bw-date').value || todayISO();
+      const weight_lb = parseFloat($('#bw-weight').value);
+      if (!Number.isFinite(weight_lb)) { toast('Enter a weight'); return; }
+      try {
+        await upsertBodyMetric({ date, weight_lb });
+        closeModal();
+        renderBodyScreen();
+      } catch {}
+    };
+  });
+}
+
+function openLogMeasurementsModal(focusKey = null) {
+  const today = todayISO();
+  const todayRow = (state.bodyMetrics || []).find(r => r.date === today) || {};
+  const valueFor = (k) => todayRow[k] ?? (latestField(state.bodyMetrics || [], k)?.[k] ?? '');
+  showModal(`
+    <h2>Measurements</h2>
+    <p class="small muted" style="margin-bottom: 10px">All in inches. Save what you measured; leave the rest blank.</p>
+    <div class="modal-section">
+      <div class="label">Date</div>
+      <input id="meas-date" type="date" value="${today}">
+    </div>
+    <div class="grid-2" style="gap: 10px">
+      ${MEAS_KEYS.map(m => `
+        <div>
+          <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">${escapeHtml(m.label)} (in)</div>
+          <input data-meas="${m.key}" type="number" inputmode="decimal" step="0.1" min="0" max="100" value="${valueFor(m.key)}">
+        </div>
+      `).join('')}
+    </div>
+    <div class="btn-row" style="margin-top: 14px">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="meas-save">Save</button>
+    </div>
+  `, (m) => {
+    if (focusKey) {
+      const focusEl = m.querySelector(`[data-meas="${focusKey}"]`);
+      if (focusEl) setTimeout(() => focusEl.focus(), 60);
+    }
+    $('#meas-save').onclick = async () => {
+      const date = $('#meas-date').value || today;
+      const patch = { date };
+      MEAS_KEYS.forEach(k => {
+        const v = parseFloat($(`[data-meas="${k.key}"]`).value);
+        if (Number.isFinite(v)) patch[k.key] = v;
+      });
+      // Don't write a record with literally nothing in it.
+      const measOnly = Object.keys(patch).filter(k => k !== 'date').length;
+      if (!measOnly) { toast('Add at least one measurement'); return; }
+      try {
+        await upsertBodyMetric(patch);
+        closeModal();
+        renderBodyScreen();
+      } catch {}
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
