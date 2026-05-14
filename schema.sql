@@ -17,6 +17,7 @@ drop table if exists tide_other_aliases cascade;
 drop table if exists tide_oura_daily cascade;
 drop table if exists tide_indulge_entries cascade;
 drop table if exists tide_indulge_sessions cascade;
+drop table if exists tide_strength_sessions cascade;
 drop table if exists tide_activities cascade;
 drop table if exists tide_workout_template_exercises cascade;
 drop table if exists tide_workout_templates cascade;
@@ -192,6 +193,20 @@ create table tide_workout_templates (
   created_at timestamptz not null default now()
 );
 
+-- 17. Strength sessions — one row per individual set
+create table tide_strength_sessions (
+  id uuid primary key default gen_random_uuid(),
+  activity_id uuid not null references tide_activities(id) on delete cascade,
+  exercise text not null,
+  set_number int not null,
+  reps int,
+  weight_lb numeric,
+  is_pr boolean not null default false,
+  notes text,
+  logged_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
 -- 16. Template exercises — ordered exercise list per template
 create table tide_workout_template_exercises (
   id uuid primary key default gen_random_uuid(),
@@ -237,6 +252,7 @@ alter table tide_stack_logs enable row level security;
 alter table tide_activities enable row level security;
 alter table tide_workout_templates enable row level security;
 alter table tide_workout_template_exercises enable row level security;
+alter table tide_strength_sessions enable row level security;
 
 create policy "anon all" on tide_sessions for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_drinks for all to anon, authenticated using (true) with check (true);
@@ -254,6 +270,7 @@ create policy "anon all" on tide_stack_logs for all to anon, authenticated using
 create policy "anon all" on tide_activities for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_workout_templates for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_workout_template_exercises for all to anon, authenticated using (true) with check (true);
+create policy "anon all" on tide_strength_sessions for all to anon, authenticated using (true) with check (true);
 
 grant all on
   tide_sessions,
@@ -271,7 +288,8 @@ grant all on
   tide_stack_logs,
   tide_activities,
   tide_workout_templates,
-  tide_workout_template_exercises
+  tide_workout_template_exercises,
+  tide_strength_sessions
   to anon, authenticated, service_role;
 
 -- Indexes for the queries we'll actually run
@@ -295,5 +313,8 @@ create index tide_activities_category_idx      on tide_activities(category);
 create index tide_activities_template_idx      on tide_activities(template_id, date desc);
 create index tide_workout_templates_position_idx on tide_workout_templates(position);
 create index tide_workout_template_exercises_template_idx on tide_workout_template_exercises(template_id, position);
+create index tide_strength_sessions_activity_idx on tide_strength_sessions(activity_id, set_number);
+create index tide_strength_sessions_exercise_idx on tide_strength_sessions(exercise, logged_at desc);
+create index tide_strength_sessions_weight_idx   on tide_strength_sessions(exercise, weight_lb desc);
 
 notify pgrst, 'reload schema';

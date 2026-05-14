@@ -589,6 +589,24 @@
   .exercise-row-sets { font-family: var(--font-body); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; width: 70px; text-align: right; }
   .exercise-row-x { color: var(--muted); padding: 4px 8px; cursor: pointer; }
 
+  /* ───── v2: Strength set logger (chunk 8) ───── */
+  .ex-last { font-family: var(--font-display); font-style: italic; font-size: 12px; color: var(--muted-soft); padding: 4px 4px 14px; }
+  .ex-last strong { font-family: var(--font-body); font-style: normal; font-weight: 500; color: var(--muted); font-size: 11px; }
+  .sets-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .set-row { display: grid; grid-template-columns: 24px 1fr 1fr 28px; align-items: center; padding: 10px 12px; border-radius: 9px; gap: 10px; background: var(--card-bg); transition: background 120ms; }
+  .set-row.done { background: var(--card-bg-warm); }
+  .set-row.ghost { background: var(--card-bg); }
+  .set-num { font-family: var(--font-body); font-size: 11px; font-weight: 500; color: var(--muted-soft); letter-spacing: 0.04em; text-transform: uppercase; }
+  .set-input { font-family: var(--font-display); font-weight: 500; font-size: 16px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; border: none; background: transparent; padding: 4px 0; width: 100%; color: var(--text); text-align: left; }
+  .set-input::placeholder { color: var(--muted-soft); font-style: italic; font-weight: 400; }
+  .set-input:focus { outline: none; }
+  .set-row .unit-suffix { font-family: var(--font-body); font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; margin-left: 2px; }
+  .set-cell { display: flex; align-items: baseline; gap: 2px; }
+  .set-check { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; line-height: 1; cursor: pointer; flex-shrink: 0; }
+  .set-row.done .set-check { background: var(--text); color: var(--bg); }
+  .set-row:not(.done) .set-check { background: transparent; border: 1.5px dashed var(--border); color: var(--muted-soft); }
+  .pr-badge { display: inline-block; background: var(--good); color: var(--bg); font-family: var(--font-body); font-size: 9px; font-weight: 600; letter-spacing: 0.1em; padding: 3px 6px; border-radius: 4px; margin-left: 6px; text-transform: uppercase; line-height: 1; vertical-align: middle; }
+
   /* ───── v2: Train (chunk 6) ───── */
   .activity-card { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
   .activity-card.recovery { background: var(--card-bg-warm); border-style: dashed; border-color: var(--border); }
@@ -3131,7 +3149,217 @@ function openLogActivityModal(existing = null) {
 function openActivityDetail(id) {
   const a = (state.todayActivities || []).find(x => x.id === id);
   if (!a) return;
-  openLogActivityModal(a);
+  // Strength rows get the per-set logger; cardio/recovery use the flat edit form.
+  if (a.category === 'strength') openSetLoggerModal(a);
+  else openLogActivityModal(a);
+}
+
+// ---------------------------------------------------------------------------
+// Strength set logger (v2 chunk 8) — log each set's actual reps + weight
+// against a tide_activities row. Ghost-fill from last same-template session
+// when available; otherwise from template targets in metadata. PR badge when
+// the recorded weight beats the all-time max for that exercise.
+// ---------------------------------------------------------------------------
+
+async function loadSetsForActivity(activityId) {
+  try {
+    const rows = await sbFetch(`/tide_strength_sessions?activity_id=eq.${activityId}&order=set_number.asc`);
+    return rows || [];
+  } catch (e) {
+    console.warn('loadSetsForActivity failed:', e.message);
+    return [];
+  }
+}
+
+// Last same-template session's sets for this exercise (for ghost-fill).
+async function loadLastSessionSets(exercise, templateId, beforeActivityId) {
+  try {
+    const params = new URLSearchParams({
+      'exercise': `eq.${exercise}`,
+      'order': 'logged_at.desc',
+      'limit': '50',
+    });
+    // We need the activity rows first to apply template + before-now filtering.
+    const rows = await sbFetch(`/tide_strength_sessions?${params.toString()}&select=*,activity:tide_activities(id,template_id,logged_at)`);
+    if (!rows || !rows.length) return { rows: [], when: null };
+    // Group sets by activity_id and pick the most recent activity that
+    // (a) is not the current one, and (b) matches template_id if provided.
+    const byActivity = new Map();
+    rows.forEach(r => {
+      if (!r.activity) return;
+      if (r.activity.id === beforeActivityId) return;
+      if (templateId != null && r.activity.template_id !== templateId) return;
+      if (!byActivity.has(r.activity.id)) {
+        byActivity.set(r.activity.id, { logged_at: r.activity.logged_at, sets: [] });
+      }
+      byActivity.get(r.activity.id).sets.push(r);
+    });
+    // If template filter produced nothing, retry without it.
+    if (!byActivity.size && templateId != null) {
+      return loadLastSessionSets(exercise, null, beforeActivityId);
+    }
+    if (!byActivity.size) return { rows: [], when: null };
+    const sorted = [...byActivity.entries()].sort(
+      (a, b) => new Date(b[1].logged_at) - new Date(a[1].logged_at)
+    );
+    const top = sorted[0][1];
+    top.sets.sort((a, b) => a.set_number - b.set_number);
+    return { rows: top.sets, when: top.logged_at };
+  } catch (e) {
+    console.warn('loadLastSessionSets failed:', e.message);
+    return { rows: [], when: null };
+  }
+}
+
+async function maxWeightForExercise(exercise) {
+  try {
+    const rows = await sbFetch(`/tide_strength_sessions?exercise=eq.${exercise}&weight_lb=not.is.null&order=weight_lb.desc&limit=1&select=weight_lb`);
+    return (rows && rows[0] && Number(rows[0].weight_lb)) || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+async function openSetLoggerModal(activity) {
+  const ex = activity.type || 'Exercise';
+  const meta = activity.metadata || {};
+  let displaySets = meta.sets || 3;            // mutable: bumped by "+ Add set"
+  const targetReps = meta.reps || null;
+  const targetWeight = meta.weight_lb ?? null;
+
+  // Initial frame with loading state so we paint immediately.
+  showModal(`
+    <h2>${escapeHtml(ex)}</h2>
+    <div id="set-last" class="ex-last">Loading history…</div>
+    <div id="set-sheet">
+      <div class="muted small" style="padding: 20px 0; text-align: center">Reading sets…</div>
+    </div>
+    <div class="btn-row" style="margin-top: 8px">
+      <button class="btn btn-soft" id="set-edit-meta">Edit details</button>
+      <button class="btn" data-close>Done</button>
+    </div>
+  `, async () => {
+    $('#set-edit-meta').onclick = () => { closeModal(); setTimeout(() => openLogActivityModal(activity), 80); };
+
+    // Load existing sets + ghost-fill + PR floor in parallel.
+    const [existing, ghost, prFloor] = await Promise.all([
+      loadSetsForActivity(activity.id),
+      loadLastSessionSets(ex, activity.template_id || null, activity.id),
+      maxWeightForExercise(ex),
+    ]);
+
+    // Last summary line: "Last · 3 × 8 @ 185 lb, May 10"
+    if (ghost.rows.length && ghost.when) {
+      const best = ghost.rows.reduce((acc, r) => {
+        const w = Number(r.weight_lb) || 0;
+        return w > (acc?.weight_lb || 0) ? r : acc;
+      }, ghost.rows[0]);
+      const date = fmtDate(ghost.when);
+      $('#set-last').innerHTML = `<strong>Last</strong> · ${ghost.rows.length} × ${best.reps || '?'} @ ${best.weight_lb ?? '—'} lb, ${escapeHtml(date)}`;
+    } else if (targetWeight != null || targetReps != null) {
+      $('#set-last').innerHTML = `<strong>Target</strong> · ${targetSets} × ${targetReps || '?'}${targetWeight != null ? ` @ ${targetWeight} lb` : ''}`;
+    } else {
+      $('#set-last').innerHTML = '<strong>No history</strong> — set the working weight as you go.';
+    }
+
+    // Build the working set list. We always show displaySets rows; existing rows
+    // override their slot; missing rows ghost-fill from last session or targets.
+    const buildRows = () => {
+      const list = [];
+      const count = Math.max(displaySets, existing.length);
+      for (let i = 1; i <= count; i++) {
+        const done = existing.find(r => r.set_number === i);
+        const ghostRow = ghost.rows[i - 1] || null;
+        list.push({
+          set_number: i,
+          existing: done || null,
+          ghostReps: done ? null : (ghostRow?.reps ?? targetReps),
+          ghostWeight: done ? null : (ghostRow?.weight_lb ?? targetWeight),
+        });
+      }
+      return list;
+    };
+
+    const renderSets = () => {
+      const list = buildRows();
+      return list.map(r => {
+        const done = !!r.existing;
+        const reps = done ? r.existing.reps : '';
+        const weight = done ? r.existing.weight_lb : '';
+        const repsPh = r.ghostReps != null ? String(r.ghostReps) : '';
+        const weightPh = r.ghostWeight != null ? String(r.ghostWeight) : '';
+        const isPr = done && r.existing.is_pr;
+        return `
+          <div class="set-row ${done ? 'done' : ''}" data-set-row="${r.set_number}">
+            <div class="set-num">${r.set_number}</div>
+            <div class="set-cell">
+              <input type="number" inputmode="numeric" min="0" max="100" class="set-input" data-field="reps" value="${reps}" placeholder="${escapeHtml(repsPh)}">
+              <span class="unit-suffix">reps</span>
+            </div>
+            <div class="set-cell">
+              <input type="number" inputmode="numeric" min="0" class="set-input" data-field="weight" value="${weight}" placeholder="${escapeHtml(weightPh)}">
+              <span class="unit-suffix">lb${isPr ? '<span class="pr-badge">PR</span>' : ''}</span>
+            </div>
+            <div class="set-check" data-set-check="${r.set_number}">${done ? '✓' : ''}</div>
+          </div>
+        `;
+      }).join('') + `
+        <button class="add-set more-btn" id="set-add" style="margin-top: 4px">+ Add set</button>
+      `;
+    };
+
+    const wireSets = () => {
+      const m = document.querySelector('.modal');
+      m.querySelectorAll('[data-set-check]').forEach(cb => cb.onclick = async () => {
+        const setNum = parseInt(cb.dataset.setCheck, 10);
+        const row = m.querySelector(`[data-set-row="${setNum}"]`);
+        const repsInput = row.querySelector('[data-field="reps"]');
+        const weightInput = row.querySelector('[data-field="weight"]');
+        // Accept the placeholder ghost value if input is empty
+        const reps = parseInt(repsInput.value || repsInput.placeholder, 10);
+        const weight_lb = parseFloat(weightInput.value || weightInput.placeholder);
+        if (!Number.isFinite(reps) && !Number.isFinite(weight_lb)) {
+          toast('Enter reps or weight');
+          return;
+        }
+        const existingRow = existing.find(r => r.set_number === setNum);
+        const willBePr = Number.isFinite(weight_lb) && weight_lb > prFloor;
+        const payload = {
+          activity_id: activity.id,
+          exercise: ex,
+          set_number: setNum,
+          reps: Number.isFinite(reps) ? reps : null,
+          weight_lb: Number.isFinite(weight_lb) ? weight_lb : null,
+          is_pr: willBePr,
+        };
+        try {
+          if (existingRow) {
+            const result = await sbFetch(`/tide_strength_sessions?id=eq.${existingRow.id}`, {
+              method: 'PATCH', body: JSON.stringify(payload),
+            });
+            if (result && result[0]) Object.assign(existingRow, result[0]);
+          } else {
+            const result = await sbFetch('/tide_strength_sessions', {
+              method: 'POST', body: JSON.stringify(payload),
+            });
+            if (result && result[0]) existing.push(result[0]);
+          }
+          $('#set-sheet').innerHTML = renderSets();
+          wireSets();
+        } catch (e) {
+          toast('Could not save set: ' + e.message);
+        }
+      });
+      m.querySelector('#set-add').onclick = () => {
+        displaySets = Math.max(displaySets, existing.length) + 1;
+        $('#set-sheet').innerHTML = renderSets();
+        wireSets();
+      };
+    };
+
+    $('#set-sheet').innerHTML = renderSets();
+    wireSets();
+  });
 }
 
 // Promote today's strength activities into a reusable template. User picks
