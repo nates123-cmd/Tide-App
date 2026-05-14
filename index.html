@@ -2073,6 +2073,120 @@ function computeBacTrend(drinks, profile, currentBac) {
 // the Train Today quick-start chips and (chunk 8) the strength logging UI.
 // ---------------------------------------------------------------------------
 
+// Cardio + recovery starter lists for the "Pick from list" affordance in
+// the activity log modal. No sets/reps — these aren't strength.
+const CARDIO_LIBRARY = [
+  { name: 'Walk',           group: 'Walking',      sets: null, reps: null },
+  { name: 'Zone 2 Walk',    group: 'Walking',      sets: null, reps: null },
+  { name: 'Run',            group: 'Running',      sets: null, reps: null },
+  { name: 'Treadmill Run',  group: 'Running',      sets: null, reps: null },
+  { name: 'Trail Run',      group: 'Running',      sets: null, reps: null },
+  { name: 'Bike',           group: 'Cycling',      sets: null, reps: null },
+  { name: 'Spin Class',     group: 'Cycling',      sets: null, reps: null },
+  { name: 'Swim',           group: 'Swimming',     sets: null, reps: null },
+  { name: 'Rowing',         group: 'Rowing',       sets: null, reps: null },
+  { name: 'Stair Climber',  group: 'Climbing',     sets: null, reps: null },
+  { name: 'Hike',           group: 'Walking',      sets: null, reps: null },
+  { name: 'Yoga',           group: 'Mobility',     sets: null, reps: null },
+  { name: 'Pilates',        group: 'Mobility',     sets: null, reps: null },
+  { name: 'HIIT',           group: 'Conditioning', sets: null, reps: null },
+];
+
+const RECOVERY_LIBRARY = [
+  { name: 'Steam',          group: 'Heat',         sets: null, reps: null },
+  { name: 'Sauna',          group: 'Heat',         sets: null, reps: null },
+  { name: 'Hot Bath',       group: 'Heat',         sets: null, reps: null },
+  { name: 'Ice Bath',       group: 'Cold',         sets: null, reps: null },
+  { name: 'Cold Shower',    group: 'Cold',         sets: null, reps: null },
+  { name: 'Stretching',     group: 'Mobility',     sets: null, reps: null },
+  { name: 'Foam Roll',      group: 'Mobility',     sets: null, reps: null },
+  { name: 'Massage',        group: 'Mobility',     sets: null, reps: null },
+  { name: 'Meditation',     group: 'Mind',         sets: null, reps: null },
+  { name: 'Breathwork',     group: 'Mind',         sets: null, reps: null },
+  { name: 'Nap',            group: 'Mind',         sets: null, reps: null },
+];
+
+// Single-select picker for the activity log modal. Shows a category-appropriate
+// library plus the user's own past activity types under "Yours". Invokes onPick
+// with the chosen library item and closes itself.
+function openActivityTypePicker(category, onPick) {
+  let library = EXERCISE_LIBRARY;
+  if (category === 'cardio')   library = CARDIO_LIBRARY;
+  if (category === 'recovery') library = RECOVERY_LIBRARY;
+
+  // User's past types for this category — pulled from today + history (state.todayActivities only for now)
+  const seen = new Set();
+  const yours = [];
+  (state.todayActivities || []).forEach(a => {
+    if (a.category !== category) return;
+    const key = (a.type || '').trim();
+    if (!key) return;
+    if (library.some(x => x.name.toLowerCase() === key.toLowerCase())) return;
+    if (!seen.has(key.toLowerCase())) {
+      seen.add(key.toLowerCase());
+      yours.push({ name: key, group: 'Yours', sets: a.metadata?.sets || null, reps: a.metadata?.reps || null });
+    }
+  });
+
+  const all = [...yours, ...library];
+  const groups = {};
+  all.forEach(item => {
+    if (!groups[item.group]) groups[item.group] = [];
+    groups[item.group].push(item);
+  });
+  const groupOrder = ['Yours', 'Push', 'Pull', 'Legs', 'Core', 'Walking', 'Running', 'Cycling', 'Swimming', 'Rowing', 'Climbing', 'Mobility', 'Conditioning', 'Heat', 'Cold', 'Mind'];
+  const orderedGroups = groupOrder.filter(g => groups[g]);
+
+  showModal(`
+    <h2>Pick ${escapeHtml(category)}</h2>
+    <div class="search-wrap" style="margin-bottom: 12px">
+      <div class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16 16l4 4"/></svg></div>
+      <input class="search-input" id="act-pick-search" type="text" placeholder="Filter" autocomplete="off">
+    </div>
+    <div id="act-pick-list" style="max-height: 50vh; overflow-y: auto; margin-bottom: 14px">
+      ${orderedGroups.map(g => `
+        <div class="group-label">${escapeHtml(g)}</div>
+        ${groups[g].map(item => `
+          <div class="stack-item" data-pick-name="${escapeHtml(item.name)}" data-pick-sets="${item.sets ?? ''}" data-pick-reps="${item.reps ?? ''}">
+            <div class="stack-item-body">
+              <div class="stack-item-name">${escapeHtml(item.name)}</div>
+              ${(item.sets && item.reps) ? `<div class="stack-item-meta">${item.sets} × ${item.reps}</div>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      `).join('')}
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Cancel</button>
+    </div>
+  `, (m) => {
+    $('#act-pick-search').oninput = (e) => {
+      const q = e.target.value.toLowerCase();
+      m.querySelectorAll('[data-pick-name]').forEach(row => {
+        row.style.display = !q || row.dataset.pickName.toLowerCase().includes(q) ? '' : 'none';
+      });
+      m.querySelectorAll('.group-label').forEach(h => {
+        let next = h.nextElementSibling;
+        let anyVisible = false;
+        while (next && !next.classList.contains('group-label')) {
+          if (next.style.display !== 'none') { anyVisible = true; break; }
+          next = next.nextElementSibling;
+        }
+        h.style.display = anyVisible || !q ? '' : 'none';
+      });
+    };
+    m.querySelectorAll('[data-pick-name]').forEach(row => row.onclick = () => {
+      const item = {
+        name: row.dataset.pickName,
+        sets: row.dataset.pickSets ? parseInt(row.dataset.pickSets, 10) : null,
+        reps: row.dataset.pickReps ? parseInt(row.dataset.pickReps, 10) : null,
+      };
+      closeModal();
+      if (onPick) onPick(item);
+    });
+  });
+}
+
 // Seed library of common exercises grouped by movement pattern. Multi-select
 // when building a template. User can add custom exercises too.
 const EXERCISE_LIBRARY = [
@@ -2851,8 +2965,11 @@ function openLogActivityModal(existing = null) {
     </div>
 
     <div class="modal-section">
-      <div class="label">Name / type</div>
-      <input id="act-type" type="text" value="${escapeHtml(existing?.type || '')}" placeholder="Push Day, Zone 2 walk, Steam…">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px">
+        <div class="label" style="margin-bottom: 0">Name / type</div>
+        <button type="button" id="act-pick-list" class="head-link" style="border: none; background: none; padding: 0; cursor: pointer">Pick from list</button>
+      </div>
+      <input id="act-type" type="text" value="${escapeHtml(existing?.type || '')}" placeholder="Bench press, Zone 2 walk, Steam…">
     </div>
 
     <div id="act-strength" style="${cat === 'strength' ? '' : 'display:none'}">
@@ -2897,6 +3014,31 @@ function openLogActivityModal(existing = null) {
       c.classList.add('selected'); category = c.dataset.cat;
       $('#act-strength').style.display = (category === 'strength') ? '' : 'none';
     });
+
+    $('#act-pick-list').onclick = () => {
+      // Stash form values so we can restore them after the picker closes
+      // and reopens the activity modal cleanly.
+      closeModal();
+      setTimeout(() => {
+        openActivityTypePicker(category, (item) => {
+          // Reopen the activity modal with the picked name + defaults pre-loaded.
+          const draft = {
+            ...existing,
+            type: item.name,
+            category,
+            metadata: {
+              ...(existing?.metadata || {}),
+              ...(category === 'strength' ? {
+                sets: item.sets ?? existing?.metadata?.sets ?? null,
+                reps: item.reps ?? existing?.metadata?.reps ?? null,
+              } : {}),
+            },
+          };
+          // Use the existing edit flow — open the form with prefilled values.
+          openLogActivityModal(draft);
+        });
+      }, 80);
+    };
 
     $('#act-save').onclick = async () => {
       const type = $('#act-type').value.trim() || null;
