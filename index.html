@@ -589,6 +589,64 @@
   .exercise-row-sets { font-family: var(--font-body); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; width: 70px; text-align: right; }
   .exercise-row-x { color: var(--muted); padding: 4px 8px; cursor: pointer; }
 
+  /* ───── v2: Weekly Digest (chunk 11) — magazine layout ───── */
+  .dig-eyebrow { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted-soft); font-weight: 600; margin-bottom: 12px; }
+  .dig-headline { font-family: var(--font-display); font-weight: 500; font-size: 26px; line-height: 1.2; letter-spacing: -0.015em; color: var(--text); margin-bottom: 14px; }
+  .dig-headline em { font-style: italic; color: var(--accent-deep); font-weight: 500; }
+  .dig-narrative { font-family: var(--font-display); font-weight: 400; font-size: 15px; line-height: 1.55; color: var(--muted); letter-spacing: -0.005em; margin-bottom: 20px; }
+  .dig-meta-strip { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background: var(--border-soft); border: 1px solid var(--border-soft); border-radius: var(--radius); overflow: hidden; margin-bottom: 28px; }
+  .dig-meta-cell { background: var(--card-bg); padding: 14px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .dig-meta-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+  .dig-meta-val { font-family: var(--font-display); font-weight: 500; font-size: 22px; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .dig-meta-delta { font-family: var(--font-body); font-size: 11px; font-weight: 500; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .dig-meta-delta.up   { color: var(--good); }
+  .dig-meta-delta.down { color: var(--warn); }
+  .dig-meta-delta.flat { color: var(--muted-soft); }
+
+  .dig-section-mark { display: flex; align-items: center; gap: 12px; margin: 8px 2px 16px; }
+  .dig-section-mark .rule { flex: 1; height: 1px; background: var(--border-soft); }
+  .dig-section-mark .label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted-soft); font-weight: 600; }
+
+  .lens-row { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding: 2px; }
+  .lens-row::-webkit-scrollbar { display: none; }
+  .lens-chip { flex-shrink: 0; padding: 8px 14px; background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: 999px; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0.01em; cursor: pointer; }
+  .lens-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  .lens-bar-row { display: grid; grid-template-columns: 100px 1fr 64px; align-items: center; gap: 10px; padding: 8px 0; }
+  .lens-bar-label { font-family: var(--font-body); font-size: 12px; color: var(--muted); letter-spacing: 0.02em; }
+  .lens-bar-track { height: 10px; background: var(--card-bg); border-radius: 5px; overflow: hidden; position: relative; }
+  .lens-bar-fill { height: 100%; background: var(--accent-deep); border-radius: 5px; transition: width 0.3s; }
+  .lens-bar-fill.good { background: var(--good); }
+  .lens-bar-fill.warn { background: var(--warn); }
+  .lens-bar-fill.dim { background: var(--border); }
+  .lens-bar-val { font-family: var(--font-display); font-weight: 500; font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: -0.005em; }
+  .lens-bar-val .n { font-family: var(--font-body); font-size: 10px; color: var(--muted-soft); font-weight: 400; margin-left: 4px; }
+
+  .dig-signal-card { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; }
+  .dig-signal-card.wins { border-left: 3px solid var(--good); }
+  .dig-signal-card.drags { border-left: 3px solid var(--warn); }
+  .dig-signal-card .label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; margin-bottom: 8px; }
+  .dig-signal-card ul { margin: 0; padding-left: 16px; }
+  .dig-signal-card li { font-family: var(--font-display); font-size: 14px; line-height: 1.45; color: var(--text); margin-bottom: 6px; }
+  .dig-signal-card li:last-child { margin-bottom: 0; }
+  .dig-signal-card li em { font-style: italic; color: var(--accent-deep); }
+
+  .dig-experiment { background: var(--text); color: var(--bg); border-radius: var(--radius); padding: 24px 22px 20px; margin-bottom: 14px; }
+  .dig-experiment .eyebrow { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245, 242, 238, 0.55); font-weight: 600; margin-bottom: 12px; }
+  .dig-experiment .text { font-family: var(--font-display); font-weight: 500; font-size: 19px; line-height: 1.35; letter-spacing: -0.005em; margin-bottom: 14px; }
+  .dig-experiment .text em { font-style: italic; color: rgba(245, 242, 238, 0.85); font-weight: 500; }
+  .dig-experiment .meta { font-family: var(--font-body); font-size: 11px; color: rgba(245, 242, 238, 0.55); letter-spacing: 0.02em; margin-bottom: 16px; }
+  .dig-experiment .acts { display: flex; gap: 10px; }
+  .dig-experiment .act { flex: 1; padding: 12px 14px; border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 13px; font-weight: 500; letter-spacing: 0.01em; cursor: pointer; border: none; }
+  .dig-experiment .act.primary { background: var(--bg); color: var(--text); }
+  .dig-experiment .act.ghost { background: transparent; color: rgba(245, 242, 238, 0.7); border: 1px solid rgba(245, 242, 238, 0.25); }
+  .dig-experiment .act:active { opacity: 0.85; }
+
+  .dig-empty { background: var(--card-bg-warm); border: 1px dashed var(--border); border-radius: var(--radius); padding: 28px 22px; text-align: center; margin-bottom: 14px; }
+  .dig-empty-title { font-family: var(--font-display); font-weight: 500; font-size: 18px; letter-spacing: -0.005em; }
+  .dig-empty-sub { font-family: var(--font-body); font-size: 13px; color: var(--muted); margin-top: 8px; line-height: 1.4; }
+  .dig-empty .photos-gate-btn { margin-top: 16px; }
+
   /* ───── v2: Body sub-screen (chunk 10) ───── */
   .body-hero { background: var(--card-bg-warm); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 20px 22px 18px; margin-bottom: 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   .body-hero-num { font-family: var(--font-display); font-weight: 500; font-size: 44px; line-height: 1; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; }
@@ -775,6 +833,8 @@ let state = {
   progressFilter: 'all',
   bodyMetrics: [],             // tide_body_metrics rows, date desc
   bodyRange: '3M',
+  latestDigest: null,          // most recent tide_digests row
+  digestLens: 'drinks_sleep',
 };
 
 const MEAL_DEFAULTS = { breakfast: 400, lunch: 600, dinner: 700, snack: 200 };
@@ -1392,6 +1452,7 @@ function render() {
   else if (screen === 'workouts') renderWorkoutsScreen();
   else if (screen === 'progress') renderProgressScreen();
   else if (screen === 'body') renderBodyScreen();
+  else if (screen === 'digest') renderDigestScreen();
   mountBottomNav(screen === 'home' ? (state.tab || null) : null);
 }
 
@@ -1577,8 +1638,8 @@ function renderPulseHome() {
   // Action button
   $('#pulse-action').onclick = () => routePulseAction(action.target);
 
-  // Digest card → Patterns (chunk 11 will replace this with the digest expanded view)
-  $('#digest-card').onclick = () => { state.screen = 'patterns'; render(); };
+  // Digest card → digest expanded view (chunk 11)
+  $('#digest-card').onclick = () => { state.screen = 'digest'; render(); };
 
   // Kick the Pulse generation if no cached entry for today.
   if (!cached) {
@@ -1702,9 +1763,13 @@ function sleepDeltaSpan(diffMin) {
 }
 
 function renderDigestHeadlinePlaceholder() {
-  // Real digest pipeline ships in chunk 11. Until then, surface a neutral placeholder
-  // that points the user to the existing Patterns screen.
-  return 'Last 7 days — tap to see the joined view.';
+  // Show the latest digest headline (stripping <em> tags) if we have one,
+  // otherwise a neutral "generate" cue.
+  const d = state.latestDigest;
+  if (d && d.headline) {
+    return d.headline.replace(/<\/?em>/g, '');
+  }
+  return 'No digest yet — tap to generate this week\'s.';
 }
 
 // ---------------------------------------------------------------------------
@@ -3249,6 +3314,447 @@ function openActivityDetail(id) {
   // Strength rows get the per-set logger; cardio/recovery use the flat edit form.
   if (a.category === 'strength') openSetLoggerModal(a);
   else openLogActivityModal(a);
+}
+
+// ---------------------------------------------------------------------------
+// Weekly Digest (v2 chunk 11) — magazine-style summary, four acts
+// ---------------------------------------------------------------------------
+
+const DIGEST_LENSES = [
+  { id: 'drinks_sleep',      label: 'Drinks × Sleep' },
+  { id: 'caffeine_hrv',      label: 'Caffeine × HRV' },
+  { id: 'hydration_readiness', label: 'Hydration × Readiness' },
+  { id: 'train_recovery',    label: 'Train × Recovery' },
+];
+
+// Monday of the most recently *completed* week, in YYYY-MM-DD.
+function lastCompletedWeekStart(today = new Date()) {
+  const d = new Date(today);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay(); // 0 Sun … 6 Sat
+  // Days since the last Monday (today inclusive)
+  const sinceMonday = (day + 6) % 7;
+  // Go back to that Monday, then another 7 days for "last completed week"
+  d.setDate(d.getDate() - sinceMonday - 7);
+  return d.toISOString().slice(0, 10);
+}
+
+function weekRange(weekStart) {
+  // weekStart is Monday YYYY-MM-DD; return [start, end] dates (Mon..Sun inclusive)
+  return [weekStart, addDays(weekStart, 6)];
+}
+
+async function loadLatestDigest() {
+  try {
+    const rows = await sbFetch('/tide_digests?order=week_start.desc&limit=1');
+    state.latestDigest = (rows && rows[0]) || null;
+    return state.latestDigest;
+  } catch (e) {
+    console.warn('loadLatestDigest failed:', e.message);
+    state.latestDigest = null;
+    return null;
+  }
+}
+
+async function loadDigestByWeek(weekStart) {
+  try {
+    const rows = await sbFetch(`/tide_digests?week_start=eq.${weekStart}&limit=1`);
+    return (rows && rows[0]) || null;
+  } catch (e) {
+    console.warn('loadDigestByWeek failed:', e.message);
+    return null;
+  }
+}
+
+// Pull every input we need for the week + the prior week (for deltas).
+async function loadDigestSourceData(weekStart) {
+  const [start, end] = weekRange(weekStart);
+  const prevStart = addDays(start, -7);
+  const overallStart = prevStart;
+  const overallEnd   = end;
+  try {
+    const [oura, intake, indulgeSessions, activities, stackLogs, stackItems] = await Promise.all([
+      sbFetch(`/tide_oura_daily?date=gte.${overallStart}&date=lte.${overallEnd}&order=date.asc`).catch(() => []),
+      sbFetch(`/tide_intake_logs?log_date=gte.${overallStart}&log_date=lte.${overallEnd}&order=logged_at.asc`).catch(() => []),
+      sbFetch(`/tide_indulge_sessions?started_at=gte.${overallStart}T00:00:00&order=started_at.asc&select=*,entries:tide_indulge_entries(id,kind,standard_units)`).catch(() => []),
+      sbFetch(`/tide_activities?date=gte.${overallStart}&date=lte.${overallEnd}&order=date.asc`).catch(() => []),
+      sbFetch(`/tide_stack_logs?log_date=gte.${overallStart}&log_date=lte.${overallEnd}&order=log_date.asc`).catch(() => []),
+      sbFetch('/tide_stack_items?active=eq.true').catch(() => []),
+    ]);
+    return { weekStart, start, end, prevStart,
+      oura: oura || [], intake: intake || [], indulge: indulgeSessions || [],
+      activities: activities || [], stackLogs: stackLogs || [], stackItems: stackItems || [] };
+  } catch (e) {
+    console.warn('loadDigestSourceData failed:', e.message);
+    throw e;
+  }
+}
+
+// Helpers
+const inRange = (d, start, end) => d >= start && d <= end;
+const meanOf = (arr) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+
+function digestWeekMeta(data) {
+  const { start, end, prevStart, oura, stackLogs, stackItems } = data;
+  const thisWeek = oura.filter(r => inRange(r.date, start, end));
+  const prevWeek = oura.filter(r => inRange(r.date, prevStart, addDays(start, -1)));
+
+  const avgReadiness = meanOf(thisWeek.map(r => r.readiness_score).filter(v => v != null));
+  const prevReadiness = meanOf(prevWeek.map(r => r.readiness_score).filter(v => v != null));
+  const avgHrv = meanOf(thisWeek.map(r => r.hrv_avg).filter(v => v != null));
+  const prevHrv = meanOf(prevWeek.map(r => r.hrv_avg).filter(v => v != null));
+
+  // Stack hit: % of (scheduled, required) item check-offs done this week
+  const requiredItems = stackItems.filter(s => s.required && s.schedule !== 'as_needed');
+  const expected = requiredItems.length * 7;
+  const hits = stackLogs.filter(l => inRange(l.log_date, start, end) && requiredItems.some(s => s.id === l.stack_item_id)).length;
+  const stackHitPct = expected ? Math.round((hits / expected) * 100) : null;
+  // For prev-week comparison
+  const prevHits = stackLogs.filter(l => inRange(l.log_date, prevStart, addDays(start, -1)) && requiredItems.some(s => s.id === l.stack_item_id)).length;
+  const prevStackPct = expected ? Math.round((prevHits / expected) * 100) : null;
+
+  return {
+    readiness: { avg: avgReadiness != null ? Math.round(avgReadiness) : null, delta: (avgReadiness != null && prevReadiness != null) ? Math.round(avgReadiness - prevReadiness) : null },
+    hrv:       { avg: avgHrv != null ? Math.round(avgHrv) : null,             delta: (avgHrv != null && prevHrv != null) ? Math.round(avgHrv - prevHrv) : null },
+    stack:     { pct: stackHitPct,                                            delta: (stackHitPct != null && prevStackPct != null) ? stackHitPct - prevStackPct : null },
+  };
+}
+
+// Bucket helpers — each returns { buckets: [{label, n, avg}], unit, label }
+function lensDrinksSleep(data) {
+  const { start, end, indulge, oura } = data;
+  const sessions = indulge.filter(s => {
+    const d = (s.started_at || '').slice(0, 10);
+    return inRange(d, start, end);
+  });
+  const drinksByOuraDate = {};
+  sessions.forEach(s => {
+    const od = ouraDateForSession(s.started_at);
+    const alc = (s.entries || []).filter(e => e.kind === 'alcohol').length;
+    drinksByOuraDate[od] = (drinksByOuraDate[od] || 0) + alc;
+  });
+  const rows = oura.filter(r => inRange(r.date, start, end)).map(r => ({
+    sleep: r.sleep_score, count: drinksByOuraDate[r.date] || 0,
+  }));
+  const buckets = ['0', '1-2', '3-4', '5+'].map(b => {
+    const matches = rows.filter(r => drinkBucket(r.count) === b && r.sleep != null);
+    return { label: b === '0' ? 'No drinks' : b + ' drinks', n: matches.length, avg: meanOf(matches.map(r => r.sleep)) };
+  });
+  return { id: 'drinks_sleep', label: 'Sleep score', max: 100, buckets };
+}
+
+function lensCaffeineHrv(data) {
+  const { start, end, intake, oura } = data;
+  // Daily caffeine mg sum
+  const mgByDate = {};
+  intake.filter(r => r.category === 'caffeine').forEach(r => {
+    const d = r.log_date || (r.logged_at || '').slice(0, 10);
+    if (!d) return;
+    mgByDate[d] = (mgByDate[d] || 0) + (Number(r.quantity) || 0);
+  });
+  const bucketFor = (mg) => mg < 50 ? 'none' : mg < 150 ? 'low' : mg < 300 ? 'mid' : 'high';
+  const labels = { none: '< 50mg', low: '50–150', mid: '150–300', high: '300+' };
+  // HRV next morning ≈ same date's row (Oura reports last night's sleep as today's date)
+  const rows = oura.filter(r => inRange(r.date, start, end)).map(r => {
+    const prev = addDays(r.date, -1); // caffeine taken day before sleep
+    return { hrv: r.hrv_avg, mg: mgByDate[prev] || 0 };
+  });
+  const buckets = ['none', 'low', 'mid', 'high'].map(b => {
+    const matches = rows.filter(r => bucketFor(r.mg) === b && r.hrv != null);
+    return { label: labels[b], n: matches.length, avg: meanOf(matches.map(r => r.hrv)) };
+  });
+  return { id: 'caffeine_hrv', label: 'HRV', max: 100, buckets };
+}
+
+function lensHydrationReadiness(data) {
+  const { start, end, intake, oura } = data;
+  const mlByDate = {};
+  intake.filter(r => r.category === 'water').forEach(r => {
+    const d = r.log_date || (r.logged_at || '').slice(0, 10);
+    if (!d) return;
+    mlByDate[d] = (mlByDate[d] || 0) + (Number(r.quantity) || 0);
+  });
+  const bucketFor = (ml) => ml < 1000 ? 'low' : ml < 2000 ? 'mid' : ml < 3000 ? 'good' : 'high';
+  const labels = { low: '< 1L', mid: '1–2L', good: '2–3L', high: '3L+' };
+  // Readiness reflects same-day state
+  const rows = oura.filter(r => inRange(r.date, start, end)).map(r => ({
+    readiness: r.readiness_score, ml: mlByDate[r.date] || 0,
+  }));
+  const buckets = ['low', 'mid', 'good', 'high'].map(b => {
+    const matches = rows.filter(r => bucketFor(r.ml) === b && r.readiness != null);
+    return { label: labels[b], n: matches.length, avg: meanOf(matches.map(r => r.readiness)) };
+  });
+  return { id: 'hydration_readiness', label: 'Readiness', max: 100, buckets };
+}
+
+function lensTrainRecovery(data) {
+  const { start, end, activities, oura } = data;
+  // Sessions per day (strength only)
+  const sessByDate = {};
+  activities.filter(a => a.category === 'strength').forEach(a => {
+    const d = a.date;
+    if (!d) return;
+    sessByDate[d] = (sessByDate[d] || 0) + 1;
+  });
+  const bucketFor = (n) => n === 0 ? 'rest' : n <= 2 ? 'light' : n <= 5 ? 'mid' : 'heavy';
+  const labels = { rest: 'Rest day', light: '1–2 ex', mid: '3–5 ex', heavy: '6+ ex' };
+  const rows = oura.filter(r => inRange(r.date, start, end)).map(r => {
+    const prev = addDays(r.date, -1);
+    return { readiness: r.readiness_score, n: sessByDate[prev] || 0 };
+  });
+  const buckets = ['rest', 'light', 'mid', 'heavy'].map(b => {
+    const matches = rows.filter(r => bucketFor(r.n) === b && r.readiness != null);
+    return { label: labels[b], n: matches.length, avg: meanOf(matches.map(r => r.readiness)) };
+  });
+  return { id: 'train_recovery', label: 'Next-morning readiness', max: 100, buckets };
+}
+
+function buildAllLenses(data) {
+  return [lensDrinksSleep(data), lensCaffeineHrv(data), lensHydrationReadiness(data), lensTrainRecovery(data)];
+}
+
+async function generateDigestForWeek(weekStart) {
+  const data = await loadDigestSourceData(weekStart);
+  const week_meta = digestWeekMeta(data);
+  const lenses = buildAllLenses(data);
+
+  // Lightweight payload for Claude — counts + bucket averages, not raw rows.
+  const promptCtx = {
+    week_start: weekStart,
+    avg_readiness_this_week: week_meta.readiness.avg,
+    avg_readiness_delta_vs_prev: week_meta.readiness.delta,
+    avg_hrv_this_week: week_meta.hrv.avg,
+    avg_hrv_delta_vs_prev: week_meta.hrv.delta,
+    stack_hit_pct: week_meta.stack.pct,
+    stack_delta_vs_prev: week_meta.stack.delta,
+    lenses: lenses.map(l => ({
+      id: l.id,
+      label: l.label,
+      buckets: l.buckets.map(b => ({ label: b.label, n: b.n, avg: b.avg != null ? Math.round(b.avg) : null })),
+    })),
+  };
+
+  const fallback = {
+    headline: 'A week of inputs.',
+    narrative: 'Not enough joined signal to draw a sharp conclusion this week. Keep logging, the picture sharpens fast.',
+    wins: [],
+    drags: [],
+    experiment: 'Pick one input that felt sloppy this week and tighten it.',
+    experiment_candidates: [],
+  };
+  const pj = await callClaudeJSON(
+    `You are writing this week's "digest" for a body-signal tracking app. Magazine-style, tight, calm.
+Return JSON with EXACTLY these fields:
+- headline (string, 8-14 words, one short Fraunces-style sentence with ONE clause wrapped in <em>…</em> to emphasize)
+- narrative (string, 2-3 sentences, muted reflective tone, no numbers that aren't in the data)
+- wins (array of 1-3 strings, each one short bullet, "<em>…</em>" allowed around one phrase per bullet)
+- drags (array of 0-3 strings, same shape as wins)
+- experiment (string, ONE actionable change to try this week, 8-16 words, "<em>…</em>" allowed)
+- experiment_candidates (array of 2-3 strings, alternate experiments)
+
+Data: ${JSON.stringify(promptCtx)}`,
+    fallback
+  );
+
+  const payload = {
+    week_start: weekStart,
+    headline: pj.headline || fallback.headline,
+    narrative: pj.narrative || fallback.narrative,
+    week_meta_json: week_meta,
+    wins_json: Array.isArray(pj.wins) ? pj.wins : fallback.wins,
+    drags_json: Array.isArray(pj.drags) ? pj.drags : fallback.drags,
+    evidence_lenses_json: lenses,
+    experiment_text: pj.experiment || fallback.experiment,
+    experiment_candidates_json: Array.isArray(pj.experiment_candidates) ? pj.experiment_candidates : fallback.experiment_candidates,
+    generated_at: new Date().toISOString(),
+  };
+
+  // Upsert by week_start
+  const existing = await loadDigestByWeek(weekStart);
+  let saved = null;
+  if (existing) {
+    const result = await sbFetch(`/tide_digests?id=eq.${existing.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+    saved = result && result[0];
+  } else {
+    const result = await sbFetch('/tide_digests', { method: 'POST', body: JSON.stringify(payload) });
+    saved = result && result[0];
+  }
+  state.latestDigest = saved;
+  return saved;
+}
+
+function renderLensBars(lens) {
+  if (!lens || !lens.buckets) return '';
+  const max = lens.max || Math.max(1, ...lens.buckets.map(b => b.avg || 0));
+  return lens.buckets.map(b => {
+    if (b.avg == null) {
+      return `
+        <div class="lens-bar-row">
+          <div class="lens-bar-label">${escapeHtml(b.label)}</div>
+          <div class="lens-bar-track"><div class="lens-bar-fill dim" style="width: 0%"></div></div>
+          <div class="lens-bar-val">—</div>
+        </div>
+      `;
+    }
+    const pct = Math.max(2, Math.min(100, (b.avg / max) * 100));
+    // Quality coding: higher = good across all these metrics, so the bar color
+    // shifts good above the median bucket value, warn below, neutral otherwise.
+    let cls = '';
+    const knownAvgs = lens.buckets.map(x => x.avg).filter(v => v != null);
+    if (knownAvgs.length > 1) {
+      const median = knownAvgs.slice().sort((a, b) => a - b)[Math.floor(knownAvgs.length / 2)];
+      if (b.avg > median) cls = 'good';
+      else if (b.avg < median) cls = 'warn';
+    }
+    return `
+      <div class="lens-bar-row">
+        <div class="lens-bar-label">${escapeHtml(b.label)}</div>
+        <div class="lens-bar-track"><div class="lens-bar-fill ${cls}" style="width: ${pct.toFixed(1)}%"></div></div>
+        <div class="lens-bar-val">${Math.round(b.avg)}<span class="n">n=${b.n}</span></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderMetaDelta(delta, suffix = '') {
+  if (delta == null) return '<span class="dig-meta-delta flat">—</span>';
+  if (delta === 0) return '<span class="dig-meta-delta flat">flat</span>';
+  const cls = delta > 0 ? 'up' : 'down';
+  const sign = delta > 0 ? '+' : '−';
+  return `<span class="dig-meta-delta ${cls}">${sign}${Math.abs(delta)}${suffix}</span>`;
+}
+
+function renderDigestScreen() {
+  const d = state.latestDigest;
+  const lens = state.digestLens || 'drinks_sleep';
+  const lenses = (d && d.evidence_lenses_json) || [];
+  const activeLens = lenses.find(l => l.id === lens) || lenses[0];
+  const meta = (d && d.week_meta_json) || null;
+
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="lib-back" id="dig-back">‹ Tide</div>
+        <div class="tab-title">Digest</div>
+        <div class="tab-sub">${d ? 'Week of ' + escapeHtml(fmtDate(d.week_start + 'T12:00:00')) : 'not yet generated'}</div>
+      </div>
+      <div class="head-link" id="dig-regen">${d ? 'Regenerate' : ''}</div>
+    </header>
+
+    ${!d ? `
+      <div class="dig-empty">
+        <div class="dig-empty-title">No digest yet</div>
+        <div class="dig-empty-sub">Tide synthesizes last week's drinking, hydration, training, recovery, and sleep into a one-screen read. Generate it when you have a few days of data logged.</div>
+        <button class="photos-gate-btn" id="dig-generate">Generate this week</button>
+      </div>
+    ` : `
+      <!-- Act 1: Thesis -->
+      <div class="dig-eyebrow">Week of ${escapeHtml(fmtDate(d.week_start + 'T12:00:00'))}</div>
+      <div class="dig-headline">${d.headline || ''}</div>
+      <div class="dig-narrative">${escapeHtml(d.narrative || '')}</div>
+
+      ${meta ? `
+        <div class="dig-meta-strip">
+          <div class="dig-meta-cell">
+            <div class="dig-meta-label">Readiness</div>
+            <div class="dig-meta-val">${meta.readiness?.avg ?? '—'}</div>
+            ${renderMetaDelta(meta.readiness?.delta)}
+          </div>
+          <div class="dig-meta-cell">
+            <div class="dig-meta-label">HRV</div>
+            <div class="dig-meta-val">${meta.hrv?.avg ?? '—'}</div>
+            ${renderMetaDelta(meta.hrv?.delta)}
+          </div>
+          <div class="dig-meta-cell">
+            <div class="dig-meta-label">Stack hit</div>
+            <div class="dig-meta-val">${meta.stack?.pct != null ? meta.stack.pct + '%' : '—'}</div>
+            ${renderMetaDelta(meta.stack?.delta, '%')}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Act 2: Evidence -->
+      <div class="dig-section-mark"><span class="rule"></span><span class="label">The evidence</span><span class="rule"></span></div>
+      <div class="lens-row">
+        ${DIGEST_LENSES.map(l => `<div class="lens-chip ${l.id === (activeLens?.id) ? 'active' : ''}" data-lens="${l.id}">${escapeHtml(l.label)}</div>`).join('')}
+      </div>
+      ${activeLens ? `
+        <div class="card" style="padding: 14px 18px">
+          <div class="muted small" style="margin-bottom: 8px">${escapeHtml(activeLens.label)} ranges</div>
+          ${renderLensBars(activeLens)}
+        </div>
+      ` : ''}
+
+      <!-- Act 3: Signals -->
+      <div class="dig-section-mark"><span class="rule"></span><span class="label">Signals</span><span class="rule"></span></div>
+      ${(d.wins_json && d.wins_json.length) ? `
+        <div class="dig-signal-card wins">
+          <div class="label">Wins</div>
+          <ul>${d.wins_json.map(w => `<li>${w}</li>`).join('')}</ul>
+        </div>
+      ` : ''}
+      ${(d.drags_json && d.drags_json.length) ? `
+        <div class="dig-signal-card drags">
+          <div class="label">Drags</div>
+          <ul>${d.drags_json.map(w => `<li>${w}</li>`).join('')}</ul>
+        </div>
+      ` : ''}
+
+      <!-- Act 4: Experiment -->
+      <div class="dig-section-mark"><span class="rule"></span><span class="label">The experiment</span><span class="rule"></span></div>
+      <div class="dig-experiment">
+        <div class="eyebrow">Try this week</div>
+        <div class="text">${d.experiment_text || ''}</div>
+        <div class="meta">Tracked daily · result in next Sunday's digest</div>
+        <div class="acts">
+          <button class="act primary" id="dig-commit">Commit</button>
+          <button class="act ghost" id="dig-pick-another">Pick another</button>
+        </div>
+      </div>
+    `}
+
+    <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
+  `;
+
+  $('#dig-back').onclick = () => { state.screen = 'home'; state.tab = null; render(); };
+  $('#any-fab').onclick = openLogAny;
+  $('#dig-generate')?.addEventListener('click', () => generateAndRefresh(lastCompletedWeekStart()));
+  $('#dig-regen')?.addEventListener('click', () => generateAndRefresh(d?.week_start || lastCompletedWeekStart()));
+  $$('[data-lens]').forEach(c => c.onclick = () => { state.digestLens = c.dataset.lens; renderDigestScreen(); });
+  $('#dig-commit')?.addEventListener('click', () => toast('Committed — Course handoff lands in chunk 12'));
+  $('#dig-pick-another')?.addEventListener('click', () => cycleExperiment());
+}
+
+async function generateAndRefresh(weekStart) {
+  toast('Generating digest…');
+  try {
+    await generateDigestForWeek(weekStart);
+    if (state.screen === 'digest') renderDigestScreen();
+  } catch (e) {
+    toast('Could not generate: ' + e.message);
+  }
+}
+
+async function cycleExperiment() {
+  const d = state.latestDigest;
+  if (!d) return;
+  const candidates = d.experiment_candidates_json || [];
+  if (!candidates.length) { toast('No alternates'); return; }
+  const current = d.experiment_text || '';
+  const idx = candidates.findIndex(c => c === current);
+  const next = candidates[(idx + 1) % candidates.length] || candidates[0];
+  if (next === current) { toast('Only one alternate'); return; }
+  // Swap in place; push the previous text into the candidates pool.
+  const newCandidates = [current, ...candidates.filter(c => c !== next && c !== current)];
+  const result = await sbFetch(`/tide_digests?id=eq.${d.id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ experiment_text: next, experiment_candidates_json: newCandidates }),
+  });
+  if (result && result[0]) state.latestDigest = result[0];
+  renderDigestScreen();
 }
 
 // ---------------------------------------------------------------------------
@@ -7787,7 +8293,7 @@ async function boot() {
   // Then refresh from server
   await loadActiveSession();
   await loadHistory();
-  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther(), loadFoodLibrary(), loadTodayActivities(), loadWorkoutTemplates(), loadRecentTemplateUses()]);
+  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther(), loadFoodLibrary(), loadTodayActivities(), loadWorkoutTemplates(), loadRecentTemplateUses(), loadLatestDigest()]);
   // Pull cached Oura today + 7d for the stat grid hero, then sync in background
   await Promise.all([loadOuraToday(), loadOura7d()]);
   if (state.screen === 'home') render();

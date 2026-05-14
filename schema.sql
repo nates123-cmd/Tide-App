@@ -17,6 +17,7 @@ drop table if exists tide_other_aliases cascade;
 drop table if exists tide_oura_daily cascade;
 drop table if exists tide_indulge_entries cascade;
 drop table if exists tide_indulge_sessions cascade;
+drop table if exists tide_digests cascade;
 drop table if exists tide_body_metrics cascade;
 drop table if exists tide_strength_sessions cascade;
 drop table if exists tide_activities cascade;
@@ -194,6 +195,22 @@ create table tide_workout_templates (
   created_at timestamptz not null default now()
 );
 
+-- 19. Weekly digests — Sunday-generated magazine article
+create table tide_digests (
+  id uuid primary key default gen_random_uuid(),
+  week_start date not null unique,
+  headline text,
+  narrative text,
+  week_meta_json jsonb,
+  wins_json jsonb,
+  drags_json jsonb,
+  evidence_lenses_json jsonb,
+  experiment_text text,
+  experiment_candidates_json jsonb,
+  generated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
 -- 18. Body metrics — weight + measurements + photos over time
 create table tide_body_metrics (
   id uuid primary key default gen_random_uuid(),
@@ -273,6 +290,7 @@ alter table tide_workout_templates enable row level security;
 alter table tide_workout_template_exercises enable row level security;
 alter table tide_strength_sessions enable row level security;
 alter table tide_body_metrics enable row level security;
+alter table tide_digests enable row level security;
 
 create policy "anon all" on tide_sessions for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_drinks for all to anon, authenticated using (true) with check (true);
@@ -292,6 +310,7 @@ create policy "anon all" on tide_workout_templates for all to anon, authenticate
 create policy "anon all" on tide_workout_template_exercises for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_strength_sessions for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_body_metrics for all to anon, authenticated using (true) with check (true);
+create policy "anon all" on tide_digests for all to anon, authenticated using (true) with check (true);
 
 grant all on
   tide_sessions,
@@ -311,7 +330,8 @@ grant all on
   tide_workout_templates,
   tide_workout_template_exercises,
   tide_strength_sessions,
-  tide_body_metrics
+  tide_body_metrics,
+  tide_digests
   to anon, authenticated, service_role;
 
 -- Indexes for the queries we'll actually run
@@ -339,5 +359,6 @@ create index tide_strength_sessions_activity_idx on tide_strength_sessions(activ
 create index tide_strength_sessions_exercise_idx on tide_strength_sessions(exercise, logged_at desc);
 create index tide_strength_sessions_weight_idx   on tide_strength_sessions(exercise, weight_lb desc);
 create index tide_body_metrics_date_idx          on tide_body_metrics(date desc);
+create index tide_digests_week_idx               on tide_digests(week_start desc);
 
 notify pgrst, 'reload schema';
