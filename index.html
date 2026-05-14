@@ -2798,6 +2798,7 @@ const ACTIVITY_CATEGORIES = [
   { id: 'cardio',   label: 'Cardio'   },
   { id: 'recovery', label: 'Recovery' },
 ];
+const CARDIO_FEELINGS = ['tough', 'fine', 'good', 'great'];
 
 // Icons keyed by category — minimal SVG glyphs.
 const ACTIVITY_ICONS = {
@@ -2906,10 +2907,14 @@ function renderActivityCard(a) {
   const strengthBit = (a.category === 'strength' && (m.sets || m.reps || m.weight_lb))
     ? `${m.sets || '?'} × ${m.reps || '?'}${m.weight_lb != null ? ` @ ${m.weight_lb} lb` : ''}`
     : null;
+  const cardioFeel = (a.category === 'cardio' && m.feeling)
+    ? `felt ${m.feeling}`
+    : null;
   const meta = [
     strengthBit,
     a.duration_min ? `${a.duration_min} min` : null,
     a.category === 'strength' && a.perceived_effort ? `RPE ${a.perceived_effort}` : null,
+    cardioFeel,
     a.notes ? a.notes : null,
   ].filter(Boolean).join(' · ');
   const icon = ACTIVITY_ICONS[a.category] || ACTIVITY_ICONS.cardio;
@@ -3000,6 +3005,13 @@ function openLogActivityModal(existing = null) {
       <input id="act-duration" type="number" inputmode="numeric" min="1" value="${existing?.duration_min || ''}" placeholder="45">
     </div>
 
+    <div id="act-cardio" class="modal-section" style="${cat === 'cardio' ? 'margin-top: 14px;' : 'display:none'}">
+      <div class="label">How'd it feel?</div>
+      <div class="grid-4" id="act-feelings">
+        ${CARDIO_FEELINGS.map(f => `<div class="chip ${initialMeta.feeling === f ? 'selected' : ''}" data-feeling="${f}" style="text-transform: capitalize">${f}</div>`).join('')}
+      </div>
+    </div>
+
     <div class="modal-section" style="margin-top: 14px">
       <div class="label">Notes</div>
       <textarea id="act-notes" rows="2" placeholder="optional">${escapeHtml(existing?.notes || '')}</textarea>
@@ -3011,10 +3023,17 @@ function openLogActivityModal(existing = null) {
     </div>
   `, (m) => {
     let category = cat;
+    let feeling = initialMeta.feeling || null;
     m.querySelectorAll('[data-cat]').forEach(c => c.onclick = () => {
       m.querySelectorAll('[data-cat]').forEach(x => x.classList.remove('selected'));
       c.classList.add('selected'); category = c.dataset.cat;
       $('#act-strength').style.display = (category === 'strength') ? '' : 'none';
+      const cardioBlock = $('#act-cardio');
+      if (cardioBlock) cardioBlock.style.display = (category === 'cardio') ? '' : 'none';
+    });
+    m.querySelectorAll('[data-feeling]').forEach(c => c.onclick = () => {
+      m.querySelectorAll('[data-feeling]').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected'); feeling = c.dataset.feeling;
     });
 
     $('#act-pick-list').onclick = () => {
@@ -3059,7 +3078,15 @@ function openLogActivityModal(existing = null) {
           sets: Number.isFinite(sets) ? sets : null,
           reps: Number.isFinite(reps) ? reps : null,
           weight_lb: Number.isFinite(weight_lb) ? weight_lb : null,
+          feeling: null,
         };
+      } else if (category === 'cardio') {
+        metadata = { ...(existing?.metadata || {}), feeling };
+      } else if (category === 'recovery') {
+        // Strip cardio-specific fields if we switched to recovery mid-edit.
+        const base = { ...(existing?.metadata || {}) };
+        delete base.feeling;
+        metadata = Object.keys(base).length ? base : null;
       }
       if (!type && !duration_min) { toast('Add a name or duration'); return; }
       const payload = { category, type, duration_min, perceived_effort, notes, metadata };
