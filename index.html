@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#A89880">
 <title>Tide</title>
 <link rel="manifest" href="manifest.json">
@@ -37,6 +37,14 @@
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* Lock horizontal motion + pinch zoom at the document level. Inner
+     elements with their own gestures (swipe-to-delete rows) still work
+     because they declare their own touch-action. */
+  html, body {
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
+  }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); line-height: 1.5; -webkit-font-smoothing: antialiased; }
   body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); min-height: 100vh; }
   #app { max-width: 560px; margin: 0 auto; padding: 20px 18px calc(96px + env(safe-area-inset-bottom)); }
