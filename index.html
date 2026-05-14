@@ -2259,23 +2259,51 @@ async function updateWorkoutTemplate(id, patch) {
   return updated;
 }
 
-// Spin up a tide_activities row from a template. Chunk 8 will hang the set
-// logging UI off this row.
+// Fan a template out into one tide_activities row per exercise. Each row
+// pre-loads sets/reps/weight from the template into metadata so the user
+// can edit (or — chunk 8 — log per-set details against the row).
 async function startSessionFromTemplate(template) {
-  const row = {
+  const exercises = template.exercises || [];
+  if (!exercises.length) {
+    toast(`${template.name} has no exercises — add some in Workouts first`);
+    return;
+  }
+  const nowIso = new Date().toISOString();
+  // Sub-second spacing on logged_at so ordering is deterministic in the
+  // Today list (newest first → first exercise on top).
+  const rows = exercises.map((e, i) => ({
     date: todayISO(),
-    type: template.name,
+    type: e.exercise_name,
     category: 'strength',
     source: 'manual',
     template_id: template.id,
-    logged_at: new Date().toISOString(),
-  };
-  const result = await sbFetch('/tide_activities', { method: 'POST', body: JSON.stringify(row) });
-  if (result && result[0]) {
-    state.todayActivities = [result[0]].concat(state.todayActivities || []);
-    state.templateLastUse = { ...(state.templateLastUse || {}), [template.id]: todayISO() };
+    notes: null,
+    perceived_effort: null,
+    duration_min: null,
+    logged_at: new Date(Date.now() + i).toISOString(),
+    metadata: {
+      sets: e.set_count || null,
+      reps: e.target_reps || null,
+      weight_lb: e.target_weight_lb ?? null,
+      source_template: template.name,
+      source_template_id: template.id,
+    },
+  }));
+  try {
+    const result = await sbFetch('/tide_activities', {
+      method: 'POST',
+      body: JSON.stringify(rows),
+    });
+    if (Array.isArray(result)) {
+      // Newest first to match the existing order=logged_at.desc load.
+      state.todayActivities = result.slice().reverse().concat(state.todayActivities || []);
+      state.templateLastUse = { ...(state.templateLastUse || {}), [template.id]: todayISO() };
+    }
+    toast(`Started · ${template.name} (${rows.length})`);
+  } catch (e) {
+    toast('Could not start: ' + e.message);
+    return;
   }
-  toast(`Started · ${template.name}`);
   render();
 }
 
