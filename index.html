@@ -448,7 +448,8 @@
   .stack-cb { width: 24px; height: 24px; border-radius: 6px; border: 1.5px solid var(--border); background: var(--bg); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: transparent; font-size: 14px; line-height: 1; transition: background 0.15s, color 0.15s, border-color 0.15s; }
   .stack-item.taken .stack-cb { background: var(--text); border-color: var(--text); color: var(--bg); }
   .stack-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .stack-item-name { font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: -0.005em; line-height: 1.2; }
+  .stack-item-name { font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: -0.005em; line-height: 1.2; display: flex; align-items: center; gap: 6px; }
+  .req-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-deep); display: inline-block; flex-shrink: 0; }
   .stack-item.taken .stack-item-name { color: var(--muted); }
   .stack-item-meta { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
   .stack-item-streak { display: flex; align-items: center; gap: 4px; font-family: var(--font-body); font-size: 11px; color: var(--muted-soft); font-weight: 500; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; flex-shrink: 0; }
@@ -2101,10 +2102,11 @@ function stackItemStreak(itemId) {
 }
 
 function fullStackStreak() {
-  // Number of consecutive days where every scheduled (morning|evening) active item has at least one log.
-  const scheduled = (state.stackItems || []).filter(s => s.schedule === 'morning' || s.schedule === 'evening');
-  if (!scheduled.length) return 0;
-  const requiredIds = scheduled.map(s => s.id);
+  // Number of consecutive days where every REQUIRED active item has at least one log.
+  // Required is opt-in per item — if nothing is marked required, no streak fires.
+  const required = (state.stackItems || []).filter(s => s.required);
+  if (!required.length) return 0;
+  const requiredIds = required.map(s => s.id);
   // Group logs by date → Set of stack_item_ids
   const byDate = {};
   (state.stackLogs || []).forEach(l => {
@@ -2141,7 +2143,15 @@ function renderStackTab() {
   const asneeded = items.filter(s => s.schedule === 'as_needed');
 
   const scheduledItems = [...morning, ...evening];
-  const scheduledDone  = scheduledItems.filter(s => takenSet.has(s.id)).length;
+  const requiredScheduled = scheduledItems.filter(s => s.required);
+  const requiredDone = requiredScheduled.filter(s => takenSet.has(s.id)).length;
+  // Fall back to all scheduled when nothing is marked required, so the count
+  // is never empty on first run.
+  const progressDenom = requiredScheduled.length || scheduledItems.length;
+  const progressNum   = requiredScheduled.length
+    ? requiredDone
+    : scheduledItems.filter(s => takenSet.has(s.id)).length;
+  const progressLabel = requiredScheduled.length ? 'Required today' : 'Today';
   const fullStreak = fullStackStreak();
   const morningDone = morning.filter(s => takenSet.has(s.id)).length;
   const eveningDone = evening.filter(s => takenSet.has(s.id)).length;
@@ -2157,13 +2167,13 @@ function renderStackTab() {
 
     <div class="stack-progress">
       <div class="stack-progress-left">
-        <div class="stack-progress-label">Today</div>
-        <div class="stack-progress-num">${scheduledDone}<span class="stack-progress-num-suffix">/ ${scheduledItems.length}</span></div>
+        <div class="stack-progress-label">${escapeHtml(progressLabel)}</div>
+        <div class="stack-progress-num">${progressNum}<span class="stack-progress-num-suffix">/ ${progressDenom}</span></div>
       </div>
       ${fullStreak > 0 ? `
         <div class="stack-streak">
           <div class="stack-streak-num">${fullStreak} day${fullStreak === 1 ? '' : 's'}</div>
-          <div class="stack-streak-label">Full-stack streak</div>
+          <div class="stack-streak-label">Required streak</div>
         </div>
       ` : ''}
     </div>
@@ -2204,12 +2214,14 @@ function renderStackGroup(label, items, takenSet, doneCount) {
 function renderStackItem(s, taken) {
   const streak = stackItemStreak(s.id);
   const hot = streak >= 14;
-  const meta = [s.dose, s.notes].filter(Boolean).join(' · ');
+  const metaParts = [s.dose, s.notes].filter(Boolean);
+  if (s.required) metaParts.unshift('Required daily');
+  const meta = metaParts.join(' · ');
   return `
     <div class="stack-item ${taken ? 'taken' : ''}" data-stack-toggle="${s.id}">
       <div class="stack-cb">${taken ? '✓' : ''}</div>
       <div class="stack-item-body">
-        <div class="stack-item-name">${escapeHtml(s.name)}</div>
+        <div class="stack-item-name">${s.required ? '<span class="req-dot" aria-label="Required daily"></span>' : ''}${escapeHtml(s.name)}</div>
         ${meta ? `<div class="stack-item-meta">${escapeHtml(meta)}</div>` : ''}
       </div>
       ${streak > 0 ? `
@@ -3332,10 +3344,13 @@ async function logFood(item_type, note, kcal) {
 // ---------------------------------------------------------------------------
 function openManageSupplements() {
   const renderRows = () => (state.stackItems || []).map(s => `
-    <div class="intake-item">
-      <div>
-        <div>${escapeHtml(s.name)}${s.dose ? ` <span class="muted small">· ${escapeHtml(s.dose)}</span>` : ''}</div>
+    <div class="intake-item" style="align-items: flex-start">
+      <div style="flex: 1; min-width: 0">
+        <div>${s.required ? '<span class="req-dot" style="margin-right: 6px"></span>' : ''}${escapeHtml(s.name)}${s.dose ? ` <span class="muted small">· ${escapeHtml(s.dose)}</span>` : ''}</div>
         <div class="muted small" style="text-transform: capitalize">${escapeHtml((s.schedule || '').replace('_', ' '))}${s.category && s.category !== 'supplement' ? ` · ${escapeHtml(s.category)}` : ''}</div>
+        <button class="reflect-btn ghost" data-supp-required="${s.id}" data-currently-required="${s.required ? '1' : '0'}" style="margin-top: 6px; padding: 5px 10px; font-size: 11px">
+          ${s.required ? '✓ Required daily' : 'Mark required'}
+        </button>
       </div>
       <span class="x" data-supp-remove="${s.id}" role="button" aria-label="Remove">×</span>
     </div>
@@ -3356,6 +3371,10 @@ function openManageSupplements() {
         <div class="chip selected" data-category="supplement">Supplement</div>
         <div class="chip" data-category="medication">Medication</div>
       </div>
+      <div class="grid-2" style="margin-top: 8px">
+        <div class="chip" data-required-toggle="1">Required daily</div>
+        <div class="chip selected" data-required-toggle="0">Optional</div>
+      </div>
     </div>
 
     <div class="btn-row">
@@ -3365,6 +3384,7 @@ function openManageSupplements() {
   `, (m) => {
     let timing = null;
     let category = 'supplement';
+    let required = false;
     const refreshAddBtn = () => {
       const name = $('#supp-name').value.trim();
       const ok = !!name && !!timing;
@@ -3380,31 +3400,46 @@ function openManageSupplements() {
       m.querySelectorAll('[data-category]').forEach(x => x.classList.remove('selected'));
       c.classList.add('selected'); category = c.dataset.category;
     });
-    const wireRemoves = () => {
+    m.querySelectorAll('[data-required-toggle]').forEach(c => c.onclick = () => {
+      m.querySelectorAll('[data-required-toggle]').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected'); required = c.dataset.requiredToggle === '1';
+    });
+    const wireRows = () => {
       m.querySelectorAll('[data-supp-remove]').forEach(b => b.onclick = async () => {
         await removeSupplement(b.dataset.suppRemove);
         $('#supp-list').innerHTML = (state.stackItems || []).length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No items yet.</div>';
-        wireRemoves();
+        wireRows();
+      });
+      m.querySelectorAll('[data-supp-required]').forEach(b => b.onclick = async () => {
+        const id = b.dataset.suppRequired;
+        const now = b.dataset.currentlyRequired === '1';
+        await updateStackItem(id, { required: !now });
+        $('#supp-list').innerHTML = renderRows();
+        wireRows();
       });
     };
-    wireRemoves();
+    wireRows();
     $('#supp-add').onclick = async () => {
       const name = $('#supp-name').value.trim();
       const dose = $('#supp-dose').value.trim() || null;
       if (!name || !timing) return;
-      await addSupplement(name, timing, dose, category);
+      await addSupplement(name, timing, dose, category, required);
       $('#supp-name').value = ''; $('#supp-dose').value = '';
       m.querySelectorAll('[data-timing]').forEach(x => x.classList.remove('selected'));
       timing = null;
+      // reset required to false default in add form
+      required = false;
+      m.querySelectorAll('[data-required-toggle]').forEach(x => x.classList.remove('selected'));
+      m.querySelector('[data-required-toggle="0"]')?.classList.add('selected');
       $('#supp-list').innerHTML = renderRows();
       refreshAddBtn();
-      wireRemoves();
+      wireRows();
     };
   });
 }
 
-async function addSupplement(name, schedule, dose = null, category = 'supplement') {
-  const row = { name, schedule, dose, category, active: true };
+async function addSupplement(name, schedule, dose = null, category = 'supplement', required = false) {
+  const row = { name, schedule, dose, category, required, active: true };
   const result = await sbFetch('/tide_stack_items', { method: 'POST', body: JSON.stringify(row) });
   state.stackItems.push(result[0]);
   state.supplements = state.stackItems;
@@ -3414,6 +3449,19 @@ async function removeSupplement(id) {
   await sbFetch(`/tide_stack_items?id=eq.${id}`, { method: 'DELETE' });
   state.stackItems = state.stackItems.filter(s => s.id !== id);
   state.supplements = state.stackItems;
+}
+
+async function updateStackItem(id, patch) {
+  const result = await sbFetch(`/tide_stack_items?id=eq.${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+  const updated = result && result[0];
+  if (updated) {
+    state.stackItems = state.stackItems.map(s => s.id === id ? updated : s);
+    state.supplements = state.stackItems;
+  }
+  return updated;
 }
 
 // v1 legacy — kept for the old supps tab render path (unreachable in v2 chunk 4

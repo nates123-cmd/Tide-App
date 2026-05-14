@@ -162,6 +162,7 @@ create table tide_stack_items (
   dose text,
   schedule text not null check (schedule in ('morning', 'evening', 'as_needed')),
   category text not null default 'supplement' check (category in ('supplement', 'medication')),
+  required boolean not null default false,  -- counts toward day total + streak when true
   notes text,
   position int not null default 0,
   active boolean not null default true,
