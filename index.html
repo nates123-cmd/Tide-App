@@ -2202,7 +2202,7 @@ function renderStackTab() {
     ev.stopPropagation();
     logAsNeeded(b.dataset.asneededLog);
   });
-  $$('[data-add-to]').forEach(b => b.onclick = () => openManageSupplements(b.dataset.addTo));
+  $$('[data-add-to]').forEach(b => b.onclick = () => openManageSupplements(b.dataset.addTo, true));
 }
 
 function renderStackGroup(label, items, takenSet, doneCount, scheduleId) {
@@ -3348,7 +3348,7 @@ async function logFood(item_type, note, kcal) {
 // ---------------------------------------------------------------------------
 // Supplements
 // ---------------------------------------------------------------------------
-function openManageSupplements(preselectSchedule = null) {
+function openManageSupplements(preselectSchedule = null, addOnly = false) {
   const renderRows = () => (state.stackItems || []).map(s => `
     <div class="intake-item" style="align-items: flex-start">
       <div style="flex: 1; min-width: 0">
@@ -3362,12 +3362,13 @@ function openManageSupplements(preselectSchedule = null) {
     </div>
   `).join('');
 
+  const sectionLabel = preselectSchedule ? preselectSchedule.replace('_', ' ') : null;
   showModal(`
-    <h2>Your stack</h2>
-    <div id="supp-list">${(state.stackItems || []).length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No items yet.</div>'}</div>
+    <h2>${addOnly ? `Add to ${escapeHtml(sectionLabel || 'stack')}` : 'Your stack'}</h2>
+    ${addOnly ? '' : `<div id="supp-list">${(state.stackItems || []).length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No items yet.</div>'}</div>`}
 
     <div class="modal-section">
-      <div class="label">Add</div>
+      ${addOnly ? '' : '<div class="label">Add</div>'}
       <input id="supp-name" type="text" placeholder="e.g., magnesium glycinate" autocomplete="off">
       <input id="supp-dose" type="text" placeholder="dose (e.g., 300mg, optional)" autocomplete="off" style="margin-top: 8px">
       <div class="grid-3" style="margin-top: 8px">
@@ -3418,10 +3419,12 @@ function openManageSupplements(preselectSchedule = null) {
       c.classList.add('selected'); required = c.dataset.requiredToggle === '1';
     });
     const wireRows = () => {
+      if (addOnly) return;
       m.querySelectorAll('[data-supp-remove]').forEach(b => b.onclick = async () => {
         await removeSupplement(b.dataset.suppRemove);
         $('#supp-list').innerHTML = (state.stackItems || []).length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No items yet.</div>';
         wireRows();
+        render();
       });
       m.querySelectorAll('[data-supp-required]').forEach(b => b.onclick = async () => {
         const id = b.dataset.suppRequired;
@@ -3429,6 +3432,7 @@ function openManageSupplements(preselectSchedule = null) {
         await updateStackItem(id, { required: !now });
         $('#supp-list').innerHTML = renderRows();
         wireRows();
+        render();
       });
     };
     wireRows();
@@ -3443,13 +3447,23 @@ function openManageSupplements(preselectSchedule = null) {
       btn.disabled = true; btn.textContent = 'Adding…';
       try {
         await addSupplement(name, timing, dose, category, required);
+        // Re-render the Stack page behind the modal so the new item is visible on close.
+        render();
+        if (addOnly) {
+          // Section-local add → close the modal; user is done.
+          closeModal();
+          toast('Added');
+          return;
+        }
+        // Manage flow → stay open so user can add more.
         $('#supp-name').value = ''; $('#supp-dose').value = '';
         m.querySelectorAll('[data-timing]').forEach(x => x.classList.remove('selected'));
-        timing = null;
+        if (!preselectSchedule) timing = null;
         required = false;
         m.querySelectorAll('[data-required-toggle]').forEach(x => x.classList.remove('selected'));
         m.querySelector('[data-required-toggle="0"]')?.classList.add('selected');
-        $('#supp-list').innerHTML = renderRows();
+        const list = $('#supp-list');
+        if (list) list.innerHTML = renderRows();
         wireRows();
         toast('Added');
       } catch (e) {
