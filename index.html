@@ -3384,9 +3384,11 @@ function openManageSupplements(preselectSchedule = null, addOnly = false) {
         ${historyNames.map(n => `<option value="${escapeHtml(n)}"></option>`).join('')}
       </datalist>
       <input id="supp-dose" type="text" placeholder="dose (e.g., 300mg, optional)" autocomplete="off" style="margin-top: 8px">
-      <div class="grid-3" style="margin-top: 8px">
-        ${SUPP_TIMINGS.map(t => `<div class="chip" data-timing="${t}" style="text-transform: capitalize">${t.replace('_', ' ')}</div>`).join('')}
-      </div>
+      ${addOnly ? '' : `
+        <div class="grid-3" style="margin-top: 8px">
+          ${SUPP_TIMINGS.map(t => `<div class="chip" data-timing="${t}" style="text-transform: capitalize">${t.replace('_', ' ')}</div>`).join('')}
+        </div>
+      `}
       <div class="grid-2" style="margin-top: 8px">
         <div class="chip selected" data-category="supplement">Supplement</div>
         <div class="chip" data-category="medication">Medication</div>
