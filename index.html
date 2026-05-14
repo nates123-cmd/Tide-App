@@ -378,6 +378,90 @@
   .more-btn { width: 100%; padding: 11px; background: transparent; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-family: var(--font-body); font-size: 12px; font-weight: 500; letter-spacing: 0.02em; margin-bottom: 16px; cursor: pointer; }
   .more-btn:active { color: var(--text); border-color: var(--muted); }
 
+  /* ───── v2: Sip tab (mockup-matched) ───── */
+  .sip-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 14px;
+    gap: 2px;
+  }
+  .sip-switch-opt { padding: 10px 4px; text-align: center; border-radius: 7px; font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.01em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.15s, color 0.15s; }
+  .sip-switch-opt.active { background: var(--bg); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(28, 26, 24, 0.06); }
+  .sip-switch-mini { font-family: var(--font-display); font-size: 12px; color: var(--muted-soft); font-weight: 400; font-variant-numeric: tabular-nums; }
+  .sip-switch-opt.active .sip-switch-mini { color: var(--muted); }
+
+  .water-hero { background: var(--card-bg-warm); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 22px 22px 18px; margin-bottom: 14px; text-align: center; }
+  .water-num { font-family: var(--font-display); font-weight: 500; font-size: 56px; line-height: 1; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; justify-content: center; gap: 6px; }
+  .water-num-unit { font-size: 18px; color: var(--muted); font-weight: 500; letter-spacing: 0; }
+  .water-target { font-family: var(--font-body); font-size: 12px; color: var(--muted); margin-top: 6px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .water-pace { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 5px 12px; background: var(--bg); border-radius: 999px; font-family: var(--font-body); font-size: 11px; font-weight: 500; letter-spacing: 0.02em; }
+  .water-pace.behind { color: var(--warn); }
+  .water-pace.ahead  { color: var(--good); }
+  .water-pace.on     { color: var(--muted); }
+  .water-pace-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  .water-bars { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 16px 16px 14px; margin-bottom: 14px; }
+  .water-bars-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; margin-bottom: 12px; }
+  .bars-row { display: flex; align-items: flex-end; gap: 3px; height: 56px; margin-bottom: 6px; }
+  .v2-bar { flex: 1; background: var(--border-soft); border-radius: 2px; min-height: 3px; transition: height 0.3s; }
+  .v2-bar.filled { background: var(--accent-deep); }
+  .v2-bar.now    { background: var(--text); }
+  .bars-time-row { display: flex; justify-content: space-between; font-family: var(--font-body); font-size: 9px; color: var(--muted-soft); letter-spacing: 0.06em; font-weight: 500; margin-top: 2px; }
+  .bars-time-row span { flex: 1; text-align: center; }
+  .bars-time-row span:first-child { text-align: left; }
+  .bars-time-row span:last-child  { text-align: right; }
+
+  .add-section-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; margin: 4px 2px 10px; }
+  .add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .add-tile { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: background 0.15s; }
+  .add-tile:active { background: var(--card-bg-warm); }
+  .add-tile-num { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .add-tile-name { font-family: var(--font-body); font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
+
+  .timeline-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; margin: 4px 2px 10px; }
+  .timeline-row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--border-soft); }
+  .timeline-row:last-child { border-bottom: none; }
+  .timeline-time { font-family: var(--font-body); font-size: 12px; color: var(--muted-soft); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; width: 56px; flex-shrink: 0; }
+  .timeline-bar { flex: 1; height: 6px; background: var(--accent-deep); border-radius: 3px; max-width: 70%; }
+  .timeline-amount { font-family: var(--font-display); font-size: 13px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* ───── v2: Stack tab (mockup-matched) ───── */
+  .stack-progress { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .stack-progress-left { display: flex; flex-direction: column; gap: 3px; }
+  .stack-progress-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+  .stack-progress-num { font-family: var(--font-display); font-weight: 500; font-size: 26px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 4px; }
+  .stack-progress-num-suffix { font-size: 14px; color: var(--muted); font-weight: 400; }
+  .stack-streak { text-align: right; display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
+  .stack-streak-num { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .stack-streak-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+
+  .stack-group-header { display: flex; align-items: baseline; justify-content: space-between; margin: 14px 2px 10px; }
+  .stack-group-title { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+  .stack-group-meta { font-family: var(--font-body); font-size: 11px; color: var(--muted-soft); letter-spacing: 0.02em; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  .stack-item { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 13px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: background 0.15s; }
+  .stack-item.taken { background: var(--card-bg-warm); }
+  .stack-cb { width: 24px; height: 24px; border-radius: 6px; border: 1.5px solid var(--border); background: var(--bg); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: transparent; font-size: 14px; line-height: 1; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+  .stack-item.taken .stack-cb { background: var(--text); border-color: var(--text); color: var(--bg); }
+  .stack-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .stack-item-name { font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: -0.005em; line-height: 1.2; }
+  .stack-item.taken .stack-item-name { color: var(--muted); }
+  .stack-item-meta { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .stack-item-streak { display: flex; align-items: center; gap: 4px; font-family: var(--font-body); font-size: 11px; color: var(--muted-soft); font-weight: 500; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .stack-item-streak.hot { color: var(--good); }
+  .streak-flame { font-size: 10px; line-height: 1; }
+
+  .asneeded-row { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 13px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+  .asneeded-left { display: flex; flex-direction: column; gap: 2px; }
+  .asneeded-name { font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: -0.005em; }
+  .asneeded-meta { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.02em; }
+  .asneeded-log-btn { padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; background: transparent; font-family: var(--font-body); font-size: 11px; font-weight: 500; color: var(--text); letter-spacing: 0.02em; cursor: pointer; }
+  .asneeded-log-btn:active { background: var(--card-bg-warm); }
+
   /* ───── v2: Bottom nav bar (mockup-matched) ───── */
   .bottom-nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
@@ -436,10 +520,13 @@ let state = {
   settingPaceTimer: null,
   tab: 'water',                // 'water' | 'food' | 'supplements' | 'drinks' (drinks tab includes substances)
   todayIntake: [],             // today's tide_intake_logs rows
-  supplements: [],             // user's stack
+  supplements: [],             // legacy alias of stackItems
+  stackItems: [],              // tide_stack_items rows (active)
+  stackLogs: [],               // recent (last 60d) tide_stack_logs for streak compute
   aliases: [],                 // user's substance aliases
   todayOther: [],              // today's coded entries (kind=coded, session_id=null) from tide_indulge_entries
   activeCoded: [],             // coded entries inside the active session
+  sipSection: 'water',         // 'water' | 'caffeine' — Sip tab's active sub-section
 };
 
 const MEAL_DEFAULTS = { breakfast: 400, lunch: 600, dinner: 700, snack: 200 };
@@ -1078,6 +1165,14 @@ function renderHome() {
   }
   if (state.tab === 'drinks') {
     renderIndulgeTab();
+    return;
+  }
+  if (state.tab === 'water') {
+    renderSipTab();
+    return;
+  }
+  if (state.tab === 'supplements') {
+    renderStackTab();
     return;
   }
 
@@ -1785,6 +1880,369 @@ function computeBacTrend(drinks, profile, currentBac) {
   if (delta > 0.005) return 'trending up';
   if (delta < -0.005) return 'trending down';
   return 'holding';
+}
+
+// ---------------------------------------------------------------------------
+// Sip tab (v2 chunk 4) — water + caffeine in one tab with a switcher
+// ---------------------------------------------------------------------------
+const SIP_BAR_HOURS = 12;     // 12 buckets, two-hour windows from 6am → 8pm
+const SIP_BAR_START_HR = 6;
+const SIP_BAR_BUCKET_HR = 1.2; // 12 buckets over 14.4 hours feels about right
+
+function dateSubLabel(d = new Date()) {
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(/,/g, ' ·');
+}
+
+function sipBuckets(rows, valueKey = 'quantity') {
+  // 12 buckets starting at 6am, each ~1.2h wide.
+  const buckets = new Array(SIP_BAR_HOURS).fill(0);
+  const now = new Date();
+  const nowHr = now.getHours() + now.getMinutes() / 60;
+  const nowBucket = Math.min(SIP_BAR_HOURS - 1, Math.max(0, Math.floor((nowHr - SIP_BAR_START_HR) / SIP_BAR_BUCKET_HR)));
+  rows.forEach(r => {
+    const d = new Date(r.logged_at);
+    const hr = d.getHours() + d.getMinutes() / 60;
+    const idx = Math.floor((hr - SIP_BAR_START_HR) / SIP_BAR_BUCKET_HR);
+    if (idx >= 0 && idx < SIP_BAR_HOURS) buckets[idx] += (Number(r[valueKey]) || 0);
+  });
+  return { buckets, nowBucket };
+}
+
+function renderSipBars(rows, valueKey, maxSuggested) {
+  const { buckets, nowBucket } = sipBuckets(rows, valueKey);
+  const max = Math.max(maxSuggested, ...buckets, 1);
+  const bars = buckets.map((v, i) => {
+    const pct = Math.round((v / max) * 100);
+    const cls = i === nowBucket ? 'now' : (v > 0 ? 'filled' : '');
+    return `<div class="v2-bar ${cls}" style="height: ${Math.max(pct, v > 0 ? 6 : 6)}%"></div>`;
+  }).join('');
+  return `
+    <div class="bars-row">${bars}</div>
+    <div class="bars-time-row">
+      <span>6a</span><span></span><span>10a</span><span></span><span>2p</span><span></span><span>6p</span><span></span><span>10p</span>
+    </div>
+  `;
+}
+
+function renderSipTab() {
+  const sub = state.sipSection || 'water';
+  const todayWater = (state.todayIntake || []).filter(r => r.category === 'water');
+  const todayCaff  = (state.todayIntake || []).filter(r => r.category === 'caffeine');
+  const totalWater = todayWater.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+  const totalCaff  = todayCaff.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+  const waterLabel = totalWater >= 1000 ? `${(totalWater / 1000).toFixed(1)}L` : `${totalWater}ml`;
+  const caffLabel  = `${totalCaff}mg`;
+
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="tab-title" data-brand>Sip</div>
+        <div class="tab-sub">${escapeHtml(dateSubLabel())}</div>
+      </div>
+      <div class="head-link" data-nav="history">History</div>
+    </header>
+
+    <div class="sip-switch" id="sip-switch">
+      <div class="sip-switch-opt ${sub === 'water' ? 'active' : ''}" data-sip="water">
+        Water <span class="sip-switch-mini">${waterLabel}</span>
+      </div>
+      <div class="sip-switch-opt ${sub === 'caffeine' ? 'active' : ''}" data-sip="caffeine">
+        Caffeine <span class="sip-switch-mini">${caffLabel}</span>
+      </div>
+    </div>
+
+    <div id="sip-body">${sub === 'water' ? renderSipWater(todayWater, totalWater) : renderSipCaffeine(todayCaff, totalCaff)}</div>
+
+    <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
+  `;
+
+  $('[data-brand]')?.addEventListener('click', () => { state.tab = null; render(); });
+  $$('[data-nav]').forEach(b => b.onclick = () => { state.screen = b.dataset.nav; render(); });
+  $('#any-fab').onclick = openLogAny;
+  $$('[data-sip]').forEach(b => b.onclick = () => { state.sipSection = b.dataset.sip; renderSipTab(); });
+
+  wireSipAdd(sub);
+}
+
+function renderSipWater(rows, total) {
+  const target = waterPaceTarget();
+  const goal = WATER_GOAL_ML;
+  const delta = total - target;
+  let paceCls, paceLabel;
+  if (target === 0)      { paceCls = 'on';     paceLabel = 'Starting the day'; }
+  else if (delta > 200)  { paceCls = 'ahead';  paceLabel = `Ahead pace · ${delta}ml`; }
+  else if (delta < -300) { paceCls = 'behind'; paceLabel = `Behind pace · ${Math.abs(delta)}ml`; }
+  else                   { paceCls = 'on';     paceLabel = 'On pace'; }
+  const big = total >= 1000 ? total.toLocaleString() : total;
+  const unit = total >= 1000 ? '' : 'ml';
+  // If shown as L, switch unit to L
+  const display = total >= 1000 ? (total / 1000).toFixed(1) : String(total);
+  const displayUnit = total >= 1000 ? 'L' : 'ml';
+  return `
+    <div class="water-hero">
+      <div class="water-num">
+        ${escapeHtml(display)}<span class="water-num-unit">${displayUnit}</span>
+      </div>
+      <div class="water-target">of ${goal.toLocaleString()}ml today</div>
+      <div class="water-pace ${paceCls}">
+        <span class="water-pace-dot"></span>${escapeHtml(paceLabel)}
+      </div>
+    </div>
+
+    <div class="water-bars">
+      <div class="water-bars-label">Today's intake</div>
+      ${renderSipBars(rows, 'quantity', goal / SIP_BAR_HOURS)}
+    </div>
+
+    <div class="add-section-label">Add</div>
+    <div class="add-grid">
+      <div class="add-tile" data-water-ml="250"><div class="add-tile-num">250</div><div class="add-tile-name">Small · ml</div></div>
+      <div class="add-tile" data-water-ml="500"><div class="add-tile-num">500</div><div class="add-tile-name">Big · ml</div></div>
+      <div class="add-tile" data-water-ml="950"><div class="add-tile-num">950</div><div class="add-tile-name">Quart</div></div>
+      <div class="add-tile" data-water-ml="1000"><div class="add-tile-num">1,000</div><div class="add-tile-name">Liter</div></div>
+    </div>
+
+    ${rows.length ? `
+      <div class="timeline-label">Today</div>
+      ${rows.slice().reverse().map(r => {
+        const ml = Number(r.quantity) || 0;
+        const pct = Math.min(70, (ml / goal) * 100);
+        return `
+          <div class="timeline-row">
+            <div class="timeline-time">${fmtTime(r.logged_at)}</div>
+            <div class="timeline-bar" style="width: ${pct}%; max-width: ${pct}%"></div>
+            <div class="timeline-amount">${ml}ml</div>
+          </div>
+        `;
+      }).join('')}
+    ` : ''}
+  `;
+}
+
+function renderSipCaffeine(rows, total) {
+  const last = rows.length ? rows[rows.length - 1] : null;
+  const overSoft = total > CAFFEINE_SOFT_LIMIT_MG;
+  let paceCls, paceLabel;
+  if (!last)         { paceCls = 'on';     paceLabel = 'No caffeine today'; }
+  else if (overSoft) { paceCls = 'behind'; paceLabel = `Over 400mg · last ${fmtTime(last.logged_at)}`; }
+  else               { paceCls = 'on';     paceLabel = `Last ${fmtTime(last.logged_at)}`; }
+  return `
+    <div class="water-hero">
+      <div class="water-num">${total}<span class="water-num-unit">mg</span></div>
+      <div class="water-target">soft cap ${CAFFEINE_SOFT_LIMIT_MG}mg today</div>
+      <div class="water-pace ${paceCls}">
+        <span class="water-pace-dot"></span>${escapeHtml(paceLabel)}
+      </div>
+    </div>
+
+    <div class="water-bars">
+      <div class="water-bars-label">Today's intake</div>
+      ${renderSipBars(rows, 'quantity', CAFFEINE_SOFT_LIMIT_MG / SIP_BAR_HOURS)}
+    </div>
+
+    <div class="add-section-label">Add</div>
+    <div class="add-grid">
+      ${CAFFEINE_PRESETS.map(p => `
+        <div class="add-tile" data-caff-id="${escapeHtml(p.id)}" data-caff-mg="${p.mg}">
+          <div class="add-tile-num">${p.mg}</div>
+          <div class="add-tile-name">${escapeHtml(p.label)} · mg</div>
+        </div>
+      `).join('')}
+    </div>
+    <button class="more-btn" id="caff-custom">+ Custom amount</button>
+
+    ${rows.length ? `
+      <div class="timeline-label">Today</div>
+      ${rows.slice().reverse().map(r => {
+        const mg = Number(r.quantity) || 0;
+        const pct = Math.min(70, (mg / CAFFEINE_SOFT_LIMIT_MG) * 100);
+        return `
+          <div class="timeline-row">
+            <div class="timeline-time">${fmtTime(r.logged_at)}</div>
+            <div class="timeline-bar" style="width: ${pct}%; max-width: ${pct}%"></div>
+            <div class="timeline-amount">${escapeHtml(r.item_type || 'caffeine')} · ${mg}mg</div>
+          </div>
+        `;
+      }).join('')}
+    ` : ''}
+  `;
+}
+
+function wireSipAdd(sub) {
+  if (sub === 'water') {
+    $$('[data-water-ml]').forEach(t => t.onclick = () => logWater(parseInt(t.dataset.waterMl, 10)));
+  } else {
+    $$('[data-caff-id]').forEach(t => t.onclick = () => {
+      const id = t.dataset.caffId;
+      const mg = parseInt(t.dataset.caffMg, 10);
+      logCaffeine(id, mg);
+    });
+    $('#caff-custom')?.addEventListener('click', openLogCustomCaffeine);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stack tab (v2 chunk 4) — three groups + per-item streak + full-stack streak
+// ---------------------------------------------------------------------------
+function stackItemStreak(itemId) {
+  // Consecutive days, counting back from today (or yesterday if today not logged),
+  // where this item has at least one tide_stack_logs row.
+  const dates = new Set((state.stackLogs || []).filter(l => l.stack_item_id === itemId).map(l => l.log_date));
+  if (!dates.size) return 0;
+  const today = todayISO();
+  // If today logged → start at today; else start at yesterday
+  let cursor = dates.has(today) ? today : addDays(today, -1);
+  let streak = 0;
+  while (dates.has(cursor)) {
+    streak++;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
+function fullStackStreak() {
+  // Number of consecutive days where every scheduled (morning|evening) active item has at least one log.
+  const scheduled = (state.stackItems || []).filter(s => s.schedule === 'morning' || s.schedule === 'evening');
+  if (!scheduled.length) return 0;
+  const requiredIds = scheduled.map(s => s.id);
+  // Group logs by date → Set of stack_item_ids
+  const byDate = {};
+  (state.stackLogs || []).forEach(l => {
+    if (!byDate[l.log_date]) byDate[l.log_date] = new Set();
+    byDate[l.log_date].add(l.stack_item_id);
+  });
+  const hitAll = (date) => requiredIds.every(id => byDate[date] && byDate[date].has(id));
+  const today = todayISO();
+  let cursor = hitAll(today) ? today : addDays(today, -1);
+  let streak = 0;
+  while (hitDayExists(cursor) && hitAll(cursor)) {
+    streak++;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+function hitDayExists(date) {
+  // Safety floor — never count back beyond the load window of stackLogs (60d).
+  const earliest = addDays(todayISO(), -60);
+  return date >= earliest;
+}
+
+function renderStackTab() {
+  const items = state.stackItems || [];
+  const today = todayISO();
+  const takenSet = new Set(
+    (state.stackLogs || [])
+      .filter(l => l.log_date === today)
+      .map(l => l.stack_item_id)
+  );
+
+  const morning = items.filter(s => s.schedule === 'morning');
+  const evening = items.filter(s => s.schedule === 'evening');
+  const asneeded = items.filter(s => s.schedule === 'as_needed');
+
+  const scheduledItems = [...morning, ...evening];
+  const scheduledDone  = scheduledItems.filter(s => takenSet.has(s.id)).length;
+  const fullStreak = fullStackStreak();
+  const morningDone = morning.filter(s => takenSet.has(s.id)).length;
+  const eveningDone = evening.filter(s => takenSet.has(s.id)).length;
+
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="tab-title" data-brand>Stack</div>
+        <div class="tab-sub">${escapeHtml(dateSubLabel())}</div>
+      </div>
+      <div class="head-link" id="stack-manage">Manage</div>
+    </header>
+
+    <div class="stack-progress">
+      <div class="stack-progress-left">
+        <div class="stack-progress-label">Today</div>
+        <div class="stack-progress-num">${scheduledDone}<span class="stack-progress-num-suffix">/ ${scheduledItems.length}</span></div>
+      </div>
+      ${fullStreak > 0 ? `
+        <div class="stack-streak">
+          <div class="stack-streak-num">${fullStreak} day${fullStreak === 1 ? '' : 's'}</div>
+          <div class="stack-streak-label">Full-stack streak</div>
+        </div>
+      ` : ''}
+    </div>
+
+    ${morning.length ? renderStackGroup('Morning', morning, takenSet, morningDone) : ''}
+    ${evening.length ? renderStackGroup('Evening', evening, takenSet, eveningDone) : ''}
+    ${asneeded.length ? renderAsNeededGroup(asneeded) : ''}
+
+    ${items.length === 0 ? `
+      <div class="card" style="margin-top: 14px">
+        <p class="small" style="margin: 0">No stack items yet. Tap <strong>Manage</strong> to add a supplement or medication.</p>
+      </div>
+    ` : ''}
+
+    <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
+  `;
+
+  $('[data-brand]')?.addEventListener('click', () => { state.tab = null; render(); });
+  $('#any-fab').onclick = openLogAny;
+  $('#stack-manage')?.addEventListener('click', openManageSupplements);
+  $$('[data-stack-toggle]').forEach(c => c.onclick = () => toggleStackItem(c.dataset.stackToggle));
+  $$('[data-asneeded-log]').forEach(b => b.onclick = (ev) => {
+    ev.stopPropagation();
+    logAsNeeded(b.dataset.asneededLog);
+  });
+}
+
+function renderStackGroup(label, items, takenSet, doneCount) {
+  return `
+    <div class="stack-group-header">
+      <div class="stack-group-title">${escapeHtml(label)}</div>
+      <div class="stack-group-meta">${doneCount} / ${items.length} taken</div>
+    </div>
+    ${items.map(s => renderStackItem(s, takenSet.has(s.id))).join('')}
+  `;
+}
+
+function renderStackItem(s, taken) {
+  const streak = stackItemStreak(s.id);
+  const hot = streak >= 14;
+  const meta = [s.dose, s.notes].filter(Boolean).join(' · ');
+  return `
+    <div class="stack-item ${taken ? 'taken' : ''}" data-stack-toggle="${s.id}">
+      <div class="stack-cb">${taken ? '✓' : ''}</div>
+      <div class="stack-item-body">
+        <div class="stack-item-name">${escapeHtml(s.name)}</div>
+        ${meta ? `<div class="stack-item-meta">${escapeHtml(meta)}</div>` : ''}
+      </div>
+      ${streak > 0 ? `
+        <div class="stack-item-streak ${hot ? 'hot' : ''}">
+          <span class="streak-flame">●</span> ${streak}d
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderAsNeededGroup(items) {
+  return `
+    <div class="stack-group-header">
+      <div class="stack-group-title">As needed</div>
+      <div class="stack-group-meta">Tap to log</div>
+    </div>
+    ${items.map(s => {
+      const lastLog = (state.stackLogs || []).find(l => l.stack_item_id === s.id);
+      const lastLabel = lastLog
+        ? `Last: ${fmtDate(lastLog.taken_at)}${s.dose ? ' · ' + s.dose : ''}`
+        : (s.dose ? `Default ${s.dose}` : 'Not yet logged');
+      return `
+        <div class="asneeded-row">
+          <div class="asneeded-left">
+            <div class="asneeded-name">${escapeHtml(s.name)}</div>
+            <div class="asneeded-meta">${escapeHtml(lastLabel)}</div>
+          </div>
+          <button class="asneeded-log-btn" data-asneeded-log="${s.id}">Log</button>
+        </div>
+      `;
+    }).join('')}
+  `;
 }
 
 function renderTabContent(tab) {
@@ -2873,11 +3331,11 @@ async function logFood(item_type, note, kcal) {
 // Supplements
 // ---------------------------------------------------------------------------
 function openManageSupplements() {
-  const renderRows = () => state.supplements.map(s => `
+  const renderRows = () => (state.stackItems || []).map(s => `
     <div class="intake-item">
       <div>
-        <div>${escapeHtml(s.name)}</div>
-        <div class="muted small" style="text-transform: capitalize">${s.timing.replace('_', ' ')}</div>
+        <div>${escapeHtml(s.name)}${s.dose ? ` <span class="muted small">· ${escapeHtml(s.dose)}</span>` : ''}</div>
+        <div class="muted small" style="text-transform: capitalize">${escapeHtml((s.schedule || '').replace('_', ' '))}${s.category && s.category !== 'supplement' ? ` · ${escapeHtml(s.category)}` : ''}</div>
       </div>
       <span class="x" data-supp-remove="${s.id}" role="button" aria-label="Remove">×</span>
     </div>
@@ -2885,13 +3343,18 @@ function openManageSupplements() {
 
   showModal(`
     <h2>Your stack</h2>
-    <div id="supp-list">${state.supplements.length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No supplements yet.</div>'}</div>
+    <div id="supp-list">${(state.stackItems || []).length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No items yet.</div>'}</div>
 
     <div class="modal-section">
       <div class="label">Add</div>
-      <input id="supp-name" type="text" placeholder="e.g., magnesium" autocomplete="off">
+      <input id="supp-name" type="text" placeholder="e.g., magnesium glycinate" autocomplete="off">
+      <input id="supp-dose" type="text" placeholder="dose (e.g., 300mg, optional)" autocomplete="off" style="margin-top: 8px">
       <div class="grid-3" style="margin-top: 8px">
         ${SUPP_TIMINGS.map(t => `<div class="chip" data-timing="${t}" style="text-transform: capitalize">${t.replace('_', ' ')}</div>`).join('')}
+      </div>
+      <div class="grid-2" style="margin-top: 8px">
+        <div class="chip selected" data-category="supplement">Supplement</div>
+        <div class="chip" data-category="medication">Medication</div>
       </div>
     </div>
 
@@ -2901,6 +3364,7 @@ function openManageSupplements() {
     </div>
   `, (m) => {
     let timing = null;
+    let category = 'supplement';
     const refreshAddBtn = () => {
       const name = $('#supp-name').value.trim();
       const ok = !!name && !!timing;
@@ -2912,52 +3376,51 @@ function openManageSupplements() {
       c.classList.add('selected'); timing = c.dataset.timing;
       refreshAddBtn();
     });
-    m.querySelectorAll('[data-supp-remove]').forEach(b => b.onclick = async () => {
-      await removeSupplement(b.dataset.suppRemove);
-      $('#supp-list').innerHTML = state.supplements.length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No supplements yet.</div>';
-      m.querySelectorAll('[data-supp-remove]').forEach(b2 => b2.onclick = b.onclick); // re-wire
+    m.querySelectorAll('[data-category]').forEach(c => c.onclick = () => {
+      m.querySelectorAll('[data-category]').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected'); category = c.dataset.category;
     });
+    const wireRemoves = () => {
+      m.querySelectorAll('[data-supp-remove]').forEach(b => b.onclick = async () => {
+        await removeSupplement(b.dataset.suppRemove);
+        $('#supp-list').innerHTML = (state.stackItems || []).length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No items yet.</div>';
+        wireRemoves();
+      });
+    };
+    wireRemoves();
     $('#supp-add').onclick = async () => {
       const name = $('#supp-name').value.trim();
+      const dose = $('#supp-dose').value.trim() || null;
       if (!name || !timing) return;
-      await addSupplement(name, timing);
-      $('#supp-name').value = '';
+      await addSupplement(name, timing, dose, category);
+      $('#supp-name').value = ''; $('#supp-dose').value = '';
       m.querySelectorAll('[data-timing]').forEach(x => x.classList.remove('selected'));
       timing = null;
       $('#supp-list').innerHTML = renderRows();
       refreshAddBtn();
-      // Re-bind remove buttons after re-render
-      m.querySelectorAll('[data-supp-remove]').forEach(b => b.onclick = async () => {
-        await removeSupplement(b.dataset.suppRemove);
-        $('#supp-list').innerHTML = state.supplements.length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">No supplements yet.</div>';
-      });
+      wireRemoves();
     };
   });
 }
 
-async function addSupplement(name, timing) {
-  const row = { name, timing, active: true };
-  const result = await sbFetch('/tide_supplements', { method: 'POST', body: JSON.stringify(row) });
-  state.supplements.push(result[0]);
+async function addSupplement(name, schedule, dose = null, category = 'supplement') {
+  const row = { name, schedule, dose, category, active: true };
+  const result = await sbFetch('/tide_stack_items', { method: 'POST', body: JSON.stringify(row) });
+  state.stackItems.push(result[0]);
+  state.supplements = state.stackItems;
 }
 
 async function removeSupplement(id) {
-  await sbFetch(`/tide_supplements?id=eq.${id}`, { method: 'DELETE' });
-  state.supplements = state.supplements.filter(s => s.id !== id);
+  await sbFetch(`/tide_stack_items?id=eq.${id}`, { method: 'DELETE' });
+  state.stackItems = state.stackItems.filter(s => s.id !== id);
+  state.supplements = state.stackItems;
 }
 
-async function toggleSupplement(supplementId, name) {
-  const today = todayISO();
-  const existing = state.todayIntake.find(r => r.category === 'supplement' && r.item_type === name && r.log_date === today);
-  if (existing) {
-    await sbFetch(`/tide_intake_logs?id=eq.${existing.id}`, { method: 'DELETE' });
-    state.todayIntake = state.todayIntake.filter(r => r.id !== existing.id);
-  } else {
-    const row = { category: 'supplement', item_type: name, quantity: 1, unit: 'count', logged_at: new Date().toISOString() };
-    const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(row) });
-    state.todayIntake.push(result[0]);
-  }
-  render();
+// v1 legacy — kept for the old supps tab render path (unreachable in v2 chunk 4
+// but the FAB and any stale wirings still reference it). Delegates to v2's
+// toggleStackItem which writes to tide_stack_logs.
+async function toggleSupplement(supplementId, _name) {
+  return toggleStackItem(supplementId);
 }
 
 // ---------------------------------------------------------------------------
@@ -3640,13 +4103,51 @@ async function loadTodayIntake() {
 }
 
 async function loadSupplements() {
+  // v2: load tide_stack_items. Falls back to empty list if the v2 table isn't there yet
+  // (during the chunk-4 rollout window before the migration runs).
   try {
-    const rows = await sbFetch('/tide_supplements?active=eq.true&order=created_at.asc');
-    state.supplements = rows || [];
+    const rows = await sbFetch('/tide_stack_items?active=eq.true&order=position.asc,created_at.asc');
+    state.stackItems = rows || [];
+    state.supplements = state.stackItems; // keep v1 alias for any legacy reader
   } catch (e) {
-    console.warn('loadSupplements failed:', e.message);
+    console.warn('loadStackItems failed:', e.message);
+    state.stackItems = [];
     state.supplements = [];
   }
+}
+
+// Pull last 60 days of stack check-offs so we can compute streaks client-side.
+async function loadStackLogs() {
+  try {
+    const since = addDays(todayISO(), -60);
+    const rows = await sbFetch(`/tide_stack_logs?log_date=gte.${since}&order=taken_at.desc`);
+    state.stackLogs = rows || [];
+  } catch (e) {
+    console.warn('loadStackLogs failed:', e.message);
+    state.stackLogs = [];
+  }
+}
+
+async function toggleStackItem(itemId) {
+  const today = todayISO();
+  const existing = (state.stackLogs || []).find(l => l.stack_item_id === itemId && l.log_date === today);
+  if (existing) {
+    await sbFetch(`/tide_stack_logs?id=eq.${existing.id}`, { method: 'DELETE' });
+    state.stackLogs = state.stackLogs.filter(l => l.id !== existing.id);
+  } else {
+    const row = { stack_item_id: itemId, taken_at: new Date().toISOString(), log_date: today };
+    const result = await sbFetch('/tide_stack_logs', { method: 'POST', body: JSON.stringify(row) });
+    if (result && result[0]) state.stackLogs.unshift(result[0]);
+  }
+  render();
+}
+
+async function logAsNeeded(itemId) {
+  const row = { stack_item_id: itemId, taken_at: new Date().toISOString(), log_date: todayISO() };
+  const result = await sbFetch('/tide_stack_logs', { method: 'POST', body: JSON.stringify(row) });
+  if (result && result[0]) state.stackLogs.unshift(result[0]);
+  toast('Logged');
+  render();
 }
 
 async function loadAliases() {
@@ -3732,7 +4233,7 @@ async function boot() {
   // Then refresh from server
   await loadActiveSession();
   await loadHistory();
-  await Promise.all([loadTodayIntake(), loadSupplements(), loadAliases(), loadTodayOther()]);
+  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther()]);
   // Pull cached Oura today + 7d for the stat grid hero, then sync in background
   await Promise.all([loadOuraToday(), loadOura7d()]);
   if (state.screen === 'home') render();
