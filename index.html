@@ -5625,6 +5625,21 @@ function renderLibEntry(e) {
   `;
 }
 
+// Calls the recipe-proxy edge function to fetch a recipe URL server-side and
+// extract its JSON-LD Recipe schema. Returns { recipe, title } or null on miss.
+async function fetchRecipeFromUrl(url) {
+  const proxyUrl = `${SB_URL}/functions/v1/recipe-proxy?url=${encodeURIComponent(url)}`;
+  const r = await fetch(proxyUrl, {
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+  });
+  if (!r.ok) {
+    let detail = '';
+    try { detail = (await r.json()).error || ''; } catch {}
+    throw new Error(`${r.status}${detail ? ' · ' + detail : ''}`);
+  }
+  return r.json();
+}
+
 // Paste ingredients + servings, get per-serving macro estimate, save to library.
 // The library entry is stored as a "template" intake_log (metadata.template=true).
 // Templates don't count toward today's totals or appear in Today; they only seed
@@ -5632,7 +5647,16 @@ function renderLibEntry(e) {
 function openAddRecipeSheet() {
   showModal(`
     <h2>Add recipe</h2>
-    <p class="small muted" style="margin-bottom: 12px">Paste ingredients + servings. Claude estimates per-serving macros. Adds to your library without counting today.</p>
+    <p class="small muted" style="margin-bottom: 12px">Paste a recipe URL (NYT Cooking, etc.) to auto-fill, or fill the fields by hand. Claude estimates per-serving macros and saves to your library without counting today.</p>
+
+    <div class="modal-section">
+      <div class="label">Recipe URL (optional)</div>
+      <div style="display: flex; gap: 8px">
+        <input id="rec-url" type="url" inputmode="url" placeholder="https://cooking.nytimes.com/recipes/…" autocomplete="off" style="flex: 1">
+        <button class="btn btn-soft" id="rec-fetch" style="width: auto; flex-shrink: 0; padding: 0 14px">Fetch</button>
+      </div>
+      <p id="rec-fetch-status" class="small muted" style="margin: 6px 0 0; min-height: 14px"></p>
+    </div>
 
     <div class="modal-section">
       <div class="label">Recipe name</div>
@@ -5665,6 +5689,41 @@ function openAddRecipeSheet() {
     $('#rec-name').oninput = refresh;
     $('#rec-text').oninput = refresh;
     $('#rec-servings').oninput = refresh;
+
+    $('#rec-fetch').onclick = async () => {
+      const url = $('#rec-url').value.trim();
+      if (!url) { toast('Paste a URL first'); return; }
+      const btn = $('#rec-fetch');
+      const status = $('#rec-fetch-status');
+      btn.disabled = true; btn.textContent = 'Fetching…';
+      status.textContent = '';
+      try {
+        const data = await fetchRecipeFromUrl(url);
+        if (!data || !data.recipe) {
+          status.textContent = data?.title
+            ? `No structured recipe data found. Paste the ingredients by hand below.`
+            : 'No recipe data returned. Paste the ingredients by hand.';
+          if (data?.title && !$('#rec-name').value.trim()) $('#rec-name').value = data.title;
+          return;
+        }
+        const r = data.recipe;
+        if (r.name) $('#rec-name').value = r.name;
+        if (r.servings && r.servings > 0) $('#rec-servings').value = String(r.servings);
+        if (Array.isArray(r.ingredients) && r.ingredients.length) {
+          $('#rec-text').value = r.ingredients.join('\n');
+        }
+        const bits = [];
+        if (r.servings) bits.push(`${r.servings} servings`);
+        if (r.ingredients?.length) bits.push(`${r.ingredients.length} ingredients`);
+        if (r.nutrition) bits.push('nutrition included');
+        status.textContent = `Pulled · ${bits.join(' · ')}`;
+        refresh();
+      } catch (e) {
+        status.textContent = 'Could not fetch: ' + e.message;
+      } finally {
+        btn.disabled = false; btn.textContent = 'Fetch';
+      }
+    };
 
     $('#rec-estimate').onclick = async () => {
       const name = $('#rec-name').value.trim();
