@@ -559,6 +559,36 @@
   .lib-entry-add { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-left: 4px; flex-shrink: 0; }
   .lib-entry-add:active { color: var(--text); border-color: var(--text); }
 
+  /* ───── v2: Swipe-to-delete (chunk 7 +) ───── */
+  .swipe-row { position: relative; overflow: hidden; border-radius: var(--radius); margin-bottom: 10px; }
+  .swipe-row > .swipe-content { position: relative; z-index: 2; transition: transform 0.22s ease; touch-action: pan-y; will-change: transform; }
+  .swipe-row > .swipe-content.dragging { transition: none; }
+  .swipe-row > .swipe-content > * { margin-bottom: 0 !important; }
+  .swipe-row > .swipe-action { position: absolute; right: 0; top: 0; bottom: 0; width: 88px; display: flex; align-items: center; justify-content: center; background: var(--warn); color: var(--bg); font-family: var(--font-body); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; z-index: 1; }
+  .swipe-row > .swipe-action:active { background: #9C5F37; }
+
+  /* ───── v2: Train quick-start chips + Workouts screen (chunk 7) ───── */
+  .quickstart-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; margin: 0 -2px 14px; }
+  .quickstart-row::-webkit-scrollbar { display: none; }
+  .quickstart-chip { flex-shrink: 0; background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 12px 16px; min-width: 130px; cursor: pointer; transition: background 0.15s; }
+  .quickstart-chip:active { background: var(--card-bg-warm); }
+  .quickstart-chip-name { font-family: var(--font-display); font-weight: 500; font-size: 14px; letter-spacing: -0.005em; line-height: 1.15; }
+  .quickstart-chip-meta { font-family: var(--font-body); font-size: 10px; color: var(--muted-soft); letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; margin-top: 4px; }
+  .quickstart-chip.empty { border-style: dashed; }
+  .quickstart-chip.empty .quickstart-chip-name { color: var(--muted); font-style: italic; }
+
+  .workout-row { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+  .workout-row-left { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+  .workout-row-name { font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: -0.005em; line-height: 1.2; }
+  .workout-row-meta { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .workout-row-chev { font-size: 18px; color: var(--muted); flex-shrink: 0; }
+
+  .exercise-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border-soft); }
+  .exercise-row:first-of-type { border-top: none; padding-top: 2px; }
+  .exercise-row-name { flex: 1; min-width: 0; font-family: var(--font-display); font-weight: 500; font-size: 14px; letter-spacing: -0.005em; }
+  .exercise-row-sets { font-family: var(--font-body); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; width: 70px; text-align: right; }
+  .exercise-row-x { color: var(--muted); padding: 4px 8px; cursor: pointer; }
+
   /* ───── v2: Train (chunk 6) ───── */
   .activity-card { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
   .activity-card.recovery { background: var(--card-bg-warm); border-style: dashed; border-color: var(--border); }
@@ -641,6 +671,8 @@ let state = {
   libFilter: 'all',
   libSort: 'most',
   todayActivities: [],         // today's tide_activities rows
+  workoutTemplates: [],        // active tide_workout_templates with embedded exercises
+  templateLastUse: {},         // { template_id: last_date_iso } for quick-start chips
 };
 
 const MEAL_DEFAULTS = { breakfast: 400, lunch: 600, dinner: 700, snack: 200 };
@@ -1255,6 +1287,7 @@ function render() {
   else if (screen === 'settings') renderSettings();
   else if (screen === 'patterns') renderPatterns();
   else if (screen === 'library') renderLibraryScreen();
+  else if (screen === 'workouts') renderWorkoutsScreen();
   mountBottomNav(screen === 'home' ? (state.tab || null) : null);
 }
 
@@ -1908,6 +1941,12 @@ function renderIndulgeActive() {
     const kind = row.dataset.entryKind;
     openIndulgeEntryDetail(id, kind);
   });
+  attachSwipeToDelete($$('.swipe-row.swipe-indulge'), async (id) => {
+    await sbFetch(`/tide_indulge_entries?id=eq.${id}`, { method: 'DELETE' });
+    state.drinks = state.drinks.filter(d => d.id !== id);
+    state.activeCoded = (state.activeCoded || []).filter(c => c.id !== id);
+    render();
+  });
 }
 
 function renderIndulgeEntry(e) {
@@ -1918,15 +1957,20 @@ function renderIndulgeEntry(e) {
     const units = Number(e.standard_units) || 1;
     const unitsLabel = units === 1 ? '1 standard' : `${units} standard`;
     return `
-      <div class="ind-entry" data-entry-id="${e.id}" data-entry-kind="alcohol">
-        <div class="ind-entry-left">
-          <div class="ind-entry-icon">${escapeHtml(initial)}</div>
-          <div class="ind-entry-body">
-            <div class="ind-entry-title">${escapeHtml(label)}</div>
-            <div class="ind-entry-meta">${escapeHtml(unitsLabel)}</div>
+      <div class="swipe-row swipe-indulge" data-id="${e.id}" data-kind="alcohol">
+        <div class="swipe-content">
+          <div class="ind-entry" data-entry-id="${e.id}" data-entry-kind="alcohol">
+            <div class="ind-entry-left">
+              <div class="ind-entry-icon">${escapeHtml(initial)}</div>
+              <div class="ind-entry-body">
+                <div class="ind-entry-title">${escapeHtml(label)}</div>
+                <div class="ind-entry-meta">${escapeHtml(unitsLabel)}</div>
+              </div>
+            </div>
+            <div class="ind-entry-time">${time}</div>
           </div>
         </div>
-        <div class="ind-entry-time">${time}</div>
+        <div class="swipe-action">Delete</div>
       </div>
     `;
   }
@@ -1934,15 +1978,20 @@ function renderIndulgeEntry(e) {
   const aliasText = e.alias_text || e.alias || '?';
   const initial = String(aliasText).charAt(0).toUpperCase();
   return `
-    <div class="ind-entry" data-entry-id="${e.id}" data-entry-kind="coded">
-      <div class="ind-entry-left">
-        <div class="ind-entry-icon coded">${escapeHtml(initial)}</div>
-        <div class="ind-entry-body">
-          <div class="ind-entry-title">${escapeHtml(aliasText)}</div>
-          <div class="ind-entry-meta">${escapeHtml(e.amount || '1 entry')}</div>
+    <div class="swipe-row swipe-indulge" data-id="${e.id}" data-kind="coded">
+      <div class="swipe-content">
+        <div class="ind-entry" data-entry-id="${e.id}" data-entry-kind="coded">
+          <div class="ind-entry-left">
+            <div class="ind-entry-icon coded">${escapeHtml(initial)}</div>
+            <div class="ind-entry-body">
+              <div class="ind-entry-title">${escapeHtml(aliasText)}</div>
+              <div class="ind-entry-meta">${escapeHtml(e.amount || '1 entry')}</div>
+            </div>
+          </div>
+          <div class="ind-entry-time">${time}</div>
         </div>
       </div>
-      <div class="ind-entry-time">${time}</div>
+      <div class="swipe-action">Delete</div>
     </div>
   `;
 }
@@ -2020,6 +2069,586 @@ function computeBacTrend(drinks, profile, currentBac) {
 }
 
 // ---------------------------------------------------------------------------
+// Workout templates (v2 chunk 7) — Push/Pull/Leg Day definitions used by
+// the Train Today quick-start chips and (chunk 8) the strength logging UI.
+// ---------------------------------------------------------------------------
+
+// Seed library of common exercises grouped by movement pattern. Multi-select
+// when building a template. User can add custom exercises too.
+const EXERCISE_LIBRARY = [
+  // PUSH
+  { name: 'Barbell Bench Press',     group: 'Push',  sets: 3, reps: 8  },
+  { name: 'Incline DB Press',        group: 'Push',  sets: 3, reps: 10 },
+  { name: 'Overhead Press',          group: 'Push',  sets: 3, reps: 6  },
+  { name: 'DB Shoulder Press',       group: 'Push',  sets: 3, reps: 10 },
+  { name: 'Cable Fly',               group: 'Push',  sets: 3, reps: 12 },
+  { name: 'Lateral Raise',           group: 'Push',  sets: 3, reps: 12 },
+  { name: 'Triceps Pushdown',        group: 'Push',  sets: 3, reps: 10 },
+  { name: 'Dips',                    group: 'Push',  sets: 3, reps: 8  },
+  // PULL
+  { name: 'Deadlift',                group: 'Pull',  sets: 3, reps: 5  },
+  { name: 'Pull-up',                 group: 'Pull',  sets: 3, reps: 8  },
+  { name: 'Lat Pulldown',            group: 'Pull',  sets: 3, reps: 10 },
+  { name: 'Barbell Row',             group: 'Pull',  sets: 3, reps: 8  },
+  { name: 'DB Row',                  group: 'Pull',  sets: 3, reps: 10 },
+  { name: 'Cable Row',               group: 'Pull',  sets: 3, reps: 10 },
+  { name: 'Face Pull',               group: 'Pull',  sets: 3, reps: 15 },
+  { name: 'DB Curl',                 group: 'Pull',  sets: 3, reps: 10 },
+  { name: 'Hammer Curl',             group: 'Pull',  sets: 3, reps: 10 },
+  // LEGS
+  { name: 'Back Squat',              group: 'Legs',  sets: 3, reps: 6  },
+  { name: 'Front Squat',             group: 'Legs',  sets: 3, reps: 6  },
+  { name: 'Romanian Deadlift',       group: 'Legs',  sets: 3, reps: 8  },
+  { name: 'Leg Press',               group: 'Legs',  sets: 3, reps: 10 },
+  { name: 'Hip Thrust',              group: 'Legs',  sets: 3, reps: 10 },
+  { name: 'Bulgarian Split Squat',   group: 'Legs',  sets: 3, reps: 8  },
+  { name: 'Walking Lunges',          group: 'Legs',  sets: 3, reps: 10 },
+  { name: 'Leg Curl',                group: 'Legs',  sets: 3, reps: 10 },
+  { name: 'Leg Extension',           group: 'Legs',  sets: 3, reps: 12 },
+  { name: 'Calf Raise',              group: 'Legs',  sets: 3, reps: 12 },
+  // CORE
+  { name: 'Plank',                   group: 'Core',  sets: 3, reps: 1  },
+  { name: 'Hanging Leg Raise',       group: 'Core',  sets: 3, reps: 10 },
+  { name: 'Cable Crunch',            group: 'Core',  sets: 3, reps: 12 },
+  { name: 'Ab Wheel',                group: 'Core',  sets: 3, reps: 8  },
+];
+
+async function loadWorkoutTemplates() {
+  try {
+    const rows = await sbFetch(
+      '/tide_workout_templates?active=eq.true&order=position.asc,created_at.asc' +
+      '&select=*,exercises:tide_workout_template_exercises(id,exercise_name,set_count,target_reps,target_weight_lb,position)'
+    );
+    state.workoutTemplates = (rows || []).map(t => ({
+      ...t,
+      exercises: (t.exercises || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0)),
+    }));
+  } catch (e) {
+    console.warn('loadWorkoutTemplates failed:', e.message);
+    state.workoutTemplates = [];
+  }
+}
+
+// For each template, find the most recent activity's date.
+async function loadRecentTemplateUses() {
+  try {
+    const since = addDays(todayISO(), -60);
+    const rows = await sbFetch(`/tide_activities?template_id=not.is.null&date=gte.${since}&order=date.desc&select=template_id,date`);
+    const lastByTemplate = {};
+    (rows || []).forEach(r => {
+      if (!lastByTemplate[r.template_id]) lastByTemplate[r.template_id] = r.date;
+    });
+    state.templateLastUse = lastByTemplate;
+  } catch (e) {
+    console.warn('loadRecentTemplateUses failed:', e.message);
+    state.templateLastUse = {};
+  }
+}
+
+async function createWorkoutTemplate(name) {
+  const result = await sbFetch('/tide_workout_templates', {
+    method: 'POST',
+    body: JSON.stringify({ name, position: (state.workoutTemplates || []).length }),
+  });
+  if (result && result[0]) {
+    state.workoutTemplates.push({ ...result[0], exercises: [] });
+  }
+  return result && result[0];
+}
+
+async function deleteWorkoutTemplate(id) {
+  // Soft delete so historical activities still link.
+  await sbFetch(`/tide_workout_templates?id=eq.${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ active: false }),
+  });
+  state.workoutTemplates = (state.workoutTemplates || []).filter(t => t.id !== id);
+}
+
+async function addTemplateExercise(templateId, exerciseName, setCount, targetReps = null, targetWeightLb = null) {
+  const template = state.workoutTemplates.find(t => t.id === templateId);
+  if (!template) return null;
+  const position = (template.exercises || []).length;
+  const result = await sbFetch('/tide_workout_template_exercises', {
+    method: 'POST',
+    body: JSON.stringify({
+      template_id: templateId,
+      exercise_name: exerciseName,
+      set_count: setCount,
+      target_reps: targetReps,
+      target_weight_lb: targetWeightLb,
+      position,
+    }),
+  });
+  if (result && result[0]) {
+    template.exercises = (template.exercises || []).concat([result[0]]);
+  }
+  return result && result[0];
+}
+
+async function addTemplateExercisesBulk(templateId, items) {
+  // items: [{exercise_name, set_count, target_reps, target_weight_lb}]
+  const template = state.workoutTemplates.find(t => t.id === templateId);
+  if (!template) return [];
+  const startPos = (template.exercises || []).length;
+  const rows = items.map((it, i) => ({
+    template_id: templateId,
+    exercise_name: it.exercise_name,
+    set_count: it.set_count,
+    target_reps: it.target_reps ?? null,
+    target_weight_lb: it.target_weight_lb ?? null,
+    position: startPos + i,
+  }));
+  if (!rows.length) return [];
+  const result = await sbFetch('/tide_workout_template_exercises', { method: 'POST', body: JSON.stringify(rows) });
+  if (Array.isArray(result)) {
+    template.exercises = (template.exercises || []).concat(result);
+  }
+  return result || [];
+}
+
+async function updateTemplateExercise(exerciseId, patch) {
+  const result = await sbFetch(`/tide_workout_template_exercises?id=eq.${exerciseId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+  const updated = result && result[0];
+  if (updated) {
+    state.workoutTemplates = state.workoutTemplates.map(t => ({
+      ...t,
+      exercises: (t.exercises || []).map(e => e.id === exerciseId ? updated : e),
+    }));
+  }
+  return updated;
+}
+
+async function removeTemplateExercise(templateId, exerciseId) {
+  await sbFetch(`/tide_workout_template_exercises?id=eq.${exerciseId}`, { method: 'DELETE' });
+  const template = state.workoutTemplates.find(t => t.id === templateId);
+  if (template) template.exercises = template.exercises.filter(e => e.id !== exerciseId);
+}
+
+// Names the user has already used in any template — surfaced in the picker
+// so they don't have to re-type their custom names.
+function userExerciseHistory() {
+  const seen = new Set();
+  const out = [];
+  (state.workoutTemplates || []).forEach(t => (t.exercises || []).forEach(e => {
+    const key = (e.exercise_name || '').trim();
+    if (!key) return;
+    if (EXERCISE_LIBRARY.some(x => x.name === key)) return; // dedupe against seed library
+    if (!seen.has(key.toLowerCase())) {
+      seen.add(key.toLowerCase());
+      out.push({ name: key, group: 'Yours', sets: e.set_count || 3, reps: e.target_reps || 8 });
+    }
+  }));
+  return out;
+}
+
+async function updateWorkoutTemplate(id, patch) {
+  const result = await sbFetch(`/tide_workout_templates?id=eq.${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+  const updated = result && result[0];
+  if (updated) {
+    state.workoutTemplates = state.workoutTemplates.map(t =>
+      t.id === id ? { ...updated, exercises: t.exercises } : t
+    );
+  }
+  return updated;
+}
+
+// Spin up a tide_activities row from a template. Chunk 8 will hang the set
+// logging UI off this row.
+async function startSessionFromTemplate(template) {
+  const row = {
+    date: todayISO(),
+    type: template.name,
+    category: 'strength',
+    source: 'manual',
+    template_id: template.id,
+    logged_at: new Date().toISOString(),
+  };
+  const result = await sbFetch('/tide_activities', { method: 'POST', body: JSON.stringify(row) });
+  if (result && result[0]) {
+    state.todayActivities = [result[0]].concat(state.todayActivities || []);
+    state.templateLastUse = { ...(state.templateLastUse || {}), [template.id]: todayISO() };
+  }
+  toast(`Started · ${template.name}`);
+  render();
+}
+
+function renderWorkoutsScreen() {
+  const tpls = state.workoutTemplates || [];
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="lib-back" id="workouts-back">‹ Train</div>
+        <div class="tab-title">Workouts</div>
+        <div class="tab-sub">${tpls.length} ${tpls.length === 1 ? 'template' : 'templates'}</div>
+      </div>
+      <div class="head-link" id="workouts-add">+ Template</div>
+    </header>
+
+    ${tpls.length === 0 ? `
+      <div class="card">
+        <p class="small" style="margin: 0">No templates yet. Tap <strong>+ Template</strong> to create one — a named ordered list of exercises with prescribed set counts.</p>
+      </div>
+    ` : tpls.map(t => {
+      const exCount = (t.exercises || []).length;
+      const sets = (t.exercises || []).reduce((s, e) => s + (e.set_count || 0), 0);
+      const lastDate = state.templateLastUse?.[t.id];
+      const lastLabel = lastDate ? `Last ${fmtDate(lastDate + 'T12:00:00')}` : 'Not yet done';
+      return `
+        <div class="workout-row" data-template="${t.id}">
+          <div class="workout-row-left">
+            <div class="workout-row-name">${escapeHtml(t.name)}</div>
+            <div class="workout-row-meta">${exCount} ${exCount === 1 ? 'exercise' : 'exercises'} · ${sets} sets · ${escapeHtml(lastLabel)}</div>
+          </div>
+          <div class="workout-row-chev">›</div>
+        </div>
+      `;
+    }).join('')}
+
+    <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
+  `;
+
+  $('#workouts-back').onclick = () => { state.tab = 'train'; state.screen = 'home'; render(); };
+  $('#any-fab').onclick = openLogAny;
+  $('#workouts-add').onclick = () => openTemplateEditModal(null);
+  $$('.workout-row').forEach(row => row.onclick = () => {
+    const t = state.workoutTemplates.find(x => x.id === row.dataset.template);
+    if (t) openTemplateEditModal(t);
+  });
+}
+
+function openTemplateEditModal(template) {
+  const editing = !!template;
+  const fmtTargets = (e) => {
+    const sets = e.set_count || 3;
+    const reps = e.target_reps;
+    const wt = e.target_weight_lb;
+    const left = reps ? `${sets} × ${reps}` : `${sets} sets`;
+    const right = wt != null ? ` @ ${wt} lb` : '';
+    return left + right;
+  };
+
+  const renderExercises = () => {
+    const t = state.workoutTemplates.find(x => x.id === (template?.id || ''));
+    const list = (t?.exercises || []);
+    if (!list.length) return '<div class="muted small" style="margin-bottom: 10px">No exercises yet. Tap below to pick some.</div>';
+    return list.map(e => `
+      <div class="exercise-row" data-ex-edit="${e.id}">
+        <div class="exercise-row-name">${escapeHtml(e.exercise_name)}</div>
+        <div class="exercise-row-sets">${escapeHtml(fmtTargets(e))}</div>
+        <span class="exercise-row-x" data-ex-remove="${e.id}" role="button" aria-label="Remove">×</span>
+      </div>
+    `).join('');
+  };
+
+  showModal(`
+    <h2>${editing ? 'Edit template' : 'New template'}</h2>
+
+    <div class="modal-section">
+      <div class="label">Name</div>
+      <input id="tpl-name" type="text" value="${escapeHtml(template?.name || '')}" placeholder="Push Day, Pull Day, Leg Day…">
+    </div>
+
+    ${editing ? `
+      <div class="modal-section">
+        <div class="label">Exercises</div>
+        <div id="tpl-exercises">${renderExercises()}</div>
+        <div class="btn-row" style="gap: 8px; margin-top: 10px">
+          <button class="btn btn-soft" id="tpl-pick" style="flex: 1">+ Pick from list</button>
+          <button class="btn btn-soft" id="tpl-custom" style="flex: 1">+ Custom</button>
+        </div>
+        <p class="small muted" style="margin-top: 8px; margin-bottom: 0">Tap an exercise row to set reps + weight.</p>
+      </div>
+    ` : ''}
+
+    <div class="btn-row">
+      ${editing ? '<button class="btn btn-warm" id="tpl-delete">Delete</button>' : '<button class="btn btn-soft" data-close>Cancel</button>'}
+      <button class="btn" id="tpl-save">${editing ? 'Save' : 'Next: add exercises'}</button>
+    </div>
+  `, (m) => {
+    const refreshList = () => {
+      const list = $('#tpl-exercises');
+      if (!list) return;
+      list.innerHTML = renderExercises();
+      wireRows();
+    };
+    const wireRows = () => {
+      m.querySelectorAll('[data-ex-remove]').forEach(b => b.onclick = async (ev) => {
+        ev.stopPropagation();
+        await removeTemplateExercise(template.id, b.dataset.exRemove);
+        refreshList();
+      });
+      m.querySelectorAll('[data-ex-edit]').forEach(row => row.onclick = () => {
+        const ex = state.workoutTemplates.find(t => t.id === template.id)?.exercises.find(e => e.id === row.dataset.exEdit);
+        if (ex) openExerciseTargetsModal(ex, refreshList);
+      });
+    };
+    wireRows();
+
+    if (editing) {
+      $('#tpl-pick').onclick = () => {
+        // Don't fully close — show the picker on top
+        openExercisePickerModal(template.id, () => {
+          closeModal();
+          openTemplateEditModal(state.workoutTemplates.find(t => t.id === template.id));
+        });
+      };
+      $('#tpl-custom').onclick = () => openCustomExerciseModal(template.id, refreshList);
+    }
+
+    $('#tpl-save').onclick = async () => {
+      const name = $('#tpl-name').value.trim();
+      if (!name) { toast('Add a template name'); return; }
+      try {
+        if (editing) {
+          await updateWorkoutTemplate(template.id, { name });
+        } else {
+          const created = await createWorkoutTemplate(name);
+          if (created) {
+            closeModal();
+            openTemplateEditModal({ ...created, exercises: [] });
+            return;
+          }
+        }
+        closeModal();
+        render();
+      } catch (e) {
+        toast('Could not save: ' + e.message);
+      }
+    };
+
+    if (editing) {
+      $('#tpl-delete').onclick = async () => {
+        try {
+          await deleteWorkoutTemplate(template.id);
+          closeModal();
+          render();
+        } catch (e) {
+          toast('Could not delete: ' + e.message);
+        }
+      };
+    }
+  });
+}
+
+// Multi-select sheet — check exercises from the library + the user's own past
+// exercise names, then bulk-add to the template with default sets/reps.
+function openExercisePickerModal(templateId, onDone) {
+  const template = state.workoutTemplates.find(t => t.id === templateId);
+  const alreadyInTemplate = new Set((template?.exercises || []).map(e => (e.exercise_name || '').toLowerCase()));
+  const yours = userExerciseHistory();
+  const allPool = [...yours, ...EXERCISE_LIBRARY];
+  // Group by `group`
+  const groups = {};
+  allPool.forEach(item => {
+    if (!groups[item.group]) groups[item.group] = [];
+    groups[item.group].push(item);
+  });
+  const groupOrder = ['Yours', 'Push', 'Pull', 'Legs', 'Core'];
+  const orderedGroups = groupOrder.filter(g => groups[g]);
+
+  const selected = new Set();
+
+  showModal(`
+    <h2>Pick exercises</h2>
+    <p class="small muted" style="margin-bottom: 12px">Tap to select, then add the batch.</p>
+    <div class="search-wrap" style="margin-bottom: 12px">
+      <div class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16 16l4 4"/></svg></div>
+      <input class="search-input" id="pick-search" type="text" placeholder="Filter">
+    </div>
+    <div id="pick-list" style="max-height: 50vh; overflow-y: auto; margin-bottom: 14px">
+      ${orderedGroups.map(g => `
+        <div class="group-label">${escapeHtml(g)}</div>
+        ${groups[g].map(item => {
+          const dim = alreadyInTemplate.has(item.name.toLowerCase());
+          return `
+            <div class="stack-item ${dim ? 'taken' : ''}" data-pick="${escapeHtml(item.name)}" data-sets="${item.sets}" data-reps="${item.reps}">
+              <div class="stack-cb"></div>
+              <div class="stack-item-body">
+                <div class="stack-item-name">${escapeHtml(item.name)}</div>
+                <div class="stack-item-meta">${item.sets} × ${item.reps}${dim ? ' · already in template' : ''}</div>
+              </div>
+              <input type="number" inputmode="numeric" min="0" class="picker-weight" placeholder="lb" style="width: 64px; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); font-family: var(--font-display); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right;${dim ? ' opacity: 0.4; pointer-events: none;' : ''}">
+            </div>
+          `;
+        }).join('')}
+      `).join('')}
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="pick-add" disabled style="opacity: 0.5">Add (0)</button>
+    </div>
+  `, (m) => {
+    const updateBtn = () => {
+      const n = selected.size;
+      const btn = $('#pick-add');
+      btn.textContent = `Add (${n})`;
+      btn.disabled = n === 0;
+      btn.style.opacity = n === 0 ? 0.5 : 1;
+    };
+    // Clicking the weight input shouldn't toggle the row selection.
+    m.querySelectorAll('.picker-weight').forEach(input => {
+      input.addEventListener('click', e => e.stopPropagation());
+      input.addEventListener('input', () => {
+        // Typing a weight auto-selects the row (so user can type-and-go).
+        const row = input.closest('[data-pick]');
+        if (!row || alreadyInTemplate.has(row.dataset.pick.toLowerCase())) return;
+        if (input.value && !selected.has(row.dataset.pick)) {
+          selected.add(row.dataset.pick);
+          row.classList.add('taken');
+          row.querySelector('.stack-cb').textContent = '✓';
+          updateBtn();
+        }
+      });
+    });
+    m.querySelectorAll('[data-pick]').forEach(row => row.onclick = () => {
+      const key = row.dataset.pick;
+      if (alreadyInTemplate.has(key.toLowerCase())) return; // already in template, skip
+      if (selected.has(key)) {
+        selected.delete(key);
+        row.classList.remove('taken');
+        row.querySelector('.stack-cb').textContent = '';
+      } else {
+        selected.add(key);
+        row.classList.add('taken');
+        row.querySelector('.stack-cb').textContent = '✓';
+      }
+      updateBtn();
+    });
+    $('#pick-search').oninput = (e) => {
+      const q = e.target.value.toLowerCase();
+      m.querySelectorAll('[data-pick]').forEach(row => {
+        row.style.display = !q || row.dataset.pick.toLowerCase().includes(q) ? '' : 'none';
+      });
+      m.querySelectorAll('.group-label').forEach(h => {
+        // Hide group label if all its rows are hidden
+        let next = h.nextElementSibling;
+        let anyVisible = false;
+        while (next && !next.classList.contains('group-label')) {
+          if (next.style.display !== 'none') { anyVisible = true; break; }
+          next = next.nextElementSibling;
+        }
+        h.style.display = anyVisible || !q ? '' : 'none';
+      });
+    };
+    $('#pick-add').onclick = async () => {
+      const items = [];
+      m.querySelectorAll('[data-pick]').forEach(row => {
+        if (!selected.has(row.dataset.pick)) return;
+        const wtRaw = parseFloat(row.querySelector('.picker-weight')?.value);
+        items.push({
+          exercise_name: row.dataset.pick,
+          set_count: parseInt(row.dataset.sets, 10) || 3,
+          target_reps: parseInt(row.dataset.reps, 10) || 8,
+          target_weight_lb: Number.isFinite(wtRaw) ? wtRaw : null,
+        });
+      });
+      try {
+        await addTemplateExercisesBulk(templateId, items);
+        closeModal();
+        toast(`Added ${items.length}`);
+        if (onDone) onDone();
+      } catch (e) {
+        toast('Could not add: ' + e.message);
+      }
+    };
+  });
+}
+
+function openCustomExerciseModal(templateId, onDone) {
+  showModal(`
+    <h2>Custom exercise</h2>
+    <div class="modal-section">
+      <div class="label">Name</div>
+      <input id="cust-name" type="text" placeholder="e.g., Single-arm landmine row">
+    </div>
+    <div class="grid-3" style="gap: 8px">
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Sets</div>
+        <input id="cust-sets" type="number" inputmode="numeric" min="1" max="10" value="3">
+      </div>
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Reps</div>
+        <input id="cust-reps" type="number" inputmode="numeric" min="1" max="50" value="8">
+      </div>
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Weight (lb)</div>
+        <input id="cust-weight" type="number" inputmode="numeric" min="0" placeholder="lb">
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top: 14px">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="cust-add">Add</button>
+    </div>
+  `, () => {
+    $('#cust-add').onclick = async () => {
+      const name = $('#cust-name').value.trim();
+      const sets = parseInt($('#cust-sets').value, 10) || 3;
+      const reps = parseInt($('#cust-reps').value, 10) || null;
+      const wt = parseFloat($('#cust-weight').value);
+      if (!name) { toast('Add a name'); return; }
+      try {
+        await addTemplateExercise(templateId, name, sets, reps, Number.isFinite(wt) ? wt : null);
+        closeModal();
+        if (onDone) onDone();
+      } catch (e) {
+        toast('Could not add: ' + e.message);
+      }
+    };
+  });
+}
+
+// Per-exercise edit sheet — set count, target reps, target weight.
+function openExerciseTargetsModal(exercise, onDone) {
+  showModal(`
+    <h2>${escapeHtml(exercise.exercise_name)}</h2>
+    <div class="grid-3" style="gap: 8px">
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Sets</div>
+        <input id="ex-sets" type="number" inputmode="numeric" min="1" max="10" value="${exercise.set_count || 3}">
+      </div>
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Reps</div>
+        <input id="ex-reps" type="number" inputmode="numeric" min="1" max="50" value="${exercise.target_reps ?? ''}" placeholder="reps">
+      </div>
+      <div>
+        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Weight (lb)</div>
+        <input id="ex-weight" type="number" inputmode="numeric" min="0" value="${exercise.target_weight_lb ?? ''}" placeholder="lb">
+      </div>
+    </div>
+    <p class="small muted" style="margin-top: 10px">Bump the weight as you progress. This is what the workout will ghost-fill when you start the session.</p>
+    <div class="btn-row" style="margin-top: 14px">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="ex-save">Save</button>
+    </div>
+  `, () => {
+    $('#ex-save').onclick = async () => {
+      const sets = parseInt($('#ex-sets').value, 10) || 3;
+      const reps = parseInt($('#ex-reps').value, 10);
+      const wtRaw = parseFloat($('#ex-weight').value);
+      const patch = {
+        set_count: sets,
+        target_reps: Number.isFinite(reps) ? reps : null,
+        target_weight_lb: Number.isFinite(wtRaw) ? wtRaw : null,
+      };
+      try {
+        await updateTemplateExercise(exercise.id, patch);
+        closeModal();
+        if (onDone) onDone();
+      } catch (e) {
+        toast('Could not save: ' + e.message);
+      }
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Train tab (v2 chunk 6) — manual activity log + Oura activity summary
 // ---------------------------------------------------------------------------
 const ACTIVITY_CATEGORIES = [
@@ -2049,9 +2678,12 @@ async function loadTodayActivities() {
 function renderTrainTab() {
   const acts = state.todayActivities || [];
   const oura = state.ouraToday || null;
-  // Surface today's Oura daily_activity as a single read-only card if no
-  // explicit cardio entry already covers it.
+  const tpls = state.workoutTemplates || [];
   const showOuraCard = oura && oura.activity_score != null;
+  // Hide quick-start once any strength activity is logged today (per spec, the
+  // quick-start row only appears when no session is active).
+  const hasStrengthToday = acts.some(a => a.category === 'strength');
+  const showQuickStart = !hasStrengthToday && tpls.length > 0;
 
   const sub = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(/,/g, ' ·');
 
@@ -2062,14 +2694,35 @@ function renderTrainTab() {
         <div class="tab-sub">${escapeHtml(sub)}</div>
       </div>
       <div style="display: flex; gap: 16px; align-self: flex-start; margin-top: 10px;">
+        <div class="head-link" id="train-workouts">Workouts</div>
         <div class="head-link" id="train-progress">Progress</div>
         <div class="head-link" id="train-body">Body</div>
       </div>
     </header>
 
-    ${acts.length === 0 && !showOuraCard ? `
+    ${showQuickStart ? `
+      <div class="section-label">Quick start</div>
+      <div class="quickstart-row">
+        ${tpls.map(t => {
+          const lastDate = state.templateLastUse?.[t.id];
+          const lastLabel = lastDate ? `Last ${fmtDate(lastDate + 'T12:00:00')}` : 'Not yet done';
+          return `
+            <div class="quickstart-chip" data-template-start="${t.id}">
+              <div class="quickstart-chip-name">${escapeHtml(t.name)}</div>
+              <div class="quickstart-chip-meta">${escapeHtml(lastLabel)}</div>
+            </div>
+          `;
+        }).join('')}
+        <div class="quickstart-chip empty" id="quickstart-manage">
+          <div class="quickstart-chip-name">Manage templates</div>
+          <div class="quickstart-chip-meta">+ new workout</div>
+        </div>
+      </div>
+    ` : ''}
+
+    ${acts.length === 0 && !showOuraCard && !showQuickStart ? `
       <div class="card" style="margin-bottom: 14px">
-        <p class="small" style="margin: 0">Nothing logged today. Tap below to log a workout, walk, or recovery session.</p>
+        <p class="small" style="margin: 0">Nothing logged today. Tap <strong>Workouts</strong> in the header to create a template, or log a one-off activity below.</p>
       </div>
     ` : ''}
 
@@ -2088,27 +2741,48 @@ function renderTrainTab() {
   $('#any-fab').onclick = openLogAny;
   $('#log-activity-btn').onclick = () => openLogActivityModal();
   $$('.activity-card[data-activity-id]').forEach(c => c.onclick = () => openActivityDetail(c.dataset.activityId));
+  attachSwipeToDelete($$('.swipe-row.swipe-activity'), async (id) => {
+    await sbFetch(`/tide_activities?id=eq.${id}`, { method: 'DELETE' });
+    state.todayActivities = state.todayActivities.filter(a => a.id !== id);
+    render();
+  });
+  $('#train-workouts').onclick = () => { state.screen = 'workouts'; render(); };
   $('#train-progress').onclick = () => toast('Progress lands in chunk 9');
   $('#train-body').onclick = () => toast('Body lands in chunk 10');
+  $$('[data-template-start]').forEach(c => c.onclick = () => {
+    const t = state.workoutTemplates.find(x => x.id === c.dataset.templateStart);
+    if (t) startSessionFromTemplate(t);
+  });
+  $('#quickstart-manage')?.addEventListener('click', () => { state.screen = 'workouts'; render(); });
 }
 
 function renderActivityCard(a) {
   const cls = a.category === 'recovery' ? 'recovery' : '';
+  const m = a.metadata || {};
+  const strengthBit = (a.category === 'strength' && (m.sets || m.reps || m.weight_lb))
+    ? `${m.sets || '?'} × ${m.reps || '?'}${m.weight_lb != null ? ` @ ${m.weight_lb} lb` : ''}`
+    : null;
   const meta = [
+    strengthBit,
     a.duration_min ? `${a.duration_min} min` : null,
-    a.perceived_effort ? `RPE ${a.perceived_effort}` : null,
+    a.category === 'strength' && a.perceived_effort ? `RPE ${a.perceived_effort}` : null,
     a.notes ? a.notes : null,
   ].filter(Boolean).join(' · ');
   const icon = ACTIVITY_ICONS[a.category] || ACTIVITY_ICONS.cardio;
   const source = (a.source || 'manual').toUpperCase();
   return `
-    <div class="activity-card ${cls}" data-activity-id="${a.id}">
-      <div class="activity-icon"><svg viewBox="0 0 24 24">${icon}</svg></div>
-      <div class="activity-body">
-        <div class="activity-title">${escapeHtml(a.type || ACTIVITY_CATEGORIES.find(c => c.id === a.category)?.label || 'Activity')}</div>
-        ${meta ? `<div class="activity-meta">${escapeHtml(meta)}</div>` : ''}
+    <div class="swipe-row swipe-activity" data-id="${a.id}">
+      <div class="swipe-content">
+        <div class="activity-card ${cls}" data-activity-id="${a.id}">
+          <div class="activity-icon"><svg viewBox="0 0 24 24">${icon}</svg></div>
+          <div class="activity-body">
+            <div class="activity-title">${escapeHtml(a.type || ACTIVITY_CATEGORIES.find(c => c.id === a.category)?.label || 'Activity')}</div>
+            ${meta ? `<div class="activity-meta">${escapeHtml(meta)}</div>` : ''}
+          </div>
+          <div class="activity-source">${escapeHtml(source)}</div>
+        </div>
       </div>
-      <div class="activity-source">${escapeHtml(source)}</div>
+      <div class="swipe-action">Delete</div>
     </div>
   `;
 }
@@ -2137,7 +2811,7 @@ function renderOuraActivityCard(oura) {
 function openLogActivityModal(existing = null) {
   const editing = !!existing;
   const cat = editing ? existing.category : 'strength';
-  const showFields = (id) => id === 'strength' ? 'strength' : id;
+  const initialMeta = (existing && existing.metadata) || {};
   showModal(`
     <h2>${editing ? 'Edit activity' : 'Log activity'}</h2>
 
@@ -2153,15 +2827,30 @@ function openLogActivityModal(existing = null) {
       <input id="act-type" type="text" value="${escapeHtml(existing?.type || '')}" placeholder="Push Day, Zone 2 walk, Steam…">
     </div>
 
-    <div class="grid-2">
-      <div>
-        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Duration (min)</div>
-        <input id="act-duration" type="number" inputmode="numeric" min="1" value="${existing?.duration_min || ''}" placeholder="45">
+    <div id="act-strength" style="${cat === 'strength' ? '' : 'display:none'}">
+      <div class="grid-3" style="gap: 8px">
+        <div>
+          <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Sets</div>
+          <input id="act-sets" type="number" inputmode="numeric" min="1" max="20" value="${initialMeta.sets || ''}" placeholder="3">
+        </div>
+        <div>
+          <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Reps</div>
+          <input id="act-reps" type="number" inputmode="numeric" min="1" max="50" value="${initialMeta.reps || ''}" placeholder="8">
+        </div>
+        <div>
+          <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Weight (lb)</div>
+          <input id="act-weight" type="number" inputmode="numeric" min="0" value="${initialMeta.weight_lb || ''}" placeholder="lb">
+        </div>
       </div>
-      <div>
-        <div class="label" style="margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">RPE (1–10)</div>
+      <div class="modal-section" style="margin-top: 10px; margin-bottom: 0">
+        <div class="label">RPE (1–10)</div>
         <input id="act-rpe" type="number" inputmode="numeric" min="1" max="10" value="${existing?.perceived_effort || ''}" placeholder="7">
       </div>
+    </div>
+
+    <div class="modal-section" style="margin-top: 14px">
+      <div class="label">Duration (min)</div>
+      <input id="act-duration" type="number" inputmode="numeric" min="1" value="${existing?.duration_min || ''}" placeholder="45">
     </div>
 
     <div class="modal-section" style="margin-top: 14px">
@@ -2178,15 +2867,30 @@ function openLogActivityModal(existing = null) {
     m.querySelectorAll('[data-cat]').forEach(c => c.onclick = () => {
       m.querySelectorAll('[data-cat]').forEach(x => x.classList.remove('selected'));
       c.classList.add('selected'); category = c.dataset.cat;
+      $('#act-strength').style.display = (category === 'strength') ? '' : 'none';
     });
 
     $('#act-save').onclick = async () => {
       const type = $('#act-type').value.trim() || null;
       const duration_min = parseInt($('#act-duration').value, 10) || null;
-      const perceived_effort = parseInt($('#act-rpe').value, 10) || null;
+      // RPE only applies to strength
+      const rpeInput = $('#act-rpe');
+      const perceived_effort = (category === 'strength' && rpeInput) ? (parseInt(rpeInput.value, 10) || null) : null;
       const notes = $('#act-notes').value.trim() || null;
+      let metadata = existing?.metadata || null;
+      if (category === 'strength') {
+        const sets = parseInt($('#act-sets').value, 10);
+        const reps = parseInt($('#act-reps').value, 10);
+        const weight_lb = parseFloat($('#act-weight').value);
+        metadata = {
+          ...(existing?.metadata || {}),
+          sets: Number.isFinite(sets) ? sets : null,
+          reps: Number.isFinite(reps) ? reps : null,
+          weight_lb: Number.isFinite(weight_lb) ? weight_lb : null,
+        };
+      }
       if (!type && !duration_min) { toast('Add a name or duration'); return; }
-      const payload = { category, type, duration_min, perceived_effort, notes };
+      const payload = { category, type, duration_min, perceived_effort, notes, metadata };
       const btn = $('#act-save');
       btn.disabled = true; btn.textContent = editing ? 'Saving…' : 'Logging…';
       try {
@@ -2459,6 +3163,12 @@ function renderFuelTab() {
   $('#recent-library')?.addEventListener('click', () => { state.screen = 'library'; render(); });
 
   $$('.meal').forEach(row => row.onclick = () => openMealDetail(row.dataset.mealId));
+  attachSwipeToDelete($$('.swipe-row.swipe-meal'), async (id) => {
+    await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'DELETE' });
+    state.todayIntake = state.todayIntake.filter(x => x.id !== id);
+    state.foodLibraryRows = (state.foodLibraryRows || []).filter(x => x.id !== id);
+    render();
+  });
 
   // Async hint refresh (Claude). Don't block initial paint.
   fuelRemainingHint(totals, goal).then(t => {
@@ -2489,18 +3199,23 @@ function renderMealRow(r) {
   const time = fmtTime(r.logged_at).replace(/ /g, '');
   const t = time.toLowerCase().replace(':00', '');
   return `
-    <div class="meal" data-meal-id="${r.id}">
-      <div class="meal-left">
-        <div class="meal-top-row">
-          <div class="meal-title">${escapeHtml(r.item_type || 'Meal')}</div>
-          <div class="meal-time">${escapeHtml(t)}</div>
+    <div class="swipe-row swipe-meal" data-id="${r.id}">
+      <div class="swipe-content">
+        <div class="meal" data-meal-id="${r.id}">
+          <div class="meal-left">
+            <div class="meal-top-row">
+              <div class="meal-title">${escapeHtml(r.item_type || 'Meal')}</div>
+              <div class="meal-time">${escapeHtml(t)}</div>
+            </div>
+            ${(m.protein_g || m.carbs_g || m.fat_g) ? `<div class="meal-macros">${Math.round(m.protein_g)} P · ${Math.round(m.carbs_g)} C · ${Math.round(m.fat_g)} F</div>` : ''}
+          </div>
+          <div class="meal-kcal">
+            <div class="meal-kcal-num">${m.kcal || '—'}</div>
+            <div class="meal-kcal-label">kcal</div>
+          </div>
         </div>
-        ${(m.protein_g || m.carbs_g || m.fat_g) ? `<div class="meal-macros">${Math.round(m.protein_g)} P · ${Math.round(m.carbs_g)} C · ${Math.round(m.fat_g)} F</div>` : ''}
       </div>
-      <div class="meal-kcal">
-        <div class="meal-kcal-num">${m.kcal || '—'}</div>
-        <div class="meal-kcal-label">kcal</div>
-      </div>
+      <div class="swipe-action">Delete</div>
     </div>
   `;
 }
@@ -2686,6 +3401,89 @@ function openMealDetail(id) {
         toast('Could not delete: ' + e.message);
       }
     };
+  });
+}
+
+// Swipe-left-to-delete on a list. Each row must look like:
+//   <div class="swipe-row" data-id="...">
+//     <div class="swipe-content">...row content...</div>
+//     <div class="swipe-action">Delete</div>
+//   </div>
+// onDelete is async (id) => void. Supports touch + mouse drag.
+function attachSwipeToDelete(rows, onDelete) {
+  rows.forEach(row => {
+    const content = row.querySelector(':scope > .swipe-content');
+    const action  = row.querySelector(':scope > .swipe-action');
+    if (!content || !action) return;
+    let startX = 0;
+    let currentX = 0;
+    let dragging = false;
+    let opened = false;
+    let pointerMoved = false;
+    const OPEN_X = -88;
+    const COMMIT_THRESHOLD = -40;
+
+    const setX = (x) => {
+      const clamped = Math.max(-110, Math.min(0, x));
+      content.style.transform = `translateX(${clamped}px)`;
+      currentX = clamped;
+    };
+    const open = () => { content.style.transform = `translateX(${OPEN_X}px)`; currentX = OPEN_X; opened = true; };
+    const close = () => { content.style.transform = ''; currentX = 0; opened = false; };
+
+    const onStart = (clientX) => {
+      startX = clientX - currentX;
+      dragging = true;
+      pointerMoved = false;
+      content.classList.add('dragging');
+    };
+    const onMove = (clientX) => {
+      if (!dragging) return;
+      const dx = clientX - startX;
+      if (Math.abs(dx - currentX) > 3) pointerMoved = true;
+      setX(dx);
+    };
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      content.classList.remove('dragging');
+      if (currentX < COMMIT_THRESHOLD) open();
+      else close();
+    };
+
+    content.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), { passive: true });
+    content.addEventListener('touchmove',  (e) => onMove(e.touches[0].clientX),  { passive: true });
+    content.addEventListener('touchend',   onEnd);
+    content.addEventListener('touchcancel', onEnd);
+
+    // Mouse drag fallback (desktop testing)
+    content.addEventListener('mousedown', (e) => {
+      // Don't start a drag on input fields, buttons, etc.
+      if (e.target.closest('input, textarea, button, select, [contenteditable]')) return;
+      onStart(e.clientX);
+      const onMouseMove = (ev) => onMove(ev.clientX);
+      const onMouseUp = () => {
+        onEnd();
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+      };
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    });
+
+    // Intercept click while open OR while a drag just happened (so the row's
+    // tap-to-edit doesn't fire after a swipe).
+    content.addEventListener('click', (e) => {
+      if (opened) { e.preventDefault(); e.stopPropagation(); close(); }
+      else if (pointerMoved) { e.preventDefault(); e.stopPropagation(); pointerMoved = false; }
+    }, { capture: true });
+
+    action.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = row.dataset.id;
+      try { await onDelete(id); }
+      catch (err) { toast('Could not delete: ' + err.message); close(); }
+    });
   });
 }
 
@@ -3065,6 +3863,11 @@ function renderSipTab() {
   $('#any-fab').onclick = openLogAny;
   $$('[data-sip]').forEach(b => b.onclick = () => { state.sipSection = b.dataset.sip; renderSipTab(); });
   $$('[data-intake-id]').forEach(row => row.onclick = () => openIntakeDetail(row.dataset.intakeId));
+  attachSwipeToDelete($$('.swipe-row.swipe-intake'), async (id) => {
+    await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'DELETE' });
+    state.todayIntake = state.todayIntake.filter(x => x.id !== id);
+    render();
+  });
 
   wireSipAdd(sub);
 }
@@ -3113,10 +3916,15 @@ function renderSipWater(rows, total) {
         const ml = Number(r.quantity) || 0;
         const pct = Math.min(70, (ml / goal) * 100);
         return `
-          <div class="timeline-row" data-intake-id="${r.id}">
-            <div class="timeline-time">${fmtTime(r.logged_at)}</div>
-            <div class="timeline-bar" style="width: ${pct}%; max-width: ${pct}%"></div>
-            <div class="timeline-amount">${ml}ml</div>
+          <div class="swipe-row swipe-intake" data-id="${r.id}">
+            <div class="swipe-content">
+              <div class="timeline-row" data-intake-id="${r.id}">
+                <div class="timeline-time">${fmtTime(r.logged_at)}</div>
+                <div class="timeline-bar" style="width: ${pct}%; max-width: ${pct}%"></div>
+                <div class="timeline-amount">${ml}ml</div>
+              </div>
+            </div>
+            <div class="swipe-action">Delete</div>
           </div>
         `;
       }).join('')}
@@ -3162,10 +3970,15 @@ function renderSipCaffeine(rows, total) {
         const mg = Number(r.quantity) || 0;
         const pct = Math.min(70, (mg / CAFFEINE_SOFT_LIMIT_MG) * 100);
         return `
-          <div class="timeline-row" data-intake-id="${r.id}">
-            <div class="timeline-time">${fmtTime(r.logged_at)}</div>
-            <div class="timeline-bar" style="width: ${pct}%; max-width: ${pct}%"></div>
-            <div class="timeline-amount">${escapeHtml(r.item_type || 'caffeine')} · ${mg}mg</div>
+          <div class="swipe-row swipe-intake" data-id="${r.id}">
+            <div class="swipe-content">
+              <div class="timeline-row" data-intake-id="${r.id}">
+                <div class="timeline-time">${fmtTime(r.logged_at)}</div>
+                <div class="timeline-bar" style="width: ${pct}%; max-width: ${pct}%"></div>
+                <div class="timeline-amount">${escapeHtml(r.item_type || 'caffeine')} · ${mg}mg</div>
+              </div>
+            </div>
+            <div class="swipe-action">Delete</div>
           </div>
         `;
       }).join('')}
@@ -5534,7 +6347,7 @@ async function boot() {
   // Then refresh from server
   await loadActiveSession();
   await loadHistory();
-  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther(), loadFoodLibrary(), loadTodayActivities()]);
+  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther(), loadFoodLibrary(), loadTodayActivities(), loadWorkoutTemplates(), loadRecentTemplateUses()]);
   // Pull cached Oura today + 7d for the stat grid hero, then sync in background
   await Promise.all([loadOuraToday(), loadOura7d()]);
   if (state.screen === 'home') render();
