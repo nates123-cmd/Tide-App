@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tide v2 — Weekly Digest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F2EE;
+    --text: #1C1C1C;
+    --muted: #6B6560;
+    --muted-soft: #8E8884;
+    --accent: #A89880;
+    --accent-deep: #8C7A60;
+    --card-bg: #EDEBE7;
+    --card-bg-warm: #EFE9E0;
+    --border: #D8D4CE;
+    --border-soft: #E3DFD9;
+    --warn: #B5754A;
+    --good: #7A8B6F;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --font-display: 'Fraunces', 'Times New Roman', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: #DDD7CF;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-title {
+    max-width: 1400px;
+    margin: 0 auto 40px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    color: #4A453F;
+    letter-spacing: -0.01em;
+  }
+  .page-title span {
+    color: #8E8884;
+    font-weight: 400;
+    font-size: 15px;
+    margin-left: 12px;
+  }
+
+  .mockup-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .mockup-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .mockup-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6B6560;
+  }
+  .mockup-label small {
+    display: block;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    color: #8E8884;
+    font-size: 11px;
+    margin-top: 4px;
+    max-width: 320px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  /* Phone — taller for digest since it's a long-scroll screen */
+  .phone {
+    width: 380px;
+    height: 760px;
+    background: var(--bg);
+    border-radius: 36px;
+    box-shadow:
+      0 0 0 8px #2B2724,
+      0 1px 0 9px #1C1A18,
+      0 30px 60px -20px rgba(28, 26, 24, 0.35),
+      0 12px 24px -10px rgba(28, 26, 24, 0.2);
+    overflow: hidden;
+    position: relative;
+  }
+  .notch {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 28px;
+    background: #1C1A18;
+    border-radius: 14px;
+    z-index: 10;
+  }
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    z-index: 9;
+  }
+  .status-bar-right { display: flex; gap: 6px; align-items: center; }
+  .battery {
+    width: 24px; height: 12px;
+    border: 1.5px solid var(--text);
+    border-radius: 3px;
+    position: relative;
+    padding: 1px;
+  }
+  .battery::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 3px;
+    width: 2px; height: 4px;
+    background: var(--text);
+    border-radius: 0 1px 1px 0;
+  }
+  .battery-fill { background: var(--text); height: 100%; width: 70%; border-radius: 1px; }
+
+  .screen {
+    position: absolute;
+    top: 50px; bottom: 0; left: 0; right: 0;
+    overflow-y: auto;
+    padding: 8px 20px 110px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* Header */
+  .header {
+    padding: 14px 4px 16px;
+  }
+  .header-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    margin-bottom: 12px;
+    cursor: pointer;
+  }
+  .header-back-arrow { font-size: 16px; line-height: 1; }
+  .digest-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  /* THE THESIS */
+  .thesis {
+    margin-bottom: 28px;
+    padding: 0 2px;
+  }
+  .thesis-headline {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 26px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 14px;
+  }
+  .thesis-headline em {
+    font-style: italic;
+    color: var(--accent-deep);
+  }
+  .thesis-narrative {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--muted);
+    letter-spacing: -0.005em;
+  }
+
+  /* Section label — magazine style */
+  .section-marker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 28px 2px 14px;
+  }
+  .section-marker-rule {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .section-marker-text {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 600;
+    font-family: var(--font-body);
+  }
+
+  /* THE EVIDENCE — bucket bars */
+  .evidence-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 18px 18px 16px;
+    margin-bottom: 12px;
+  }
+  .evidence-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .evidence-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 15px;
+    letter-spacing: -0.005em;
+  }
+  .evidence-meta {
+    font-size: 11px;
+    color: var(--muted-soft);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .evidence-sub {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+    margin-bottom: 16px;
+    letter-spacing: 0.01em;
+  }
+
+  /* Bucket row */
+  .bucket {
+    display: grid;
+    grid-template-columns: 56px 1fr 60px;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+  }
+  .bucket-label {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .bucket-bar-track {
+    height: 18px;
+    background: var(--border-soft);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bucket-bar-fill {
+    height: 100%;
+    background: var(--accent-deep);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+    color: var(--bg);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .bucket-bar-fill.warn { background: var(--warn); }
+  .bucket-bar-fill.good { background: var(--good); }
+  .bucket-bar-fill.muted { background: var(--accent); }
+  .bucket-value {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+    text-align: right;
+  }
+  .bucket-divider {
+    height: 1px;
+    background: var(--border-soft);
+    margin: 4px 0;
+  }
+
+  /* Lens switcher */
+  .lens-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    margin: 4px -2px 16px;
+    padding: 2px;
+  }
+  .lens-row::-webkit-scrollbar { display: none; }
+  .lens-chip {
+    flex-shrink: 0;
+    padding: 6px 11px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .lens-chip.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+
+  /* SIGNALS */
+  .signal-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 10px;
+  }
+  .signal-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .signal-tag {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 600;
+  }
+  .signal-tag.wins { color: var(--good); }
+  .signal-tag.drags { color: var(--warn); }
+  .signal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .signal-item {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+  }
+  .signal-marker {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--muted-soft);
+    flex-shrink: 0;
+    margin-top: 8px;
+  }
+  .signal-card.wins .signal-marker { background: var(--good); }
+  .signal-card.drags .signal-marker { background: var(--warn); }
+  .signal-text {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--text);
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .signal-text em {
+    font-style: italic;
+    color: var(--accent-deep);
+  }
+
+  /* EXPERIMENT */
+  .experiment {
+    background: var(--text);
+    color: var(--bg);
+    border-radius: var(--radius);
+    padding: 22px 22px 20px;
+    margin-bottom: 18px;
+  }
+  .experiment-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(245, 242, 238, 0.55);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .experiment-text {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+    margin-bottom: 16px;
+  }
+  .experiment-text em {
+    font-style: italic;
+    color: rgba(245, 242, 238, 0.78);
+  }
+  .experiment-meta {
+    font-size: 11px;
+    color: rgba(245, 242, 238, 0.55);
+    letter-spacing: 0.04em;
+    margin-bottom: 16px;
+  }
+  .experiment-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .experiment-btn {
+    flex: 1;
+    padding: 11px 14px;
+    background: rgba(245, 242, 238, 0.1);
+    border: 1px solid rgba(245, 242, 238, 0.25);
+    border-radius: 10px;
+    color: var(--bg);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .experiment-btn.primary {
+    background: var(--bg);
+    color: var(--text);
+    border-color: var(--bg);
+  }
+
+  /* WEEK META */
+  .week-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border-soft);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border-soft);
+    margin-bottom: 18px;
+  }
+  .week-meta-cell {
+    background: var(--card-bg);
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .week-meta-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+  .week-meta-value {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .week-meta-detail {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  /* Bottom tab */
+  .tab-strip {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(245, 242, 238, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-soft);
+    padding: 10px 12px 22px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 2px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .tab.active { color: var(--text); font-weight: 600; }
+  .tab-icon { width: 22px; height: 22px; }
+  .tab-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Tide v2 — Weekly Digest expanded <span>scrolls long — it's a magazine article</span></div>
+
+<div class="mockup-row">
+
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>9:18</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div class="header-back">
+            <span class="header-back-arrow">‹</span> Home
+          </div>
+          <div class="digest-eyebrow">Week of May 5 – 11</div>
+        </div>
+
+        <!-- THESIS -->
+        <div class="thesis">
+          <div class="thesis-headline">
+            Three nights under 6h <em>drove HRV down 12%.</em>
+          </div>
+          <div class="thesis-narrative">
+            Two heavy sessions and a Tuesday late-shift collapsed your sleep window three times in seven days. Caffeine after 3pm on those same days made the recovery worse — readiness landed below 70 for four straight mornings before the body finally caught up Sunday.
+          </div>
+        </div>
+
+        <!-- WEEK META -->
+        <div class="week-meta">
+          <div class="week-meta-cell">
+            <div class="week-meta-label">Avg readiness</div>
+            <div class="week-meta-value">71</div>
+            <div class="week-meta-detail" style="color: var(--warn);">−8 vs prev</div>
+          </div>
+          <div class="week-meta-cell">
+            <div class="week-meta-label">Avg HRV</div>
+            <div class="week-meta-value">48 <span style="font-size: 11px; color: var(--muted); font-weight: 400;">ms</span></div>
+            <div class="week-meta-detail" style="color: var(--warn);">−6 vs prev</div>
+          </div>
+          <div class="week-meta-cell">
+            <div class="week-meta-label">Stack hit</div>
+            <div class="week-meta-value">6 <span style="font-size: 11px; color: var(--muted); font-weight: 400;">/ 7</span></div>
+            <div class="week-meta-detail" style="color: var(--good);">+1 vs prev</div>
+          </div>
+        </div>
+
+        <!-- THE EVIDENCE -->
+        <div class="section-marker">
+          <div class="section-marker-rule"></div>
+          <div class="section-marker-text">The evidence</div>
+          <div class="section-marker-rule"></div>
+        </div>
+
+        <!-- Lens switcher -->
+        <div class="lens-row">
+          <div class="lens-chip active">Drinks × Sleep</div>
+          <div class="lens-chip">Caffeine × HRV</div>
+          <div class="lens-chip">Hydration × Readiness</div>
+          <div class="lens-chip">Train × Recovery</div>
+        </div>
+
+        <div class="evidence-card">
+          <div class="evidence-header">
+            <div class="evidence-title">Sleep score by drinks</div>
+            <div class="evidence-meta">90 days</div>
+          </div>
+          <div class="evidence-sub">
+            Average Oura sleep score on nights with 0, 1–2, 3–4, or 5+ standard drinks. Each bucket weighted by sample size.
+          </div>
+
+          <div class="bucket">
+            <div class="bucket-label">0</div>
+            <div class="bucket-bar-track">
+              <div class="bucket-bar-fill good" style="width: 88%;">88</div>
+            </div>
+            <div class="bucket-value">n=42</div>
+          </div>
+          <div class="bucket-divider"></div>
+          <div class="bucket">
+            <div class="bucket-label">1–2</div>
+            <div class="bucket-bar-track">
+              <div class="bucket-bar-fill muted" style="width: 79%;">79</div>
+            </div>
+            <div class="bucket-value">n=28</div>
+          </div>
+          <div class="bucket-divider"></div>
+          <div class="bucket">
+            <div class="bucket-label">3–4</div>
+            <div class="bucket-bar-track">
+              <div class="bucket-bar-fill" style="width: 64%;">64</div>
+            </div>
+            <div class="bucket-value">n=14</div>
+          </div>
+          <div class="bucket-divider"></div>
+          <div class="bucket">
+            <div class="bucket-label">5+</div>
+            <div class="bucket-bar-track">
+              <div class="bucket-bar-fill warn" style="width: 48%;">48</div>
+            </div>
+            <div class="bucket-value">n=6</div>
+          </div>
+        </div>
+
+        <!-- WINS -->
+        <div class="section-marker">
+          <div class="section-marker-rule"></div>
+          <div class="section-marker-text">Signals</div>
+          <div class="section-marker-rule"></div>
+        </div>
+
+        <div class="signal-card wins">
+          <div class="signal-header">
+            <div class="signal-tag wins">Wins</div>
+          </div>
+          <div class="signal-list">
+            <div class="signal-item">
+              <div class="signal-marker"></div>
+              <div class="signal-text">
+                Hydration averaged 2.4L — <em>up 18%</em> from last week. Stayed ahead of pace on five of seven days.
+              </div>
+            </div>
+            <div class="signal-item">
+              <div class="signal-marker"></div>
+              <div class="signal-text">
+                Hit the morning stack <em>six of seven days</em>. Vitamin D3 streak now 22 days.
+              </div>
+            </div>
+            <div class="signal-item">
+              <div class="signal-marker"></div>
+              <div class="signal-text">
+                Two strength sessions with new PRs — bench at 85 kg, tricep pushdown at 42 kg.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DRAGS -->
+        <div class="signal-card drags">
+          <div class="signal-header">
+            <div class="signal-tag drags">Drags</div>
+          </div>
+          <div class="signal-list">
+            <div class="signal-item">
+              <div class="signal-marker"></div>
+              <div class="signal-text">
+                Caffeine after 3pm on <em>three days</em> — HRV dipped on all three nights that followed.
+              </div>
+            </div>
+            <div class="signal-item">
+              <div class="signal-marker"></div>
+              <div class="signal-text">
+                Two sessions of 4+ drinks. Both followed by sleep scores under 65 and readiness under 70.
+              </div>
+            </div>
+            <div class="signal-item">
+              <div class="signal-marker"></div>
+              <div class="signal-text">
+                Evening stack hit <em>only twice</em>. Magnesium streak broken Wednesday.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EXPERIMENT -->
+        <div class="section-marker">
+          <div class="section-marker-rule"></div>
+          <div class="section-marker-text">The experiment</div>
+          <div class="section-marker-rule"></div>
+        </div>
+
+        <div class="experiment">
+          <div class="experiment-eyebrow">Try this week</div>
+          <div class="experiment-text">
+            <em>No caffeine after 1pm</em> this week. We'll check whether HRV holds when sessions land late.
+          </div>
+          <div class="experiment-meta">
+            Tracked daily · result in next Sunday's digest
+          </div>
+          <div class="experiment-actions">
+            <button class="experiment-btn primary">Commit</button>
+            <button class="experiment-btn">Pick another</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="tab-strip">
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>Train</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>Fuel</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>Sip</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>Indulge</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>Stack</div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      Weekly digest — expanded view
+      <small>Thesis first (the headline you saw on home), then meta stats, evidence with switchable lenses, wins and drags, and a committable experiment for the coming week.</small>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

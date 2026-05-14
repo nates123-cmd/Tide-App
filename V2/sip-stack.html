@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tide v2 — Sip + Stack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F2EE;
+    --text: #1C1C1C;
+    --muted: #6B6560;
+    --muted-soft: #8E8884;
+    --accent: #A89880;
+    --accent-deep: #8C7A60;
+    --card-bg: #EDEBE7;
+    --card-bg-warm: #EFE9E0;
+    --border: #D8D4CE;
+    --border-soft: #E3DFD9;
+    --warn: #B5754A;
+    --good: #7A8B6F;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --font-display: 'Fraunces', 'Times New Roman', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: #DDD7CF;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-title {
+    max-width: 1400px;
+    margin: 0 auto 40px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    color: #4A453F;
+    letter-spacing: -0.01em;
+  }
+  .page-title span {
+    color: #8E8884;
+    font-weight: 400;
+    font-size: 15px;
+    margin-left: 12px;
+  }
+
+  .mockup-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .mockup-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .mockup-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6B6560;
+  }
+  .mockup-label small {
+    display: block;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    color: #8E8884;
+    font-size: 11px;
+    margin-top: 4px;
+    max-width: 320px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  /* Phone */
+  .phone {
+    width: 380px;
+    height: 760px;
+    background: var(--bg);
+    border-radius: 36px;
+    box-shadow:
+      0 0 0 8px #2B2724,
+      0 1px 0 9px #1C1A18,
+      0 30px 60px -20px rgba(28, 26, 24, 0.35),
+      0 12px 24px -10px rgba(28, 26, 24, 0.2);
+    overflow: hidden;
+    position: relative;
+  }
+  .notch {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 28px;
+    background: #1C1A18;
+    border-radius: 14px;
+    z-index: 10;
+  }
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    z-index: 9;
+  }
+  .status-bar-right { display: flex; gap: 6px; align-items: center; }
+  .battery {
+    width: 24px; height: 12px;
+    border: 1.5px solid var(--text);
+    border-radius: 3px;
+    position: relative;
+    padding: 1px;
+  }
+  .battery::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 3px;
+    width: 2px; height: 4px;
+    background: var(--text);
+    border-radius: 0 1px 1px 0;
+  }
+  .battery-fill { background: var(--text); height: 100%; width: 70%; border-radius: 1px; }
+
+  .screen {
+    position: absolute;
+    top: 50px; bottom: 0; left: 0; right: 0;
+    overflow-y: auto;
+    padding: 8px 20px 110px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 14px 4px 20px;
+  }
+  .tab-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .tab-sub {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+  .header-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    cursor: pointer;
+  }
+  .header-links {
+    display: flex; gap: 16px;
+    align-self: flex-start; margin-top: 10px;
+  }
+
+  /* === SIP ============================================ */
+
+  /* Section switcher */
+  .sip-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 14px;
+    gap: 2px;
+  }
+  .sip-switch-opt {
+    padding: 10px 4px;
+    text-align: center;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .sip-switch-opt.active {
+    background: var(--bg);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(28, 26, 24, 0.06);
+  }
+  .sip-switch-mini {
+    font-family: var(--font-display);
+    font-size: 12px;
+    color: var(--muted-soft);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+  .sip-switch-opt.active .sip-switch-mini { color: var(--muted); }
+
+  /* Hero water card */
+  .water-hero {
+    background: var(--card-bg-warm);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 22px 22px 18px;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .water-num {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 56px;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+  }
+  .water-num-unit {
+    font-size: 18px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+  .water-target {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .water-pace {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 5px 12px;
+    background: var(--bg);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .water-pace.behind { color: var(--warn); }
+  .water-pace.ahead { color: var(--good); }
+  .water-pace.on { color: var(--muted); }
+  .water-pace-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Bar chart of today's water intake by hour */
+  .water-bars {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 16px 16px 14px;
+    margin-bottom: 14px;
+  }
+  .water-bars-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+  .bars-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 56px;
+    margin-bottom: 6px;
+  }
+  .bar {
+    flex: 1;
+    background: var(--border-soft);
+    border-radius: 2px;
+    min-height: 3px;
+  }
+  .bar.filled { background: var(--accent-deep); }
+  .bar.now { background: var(--text); }
+  .bars-time-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: var(--muted-soft);
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .bars-time-row span { flex: 1; text-align: center; }
+  .bars-time-row span:first-child { text-align: left; }
+  .bars-time-row span:last-child { text-align: right; }
+
+  /* Add buttons */
+  .add-section-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+    margin: 4px 2px 10px;
+  }
+  .add-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .add-tile {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+  .add-tile-num {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .add-tile-name {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  /* Timeline list */
+  .timeline-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+    margin: 4px 2px 10px;
+  }
+  .timeline-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .timeline-row:last-child { border-bottom: none; }
+  .timeline-time {
+    font-size: 12px;
+    color: var(--muted-soft);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    width: 50px;
+  }
+  .timeline-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--accent-deep);
+    border-radius: 3px;
+    max-width: 70%;
+  }
+  .timeline-amount {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  /* === STACK ============================================ */
+
+  .stack-progress {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .stack-progress-left { display: flex; flex-direction: column; gap: 3px; }
+  .stack-progress-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+  .stack-progress-num {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 26px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+  .stack-progress-num-suffix {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .stack-streak {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: flex-end;
+  }
+  .stack-streak-num {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .stack-streak-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+
+  /* Group sections */
+  .stack-group-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 14px 2px 10px;
+  }
+  .stack-group-title {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+  .stack-group-meta {
+    font-size: 11px;
+    color: var(--muted-soft);
+    letter-spacing: 0.02em;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Stack item row */
+  .stack-item {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 13px 14px 13px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .stack-item.taken {
+    background: var(--card-bg-warm);
+  }
+  .checkbox {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .stack-item.taken .checkbox {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--bg);
+  }
+  .stack-item-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stack-item-name {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 15px;
+    letter-spacing: -0.005em;
+    line-height: 1.2;
+  }
+  .stack-item.taken .stack-item-name {
+    color: var(--muted);
+  }
+  .stack-item-meta {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .stack-item-streak {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--muted-soft);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .stack-item-streak.hot { color: var(--good); }
+  .streak-flame {
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  /* As-needed log row (slightly different) */
+  .asneeded-row {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 13px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .asneeded-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .asneeded-name {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 15px;
+    letter-spacing: -0.005em;
+  }
+  .asneeded-meta {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .asneeded-log-btn {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+
+  /* Bottom tab strip */
+  .tab-strip {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(245, 242, 238, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-soft);
+    padding: 10px 12px 22px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 2px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .tab.active { color: var(--text); font-weight: 600; }
+  .tab-icon { width: 22px; height: 22px; }
+  .tab-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Tide v2 — Sip & Stack</div>
+
+<div class="mockup-row">
+
+  <!-- SIP -->
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>3:18</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="tab-title">Sip</div>
+            <div class="tab-sub">Wed · May 13</div>
+          </div>
+          <div class="header-links">
+            <div class="header-link">History</div>
+          </div>
+        </div>
+
+        <!-- Section switcher -->
+        <div class="sip-switch">
+          <div class="sip-switch-opt active">
+            Water
+            <span class="sip-switch-mini">1.4L</span>
+          </div>
+          <div class="sip-switch-opt">
+            Caffeine
+            <span class="sip-switch-mini">220mg</span>
+          </div>
+        </div>
+
+        <!-- Water hero -->
+        <div class="water-hero">
+          <div class="water-num">
+            1,400<span class="water-num-unit">ml</span>
+          </div>
+          <div class="water-target">of 2,400ml today</div>
+          <div class="water-pace behind">
+            <span class="water-pace-dot"></span>
+            Behind pace · 420ml
+          </div>
+        </div>
+
+        <!-- Hourly bars -->
+        <div class="water-bars">
+          <div class="water-bars-label">Today's intake</div>
+          <div class="bars-row">
+            <div class="bar" style="height: 12%"></div>
+            <div class="bar" style="height: 20%"></div>
+            <div class="bar filled" style="height: 45%"></div>
+            <div class="bar filled" style="height: 60%"></div>
+            <div class="bar" style="height: 12%"></div>
+            <div class="bar filled" style="height: 80%"></div>
+            <div class="bar filled" style="height: 30%"></div>
+            <div class="bar filled" style="height: 50%"></div>
+            <div class="bar filled" style="height: 35%"></div>
+            <div class="bar now" style="height: 55%"></div>
+            <div class="bar" style="height: 6%"></div>
+            <div class="bar" style="height: 6%"></div>
+          </div>
+          <div class="bars-time-row">
+            <span>6a</span>
+            <span></span>
+            <span>10a</span>
+            <span></span>
+            <span>2p</span>
+            <span></span>
+            <span>6p</span>
+            <span></span>
+            <span>10p</span>
+          </div>
+        </div>
+
+        <!-- Quick add tiles -->
+        <div class="add-section-label">Add</div>
+        <div class="add-grid">
+          <div class="add-tile">
+            <div class="add-tile-num">250</div>
+            <div class="add-tile-name">Small · ml</div>
+          </div>
+          <div class="add-tile">
+            <div class="add-tile-num">500</div>
+            <div class="add-tile-name">Big · ml</div>
+          </div>
+          <div class="add-tile">
+            <div class="add-tile-num">950</div>
+            <div class="add-tile-name">Quart</div>
+          </div>
+          <div class="add-tile">
+            <div class="add-tile-num">1,000</div>
+            <div class="add-tile-name">Liter</div>
+          </div>
+        </div>
+
+        <!-- Timeline of today's logs -->
+        <div class="timeline-label">Today</div>
+        <div class="timeline-row">
+          <div class="timeline-time">2:42p</div>
+          <div class="timeline-bar" style="max-width: 40%"></div>
+          <div class="timeline-amount">250ml</div>
+        </div>
+        <div class="timeline-row">
+          <div class="timeline-time">1:08p</div>
+          <div class="timeline-bar" style="max-width: 60%"></div>
+          <div class="timeline-amount">500ml</div>
+        </div>
+        <div class="timeline-row">
+          <div class="timeline-time">11:30a</div>
+          <div class="timeline-bar" style="max-width: 30%"></div>
+          <div class="timeline-amount">250ml</div>
+        </div>
+        <div class="timeline-row">
+          <div class="timeline-time">9:14a</div>
+          <div class="timeline-bar" style="max-width: 50%"></div>
+          <div class="timeline-amount">400ml</div>
+        </div>
+
+      </div>
+
+      <div class="tab-strip">
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>Train</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>Fuel</div>
+        <div class="tab active"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>Sip</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>Indulge</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>Stack</div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      Sip — Water (with caffeine secondary)
+      <small>1.4L of 2.4L, behind 420ml. Hourly bar chart shows when you actually drank. Caffeine still visible in the switcher header (220mg).</small>
+    </div>
+  </div>
+
+  <!-- STACK -->
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>8:14</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="tab-title">Stack</div>
+            <div class="tab-sub">Wed · May 13</div>
+          </div>
+          <div class="header-links">
+            <div class="header-link">Manage</div>
+          </div>
+        </div>
+
+        <!-- Day progress + week streak -->
+        <div class="stack-progress">
+          <div class="stack-progress-left">
+            <div class="stack-progress-label">Today</div>
+            <div class="stack-progress-num">5<span class="stack-progress-num-suffix">/ 8</span></div>
+          </div>
+          <div class="stack-streak">
+            <div class="stack-streak-num">6 days</div>
+            <div class="stack-streak-label">Full-stack streak</div>
+          </div>
+        </div>
+
+        <!-- MORNING -->
+        <div class="stack-group-header">
+          <div class="stack-group-title">Morning</div>
+          <div class="stack-group-meta">5 / 5 taken</div>
+        </div>
+
+        <div class="stack-item taken">
+          <div class="checkbox">✓</div>
+          <div class="stack-item-body">
+            <div class="stack-item-name">Vitamin D3</div>
+            <div class="stack-item-meta">5,000 IU · with food</div>
+          </div>
+          <div class="stack-item-streak hot">
+            <span class="streak-flame">●</span> 22d
+          </div>
+        </div>
+
+        <div class="stack-item taken">
+          <div class="checkbox">✓</div>
+          <div class="stack-item-body">
+            <div class="stack-item-name">Omega-3</div>
+            <div class="stack-item-meta">2g</div>
+          </div>
+          <div class="stack-item-streak hot">
+            <span class="streak-flame">●</span> 18d
+          </div>
+        </div>
+
+        <div class="stack-item taken">
+          <div class="checkbox">✓</div>
+          <div class="stack-item-body">
+            <div class="stack-item-name">Creatine</div>
+            <div class="stack-item-meta">5g</div>
+          </div>
+          <div class="stack-item-streak hot">
+            <span class="streak-flame">●</span> 14d
+          </div>
+        </div>
+
+        <div class="stack-item taken">
+          <div class="checkbox">✓</div>
+          <div class="stack-item-body">
+            <div class="stack-item-name">Magnesium glycinate</div>
+            <div class="stack-item-meta">300mg</div>
+          </div>
+          <div class="stack-item-streak">
+            <span class="streak-flame">●</span> 8d
+          </div>
+        </div>
+
+        <div class="stack-item taken">
+          <div class="checkbox">✓</div>
+          <div class="stack-item-body">
+            <div class="stack-item-name">Multivitamin</div>
+            <div class="stack-item-meta">1 capsule</div>
+          </div>
+          <div class="stack-item-streak hot">
+            <span class="streak-flame">●</span> 30d
+          </div>
+        </div>
+
+        <!-- EVENING -->
+        <div class="stack-group-header">
+          <div class="stack-group-title">Evening</div>
+          <div class="stack-group-meta">0 / 2 taken</div>
+        </div>
+
+        <div class="stack-item">
+          <div class="checkbox"></div>
+          <div class="stack-item-body">
+            <div class="stack-item-name">Magnesium glycinate</div>
+            <div class="stack-item-meta">400mg · before bed</div>
+          </div>
+          <div class="stack-item-streak">
+            <span class="streak-flame">●</span> 5d
+          </div>
+        </div>
+
+        <div class="stack-item">
+          <div class="checkbox"></div>
+          <div class="stack-item-body">
+            <div class="stack-item-name">Zinc</div>
+            <div class="stack-item-meta">15mg</div>
+          </div>
+          <div class="stack-item-streak">
+            <span class="streak-flame">●</span> 4d
+          </div>
+        </div>
+
+        <!-- AS-NEEDED -->
+        <div class="stack-group-header">
+          <div class="stack-group-title">As needed</div>
+          <div class="stack-group-meta">Tap to log</div>
+        </div>
+
+        <div class="asneeded-row">
+          <div class="asneeded-left">
+            <div class="asneeded-name">Melatonin</div>
+            <div class="asneeded-meta">Last: May 9 · 3mg</div>
+          </div>
+          <button class="asneeded-log-btn">Log</button>
+        </div>
+
+        <div class="asneeded-row">
+          <div class="asneeded-left">
+            <div class="asneeded-name">Loratadine</div>
+            <div class="asneeded-meta">Last: May 5 · 10mg</div>
+          </div>
+          <button class="asneeded-log-btn">Log</button>
+        </div>
+
+        <div class="asneeded-row">
+          <div class="asneeded-left">
+            <div class="asneeded-name">Ibuprofen</div>
+            <div class="asneeded-meta">Last: Apr 28 · 400mg</div>
+          </div>
+          <button class="asneeded-log-btn">Log</button>
+        </div>
+
+      </div>
+
+      <div class="tab-strip">
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>Train</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>Fuel</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>Sip</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>Indulge</div>
+        <div class="tab active"><div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>Stack</div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      Stack — Morning done, evening pending, as-needed list
+      <small>Day progress 5/8 + 6-day full-stack streak. Per-item streak dots. Taken items dim and warm-bg; as-needed gets a different row shape with last-taken date.</small>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

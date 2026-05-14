@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tide v2 — Train Progress & Body</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F2EE;
+    --text: #1C1C1C;
+    --muted: #6B6560;
+    --muted-soft: #8E8884;
+    --accent: #A89880;
+    --accent-deep: #8C7A60;
+    --card-bg: #EDEBE7;
+    --card-bg-warm: #EFE9E0;
+    --border: #D8D4CE;
+    --border-soft: #E3DFD9;
+    --warn: #B5754A;
+    --good: #7A8B6F;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --font-display: 'Fraunces', 'Times New Roman', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: #DDD7CF;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-title {
+    max-width: 1400px;
+    margin: 0 auto 40px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    color: #4A453F;
+    letter-spacing: -0.01em;
+  }
+  .page-title span {
+    color: #8E8884;
+    font-weight: 400;
+    font-size: 15px;
+    margin-left: 12px;
+  }
+
+  .mockup-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .mockup-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .mockup-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6B6560;
+  }
+  .mockup-label small {
+    display: block;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    color: #8E8884;
+    font-size: 11px;
+    margin-top: 4px;
+    max-width: 320px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: 380px;
+    height: 760px;
+    background: var(--bg);
+    border-radius: 36px;
+    box-shadow:
+      0 0 0 8px #2B2724,
+      0 1px 0 9px #1C1A18,
+      0 30px 60px -20px rgba(28, 26, 24, 0.35),
+      0 12px 24px -10px rgba(28, 26, 24, 0.2);
+    overflow: hidden;
+    position: relative;
+  }
+  .notch {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 28px;
+    background: #1C1A18;
+    border-radius: 14px;
+    z-index: 10;
+  }
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    z-index: 9;
+  }
+  .status-bar-right { display: flex; gap: 6px; align-items: center; }
+  .battery {
+    width: 24px; height: 12px;
+    border: 1.5px solid var(--text);
+    border-radius: 3px;
+    position: relative;
+    padding: 1px;
+  }
+  .battery::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 3px;
+    width: 2px; height: 4px;
+    background: var(--text);
+    border-radius: 0 1px 1px 0;
+  }
+  .battery-fill { background: var(--text); height: 100%; width: 70%; border-radius: 1px; }
+
+  .screen {
+    position: absolute;
+    top: 50px; bottom: 0; left: 0; right: 0;
+    overflow-y: auto;
+    padding: 8px 20px 110px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 14px 4px 24px;
+  }
+  .header-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .header-back-arrow {
+    font-size: 16px;
+    line-height: 1;
+  }
+  .tab-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .tab-sub {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+  .header-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    align-self: flex-start;
+    margin-top: 10px;
+    cursor: pointer;
+  }
+
+  /* FILTER ROW (Progress) */
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding: 2px;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    flex-shrink: 0;
+    padding: 7px 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    cursor: pointer;
+  }
+  .filter-chip.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+
+  /* EXERCISE PROGRESS CARD */
+  .progress-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 16px 18px 12px;
+    margin-bottom: 12px;
+  }
+  .progress-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .progress-name {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 17px;
+    letter-spacing: -0.005em;
+    line-height: 1.2;
+  }
+  .progress-current {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+  .progress-current-value {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .progress-current-unit {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .progress-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .progress-meta-row .dot { width: 3px; height: 3px; background: var(--muted-soft); border-radius: 50%; }
+  .progress-delta {
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .progress-delta.up { color: var(--good); }
+  .progress-delta.down { color: var(--warn); }
+  .progress-delta.flat { color: var(--muted); }
+
+  /* SPARK CHART */
+  .spark-wrap {
+    height: 70px;
+    margin: 0 -4px;
+    position: relative;
+  }
+  .spark-wrap svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .spark-line {
+    fill: none;
+    stroke: var(--text);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .spark-fill {
+    fill: var(--accent);
+    fill-opacity: 0.12;
+    stroke: none;
+  }
+  .spark-dot {
+    fill: var(--text);
+  }
+  .spark-pr {
+    fill: var(--good);
+    stroke: var(--bg);
+    stroke-width: 1.5;
+  }
+  .spark-gridline {
+    stroke: var(--border-soft);
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+  }
+
+  /* === BODY screen === */
+
+  .body-headline {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 0 2px;
+  }
+  .body-weight-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .body-weight-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+  .body-weight-value {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 42px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .body-weight-unit { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .body-weight-delta {
+    font-size: 12px;
+    color: var(--good);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    margin-top: 2px;
+  }
+  .body-weight-delta.down { color: var(--good); }
+  .log-weight-btn {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* BODY weight chart card */
+  .body-chart {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 16px 14px 14px;
+    margin-bottom: 16px;
+  }
+  .body-chart-controls {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+    padding: 0 4px;
+  }
+  .body-range {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .body-range.active {
+    background: var(--text);
+    color: var(--bg);
+  }
+  .body-chart-svg-wrap {
+    height: 130px;
+    position: relative;
+    margin: 0 -2px;
+  }
+  .body-chart-svg-wrap svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  /* MEASUREMENTS GRID */
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+    margin: 10px 2px 10px;
+  }
+  .measurements {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background-color: var(--border-soft);
+  }
+  .measure-cell {
+    background: var(--card-bg);
+    padding: 14px 14px 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .measure-cell:nth-child(1) { border-top-left-radius: 11px; }
+  .measure-cell:nth-child(2) { border-top-right-radius: 11px; }
+  .measure-cell:nth-child(5) { border-bottom-left-radius: 11px; }
+  .measure-cell:nth-child(6) { border-bottom-right-radius: 11px; }
+  .measure-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+  .measure-value {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+  }
+  .measure-value-unit { font-size: 11px; color: var(--muted); font-weight: 500; }
+  .measure-delta {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .measure-delta.up { color: var(--good); }
+  .measure-delta.down { color: var(--good); }
+
+  /* PHOTOS — PIN gate */
+  .photo-gate {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 32px 20px 28px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .gate-icon {
+    width: 38px; height: 38px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: var(--card-bg-warm);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .gate-icon svg { width: 18px; height: 18px; stroke: var(--accent-deep); fill: none; stroke-width: 1.5; }
+  .gate-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 16px;
+    letter-spacing: -0.005em;
+    margin-bottom: 4px;
+  }
+  .gate-sub {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.4;
+    margin-bottom: 18px;
+    max-width: 260px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .pin-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .pin-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1.5px solid var(--border);
+  }
+  .pin-dot.filled { background: var(--text); border-color: var(--text); }
+  .gate-unlock-btn {
+    padding: 10px 20px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+  }
+
+  /* BOTTOM TAB BAR */
+  .tab-strip {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(245, 242, 238, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-soft);
+    padding: 10px 12px 22px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 2px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .tab.active { color: var(--text); font-weight: 600; }
+  .tab-icon { width: 22px; height: 22px; }
+  .tab-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Train — Progress & Body</div>
+
+<div class="mockup-row">
+
+  <!-- PROGRESS SCREEN -->
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>8:14</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="header-back">
+              <span class="header-back-arrow">‹</span> Train
+            </div>
+            <div class="tab-title">Progress</div>
+            <div class="tab-sub">Last 8 weeks</div>
+          </div>
+        </div>
+
+        <!-- Filter chips -->
+        <div class="filter-row">
+          <div class="filter-chip active">All lifts</div>
+          <div class="filter-chip">Push</div>
+          <div class="filter-chip">Pull</div>
+          <div class="filter-chip">Legs</div>
+          <div class="filter-chip">Core</div>
+        </div>
+
+        <!-- Bench Press -->
+        <div class="progress-card">
+          <div class="progress-header">
+            <div class="progress-name">Barbell Bench Press</div>
+            <div class="progress-current">
+              <span class="progress-current-value">85</span>
+              <span class="progress-current-unit">kg</span>
+            </div>
+          </div>
+          <div class="progress-meta-row">
+            <span class="progress-delta up">▲ +5 kg</span>
+            <span class="dot"></span>
+            <span>8 sessions</span>
+            <span class="dot"></span>
+            <span>PR May 13</span>
+          </div>
+          <div class="spark-wrap">
+            <svg viewBox="0 0 280 70" preserveAspectRatio="none">
+              <line x1="0" y1="50" x2="280" y2="50" class="spark-gridline" />
+              <line x1="0" y1="25" x2="280" y2="25" class="spark-gridline" />
+              <path class="spark-fill" d="M 5,55 L 40,52 L 75,48 L 110,45 L 145,42 L 180,38 L 215,33 L 250,22 L 275,18 L 275,70 L 5,70 Z" />
+              <path class="spark-line" d="M 5,55 L 40,52 L 75,48 L 110,45 L 145,42 L 180,38 L 215,33 L 250,22 L 275,18" />
+              <circle class="spark-dot" cx="5" cy="55" r="2.5" />
+              <circle class="spark-dot" cx="40" cy="52" r="2.5" />
+              <circle class="spark-dot" cx="75" cy="48" r="2.5" />
+              <circle class="spark-dot" cx="110" cy="45" r="2.5" />
+              <circle class="spark-dot" cx="145" cy="42" r="2.5" />
+              <circle class="spark-dot" cx="180" cy="38" r="2.5" />
+              <circle class="spark-dot" cx="215" cy="33" r="2.5" />
+              <circle class="spark-pr" cx="250" cy="22" r="4" />
+              <circle class="spark-dot" cx="275" cy="18" r="3" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Incline DB Press -->
+        <div class="progress-card">
+          <div class="progress-header">
+            <div class="progress-name">Incline DB Press</div>
+            <div class="progress-current">
+              <span class="progress-current-value">32.5</span>
+              <span class="progress-current-unit">kg</span>
+            </div>
+          </div>
+          <div class="progress-meta-row">
+            <span class="progress-delta up">▲ +2.5 kg</span>
+            <span class="dot"></span>
+            <span>7 sessions</span>
+          </div>
+          <div class="spark-wrap">
+            <svg viewBox="0 0 280 70" preserveAspectRatio="none">
+              <line x1="0" y1="50" x2="280" y2="50" class="spark-gridline" />
+              <line x1="0" y1="25" x2="280" y2="25" class="spark-gridline" />
+              <path class="spark-fill" d="M 5,50 L 45,48 L 90,45 L 135,42 L 180,38 L 225,32 L 275,28 L 275,70 L 5,70 Z" />
+              <path class="spark-line" d="M 5,50 L 45,48 L 90,45 L 135,42 L 180,38 L 225,32 L 275,28" />
+              <circle class="spark-dot" cx="5" cy="50" r="2.5" />
+              <circle class="spark-dot" cx="45" cy="48" r="2.5" />
+              <circle class="spark-dot" cx="90" cy="45" r="2.5" />
+              <circle class="spark-dot" cx="135" cy="42" r="2.5" />
+              <circle class="spark-dot" cx="180" cy="38" r="2.5" />
+              <circle class="spark-dot" cx="225" cy="32" r="2.5" />
+              <circle class="spark-dot" cx="275" cy="28" r="3" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Overhead Press (plateaued) -->
+        <div class="progress-card">
+          <div class="progress-header">
+            <div class="progress-name">Overhead Press</div>
+            <div class="progress-current">
+              <span class="progress-current-value">55</span>
+              <span class="progress-current-unit">kg</span>
+            </div>
+          </div>
+          <div class="progress-meta-row">
+            <span class="progress-delta flat">— same</span>
+            <span class="dot"></span>
+            <span>6 sessions</span>
+            <span class="dot"></span>
+            <span>plateaued 3 wk</span>
+          </div>
+          <div class="spark-wrap">
+            <svg viewBox="0 0 280 70" preserveAspectRatio="none">
+              <line x1="0" y1="50" x2="280" y2="50" class="spark-gridline" />
+              <line x1="0" y1="25" x2="280" y2="25" class="spark-gridline" />
+              <path class="spark-fill" d="M 5,42 L 55,38 L 105,35 L 155,34 L 205,35 L 275,34 L 275,70 L 5,70 Z" />
+              <path class="spark-line" d="M 5,42 L 55,38 L 105,35 L 155,34 L 205,35 L 275,34" />
+              <circle class="spark-dot" cx="5" cy="42" r="2.5" />
+              <circle class="spark-dot" cx="55" cy="38" r="2.5" />
+              <circle class="spark-dot" cx="105" cy="35" r="2.5" />
+              <circle class="spark-dot" cx="155" cy="34" r="2.5" />
+              <circle class="spark-dot" cx="205" cy="35" r="2.5" />
+              <circle class="spark-dot" cx="275" cy="34" r="3" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Tricep Pushdown -->
+        <div class="progress-card">
+          <div class="progress-header">
+            <div class="progress-name">Tricep Pushdown</div>
+            <div class="progress-current">
+              <span class="progress-current-value">42</span>
+              <span class="progress-current-unit">kg</span>
+            </div>
+          </div>
+          <div class="progress-meta-row">
+            <span class="progress-delta up">▲ +4 kg</span>
+            <span class="dot"></span>
+            <span>9 sessions</span>
+          </div>
+          <div class="spark-wrap">
+            <svg viewBox="0 0 280 70" preserveAspectRatio="none">
+              <line x1="0" y1="50" x2="280" y2="50" class="spark-gridline" />
+              <line x1="0" y1="25" x2="280" y2="25" class="spark-gridline" />
+              <path class="spark-fill" d="M 5,52 L 35,50 L 65,46 L 100,44 L 135,40 L 170,36 L 205,32 L 240,30 L 275,26 L 275,70 L 5,70 Z" />
+              <path class="spark-line" d="M 5,52 L 35,50 L 65,46 L 100,44 L 135,40 L 170,36 L 205,32 L 240,30 L 275,26" />
+              <circle class="spark-dot" cx="5" cy="52" r="2.5" />
+              <circle class="spark-dot" cx="35" cy="50" r="2.5" />
+              <circle class="spark-dot" cx="65" cy="46" r="2.5" />
+              <circle class="spark-dot" cx="100" cy="44" r="2.5" />
+              <circle class="spark-dot" cx="135" cy="40" r="2.5" />
+              <circle class="spark-dot" cx="170" cy="36" r="2.5" />
+              <circle class="spark-dot" cx="205" cy="32" r="2.5" />
+              <circle class="spark-dot" cx="240" cy="30" r="2.5" />
+              <circle class="spark-dot" cx="275" cy="26" r="3" />
+            </svg>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom nav -->
+      <div class="tab-strip">
+        <div class="tab active">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>
+          Train
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>
+          Fuel
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>
+          Sip
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>
+          Indulge
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>
+          Stack
+        </div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      Train — Progress
+      <small>Per-lift sparklines, working weight over time. PR markers in green, plateau callouts, filter chips for split.</small>
+    </div>
+  </div>
+
+  <!-- BODY SCREEN -->
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>7:02</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="header-back">
+              <span class="header-back-arrow">‹</span> Train
+            </div>
+            <div class="tab-title">Body</div>
+            <div class="tab-sub">Weekly check-in</div>
+          </div>
+        </div>
+
+        <!-- Body weight headline -->
+        <div class="body-headline">
+          <div class="body-weight-stack">
+            <div class="body-weight-label">Weight</div>
+            <div class="body-weight-value">
+              82.4<span class="body-weight-unit">kg</span>
+            </div>
+            <div class="body-weight-delta down">−1.8 kg in 8 weeks</div>
+          </div>
+          <button class="log-weight-btn">+ Log weight</button>
+        </div>
+
+        <!-- Weight chart -->
+        <div class="body-chart">
+          <div class="body-chart-controls">
+            <div class="body-range">1M</div>
+            <div class="body-range active">3M</div>
+            <div class="body-range">6M</div>
+            <div class="body-range">1Y</div>
+          </div>
+          <div class="body-chart-svg-wrap">
+            <svg viewBox="0 0 320 130" preserveAspectRatio="none">
+              <line x1="0" y1="20" x2="320" y2="20" class="spark-gridline" />
+              <line x1="0" y1="60" x2="320" y2="60" class="spark-gridline" />
+              <line x1="0" y1="100" x2="320" y2="100" class="spark-gridline" />
+              <path class="spark-fill" d="M 8,30 L 30,32 L 55,38 L 80,42 L 105,52 L 130,55 L 155,62 L 180,68 L 205,74 L 230,72 L 255,78 L 280,82 L 305,88 L 312,90 L 312,130 L 8,130 Z" />
+              <path class="spark-line" d="M 8,30 L 30,32 L 55,38 L 80,42 L 105,52 L 130,55 L 155,62 L 180,68 L 205,74 L 230,72 L 255,78 L 280,82 L 305,88 L 312,90" />
+              <circle class="spark-dot" cx="312" cy="90" r="3.5" />
+            </svg>
+          </div>
+        </div>
+
+        <div class="section-label">Measurements · May 11</div>
+        <div class="measurements">
+          <div class="measure-cell">
+            <div class="measure-label">Chest</div>
+            <div class="measure-value">102<span class="measure-value-unit">cm</span></div>
+            <div class="measure-delta down">−1.5 cm</div>
+          </div>
+          <div class="measure-cell">
+            <div class="measure-label">Waist</div>
+            <div class="measure-value">86<span class="measure-value-unit">cm</span></div>
+            <div class="measure-delta down">−3 cm</div>
+          </div>
+          <div class="measure-cell">
+            <div class="measure-label">Hips</div>
+            <div class="measure-value">98<span class="measure-value-unit">cm</span></div>
+            <div class="measure-delta down">−2 cm</div>
+          </div>
+          <div class="measure-cell">
+            <div class="measure-label">Arms</div>
+            <div class="measure-value">37<span class="measure-value-unit">cm</span></div>
+            <div class="measure-delta up">+0.5 cm</div>
+          </div>
+          <div class="measure-cell">
+            <div class="measure-label">Thighs</div>
+            <div class="measure-value">58<span class="measure-value-unit">cm</span></div>
+            <div class="measure-delta down">−1 cm</div>
+          </div>
+          <div class="measure-cell">
+            <div class="measure-label">Neck</div>
+            <div class="measure-value">39<span class="measure-value-unit">cm</span></div>
+            <div class="measure-delta flat" style="color: var(--muted);">— same</div>
+          </div>
+        </div>
+
+        <div class="section-label">Photos</div>
+        <div class="photo-gate">
+          <div class="gate-icon">
+            <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1.5"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+          </div>
+          <div class="gate-title">Progress photos are locked</div>
+          <div class="gate-sub">Enter your 4-digit PIN to view photos.</div>
+          <div class="pin-row">
+            <div class="pin-dot filled"></div>
+            <div class="pin-dot filled"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+          </div>
+          <button class="gate-unlock-btn">Unlock</button>
+        </div>
+
+      </div>
+
+      <!-- Bottom nav -->
+      <div class="tab-strip">
+        <div class="tab active">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>
+          Train
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>
+          Fuel
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>
+          Sip
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>
+          Indulge
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>
+          Stack
+        </div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      Train — Body
+      <small>Weight hero with 8-week delta, 3-month trend chart, six measurements with deltas, photos behind a PIN gate.</small>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

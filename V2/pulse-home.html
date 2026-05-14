@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tide v2 — Pulse Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F2EE;
+    --text: #1C1C1C;
+    --muted: #6B6560;
+    --muted-soft: #8E8884;
+    --accent: #A89880;
+    --accent-deep: #8C7A60;
+    --card-bg: #EDEBE7;
+    --card-bg-warm: #EFE9E0;
+    --border: #D8D4CE;
+    --border-soft: #E3DFD9;
+    --warn: #B5754A;
+    --good: #7A8B6F;
+    --radius: 14px;
+    --radius-sm: 10px;
+
+    --font-display: 'Fraunces', 'Times New Roman', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: #DDD7CF;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .mockup-page-title {
+    max-width: 1400px;
+    margin: 0 auto 40px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    color: #4A453F;
+    letter-spacing: -0.01em;
+  }
+  .mockup-page-title span {
+    color: #8E8884;
+    font-weight: 400;
+    font-size: 15px;
+    margin-left: 12px;
+  }
+
+  .mockup-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .mockup-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .mockup-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6B6560;
+  }
+  .mockup-label small {
+    display: block;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    color: #8E8884;
+    font-size: 11px;
+    margin-top: 4px;
+    max-width: 280px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  /* PHONE FRAME */
+  .phone {
+    width: 380px;
+    height: 760px;
+    background: var(--bg);
+    border-radius: 36px;
+    box-shadow:
+      0 0 0 8px #2B2724,
+      0 1px 0 9px #1C1A18,
+      0 30px 60px -20px rgba(28, 26, 24, 0.35),
+      0 12px 24px -10px rgba(28, 26, 24, 0.2);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .notch {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 28px;
+    background: #1C1A18;
+    border-radius: 14px;
+    z-index: 10;
+  }
+
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    z-index: 9;
+  }
+  .status-bar-right {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .battery {
+    width: 24px; height: 12px;
+    border: 1.5px solid var(--text);
+    border-radius: 3px;
+    position: relative;
+    padding: 1px;
+  }
+  .battery::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 3px;
+    width: 2px; height: 4px;
+    background: var(--text);
+    border-radius: 0 1px 1px 0;
+  }
+  .battery-fill {
+    background: var(--text);
+    height: 100%;
+    width: 70%;
+    border-radius: 1px;
+  }
+
+  /* SCROLL CONTAINER */
+  .screen {
+    position: absolute;
+    top: 50px; bottom: 0; left: 0; right: 0;
+    overflow-y: auto;
+    padding: 8px 20px 110px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 14px 4px 24px;
+  }
+  .brand {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .date {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .header-links {
+    display: flex;
+    gap: 16px;
+  }
+  .header-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+  }
+
+  /* STAT GRID HERO */
+  .stat-grid {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background-color: var(--border-soft);
+  }
+  .stat-cell {
+    background: var(--card-bg);
+    padding: 18px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+  }
+  .stat-cell:nth-child(1) { border-top-left-radius: 11px; }
+  .stat-cell:nth-child(2) { border-top-right-radius: 11px; }
+  .stat-cell:nth-child(3) { border-bottom-left-radius: 11px; }
+  .stat-cell:nth-child(4) { border-bottom-right-radius: 11px; }
+
+  .stat-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted-soft);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .stat-value {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 34px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+  .stat-unit {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0;
+  }
+  .stat-delta {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .stat-delta.up { color: var(--good); }
+  .stat-delta.down { color: var(--warn); }
+  .stat-delta.flat { color: var(--muted); }
+
+  /* Readiness color treatment */
+  .stat-cell.readiness-good .stat-value::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: var(--good);
+    border-radius: 50%;
+    margin-right: 8px;
+    align-self: center;
+  }
+  .stat-cell.readiness-amber .stat-value::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-right: 8px;
+    align-self: center;
+  }
+  .stat-cell.readiness-warn .stat-value::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: var(--warn);
+    border-radius: 50%;
+    margin-right: 8px;
+    align-self: center;
+  }
+
+  /* INTERPRETATION + ACTION */
+  .pulse-card {
+    background: var(--card-bg-warm);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 22px 20px 18px;
+    margin-bottom: 14px;
+  }
+  .pulse-interp {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 1.35;
+    letter-spacing: -0.005em;
+    color: var(--text);
+    margin-bottom: 18px;
+  }
+  .pulse-interp em {
+    font-style: italic;
+    color: var(--accent-deep);
+  }
+  .pulse-action {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+  }
+  .pulse-action .arrow {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* WEEKLY DIGEST CARD */
+  .digest-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .digest-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .digest-tag {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    margin-bottom: 5px;
+  }
+  .digest-headline {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.35;
+    color: var(--text);
+    letter-spacing: -0.005em;
+  }
+  .digest-chevron {
+    font-size: 18px;
+    color: var(--muted);
+    font-weight: 400;
+    flex-shrink: 0;
+  }
+
+  /* TAB STRIP — bottom icon bar */
+  .tab-strip {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(245, 242, 238, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-soft);
+    padding: 10px 12px 22px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 2px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .tab.active { color: var(--text); font-weight: 600; }
+  .tab-icon {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tab-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.5; }
+
+  /* Small footnote pill (e.g. behind/ahead pace) */
+  .pace-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .pace-pill.behind { color: var(--warn); }
+  .pace-pill.ahead { color: var(--good); }
+  .pace-pill.on { color: var(--muted); }
+  .pace-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+</style>
+</head>
+<body>
+
+<div class="mockup-page-title">Tide v2 — Pulse Home <span>three states</span></div>
+
+<div class="mockup-row">
+
+  <!-- STATE 1: Strong recovery, Friday morning -->
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>9:42</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="brand">Tide</div>
+            <div class="date" style="margin-top: 6px;">Fri · May 15</div>
+          </div>
+          <div class="header-links" style="align-self: flex-start; margin-top: 10px;">
+            <span class="header-link">Patterns</span>
+            <span class="header-link">History</span>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-cell readiness-good">
+            <div class="stat-label">Readiness</div>
+            <div class="stat-value">87</div>
+            <div class="stat-delta up">+9 vs avg</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">Sleep</div>
+            <div class="stat-value">7<span class="stat-unit">h</span> 48<span class="stat-unit">m</span></div>
+            <div class="stat-delta up">+44m vs avg</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">HRV</div>
+            <div class="stat-value">62<span class="stat-unit">ms</span></div>
+            <div class="stat-delta up">+8 vs avg</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">Hydration</div>
+            <div class="stat-value">340<span class="stat-unit">ml</span></div>
+            <div class="stat-delta flat">on pace</div>
+          </div>
+        </div>
+
+        <div class="pulse-card">
+          <div class="pulse-interp">
+            Strong recovery overnight. <em>Push the training</em>, hydrate ahead of pace.
+          </div>
+          <button class="pulse-action">
+            Log workout
+            <span class="arrow">→</span>
+          </button>
+        </div>
+
+        <div class="digest-card">
+          <div class="digest-content">
+            <div class="digest-tag">This week</div>
+            <div class="digest-headline">Best readiness week of the month — supps logged 6/7 days.</div>
+          </div>
+          <div class="digest-chevron">›</div>
+        </div>
+      </div>
+
+      <div class="tab-strip">
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>
+          Train
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>
+          Fuel
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>
+          Sip
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>
+          Indulge
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>
+          Stack
+        </div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      State A — High readiness
+      <small>Friday morning, strong recovery, no friction. Action: log the workout the body's ready for.</small>
+    </div>
+  </div>
+
+  <!-- STATE 2: Recovery override, hung over after a Friday session -->
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>10:14</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="brand">Tide</div>
+            <div class="date" style="margin-top: 6px;">Sat · May 16</div>
+          </div>
+          <div class="header-links" style="align-self: flex-start; margin-top: 10px;">
+            <span class="header-link">Patterns</span>
+            <span class="header-link">History</span>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-cell readiness-warn">
+            <div class="stat-label">Readiness</div>
+            <div class="stat-value">58</div>
+            <div class="stat-delta down">−20 vs avg</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">Sleep</div>
+            <div class="stat-value">5<span class="stat-unit">h</span> 32<span class="stat-unit">m</span></div>
+            <div class="stat-delta down">−1h 32m</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">HRV</div>
+            <div class="stat-value">38<span class="stat-unit">ms</span></div>
+            <div class="stat-delta down">−16 vs avg</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">Hydration</div>
+            <div class="stat-value">120<span class="stat-unit">ml</span></div>
+            <div class="stat-delta down" style="color: var(--warn);">behind 480ml</div>
+          </div>
+        </div>
+
+        <div class="pulse-card">
+          <div class="pulse-interp">
+            Body's asking for a quiet day. <em>Water and reflection first</em> — last night's still settling.
+          </div>
+          <button class="pulse-action">
+            Reflect on last night
+            <span class="arrow">→</span>
+          </button>
+        </div>
+
+        <div class="digest-card">
+          <div class="digest-content">
+            <div class="digest-tag">This week</div>
+            <div class="digest-headline">Two heavy sessions, two short nights, in that order.</div>
+          </div>
+          <div class="digest-chevron">›</div>
+        </div>
+      </div>
+
+      <div class="tab-strip">
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>
+          Train
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>
+          Fuel
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>
+          Sip
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>
+          Indulge
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>
+          Stack
+        </div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      State B — Recovery override
+      <small>Saturday after a Friday session. Morning reflection is overdue and outranks everything else.</small>
+    </div>
+  </div>
+
+  <!-- STATE 3: Mid-afternoon weekday, hydration behind, caffeine late -->
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>3:18</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="brand">Tide</div>
+            <div class="date" style="margin-top: 6px;">Wed · May 13</div>
+          </div>
+          <div class="header-links" style="align-self: flex-start; margin-top: 10px;">
+            <span class="header-link">Patterns</span>
+            <span class="header-link">History</span>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-cell readiness-amber">
+            <div class="stat-label">Readiness</div>
+            <div class="stat-value">73</div>
+            <div class="stat-delta flat">−2 vs avg</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">Sleep</div>
+            <div class="stat-value">6<span class="stat-unit">h</span> 41<span class="stat-unit">m</span></div>
+            <div class="stat-delta flat">−18m vs avg</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">HRV</div>
+            <div class="stat-value">51<span class="stat-unit">ms</span></div>
+            <div class="stat-delta down">−6 vs avg</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">Hydration</div>
+            <div class="stat-value">1.4<span class="stat-unit">L</span></div>
+            <div class="stat-delta down" style="color: var(--warn);">behind 420ml</div>
+          </div>
+        </div>
+
+        <div class="pulse-card">
+          <div class="pulse-interp">
+            Hydration's behind 420ml and you've had two coffees — <em>water before the next.</em>
+          </div>
+          <button class="pulse-action">
+            Log a glass
+            <span class="arrow">→</span>
+          </button>
+        </div>
+
+        <div class="digest-card">
+          <div class="digest-content">
+            <div class="digest-tag">This week</div>
+            <div class="digest-headline">Caffeine after 3pm on 3 days — HRV down on those nights.</div>
+          </div>
+          <div class="digest-chevron">›</div>
+        </div>
+      </div>
+
+      <div class="tab-strip">
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>
+          Train
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>
+          Fuel
+        </div>
+        <div class="tab active">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>
+          Sip
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>
+          Indulge
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>
+          Stack
+        </div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      State C — Mid-day correction
+      <small>Hydration deficit + caffeine timing. Soft intervention, single tap to act.</small>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

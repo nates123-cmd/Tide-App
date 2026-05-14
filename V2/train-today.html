@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tide v2 — Train Today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F2EE;
+    --text: #1C1C1C;
+    --muted: #6B6560;
+    --muted-soft: #8E8884;
+    --accent: #A89880;
+    --accent-deep: #8C7A60;
+    --card-bg: #EDEBE7;
+    --card-bg-warm: #EFE9E0;
+    --border: #D8D4CE;
+    --border-soft: #E3DFD9;
+    --warn: #B5754A;
+    --good: #7A8B6F;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --font-display: 'Fraunces', 'Times New Roman', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: #DDD7CF;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-title {
+    max-width: 1400px;
+    margin: 0 auto 40px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    color: #4A453F;
+    letter-spacing: -0.01em;
+  }
+  .page-title span {
+    color: #8E8884;
+    font-weight: 400;
+    font-size: 15px;
+    margin-left: 12px;
+  }
+
+  .mockup-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .mockup-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .mockup-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6B6560;
+  }
+  .mockup-label small {
+    display: block;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    color: #8E8884;
+    font-size: 11px;
+    margin-top: 4px;
+    max-width: 320px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: 380px;
+    height: 760px;
+    background: var(--bg);
+    border-radius: 36px;
+    box-shadow:
+      0 0 0 8px #2B2724,
+      0 1px 0 9px #1C1A18,
+      0 30px 60px -20px rgba(28, 26, 24, 0.35),
+      0 12px 24px -10px rgba(28, 26, 24, 0.2);
+    overflow: hidden;
+    position: relative;
+  }
+  .notch {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 28px;
+    background: #1C1A18;
+    border-radius: 14px;
+    z-index: 10;
+  }
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    z-index: 9;
+  }
+  .status-bar-right { display: flex; gap: 6px; align-items: center; }
+  .battery {
+    width: 24px; height: 12px;
+    border: 1.5px solid var(--text);
+    border-radius: 3px;
+    position: relative;
+    padding: 1px;
+  }
+  .battery::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 3px;
+    width: 2px; height: 4px;
+    background: var(--text);
+    border-radius: 0 1px 1px 0;
+  }
+  .battery-fill { background: var(--text); height: 100%; width: 70%; border-radius: 1px; }
+
+  .screen {
+    position: absolute;
+    top: 50px; bottom: 0; left: 0; right: 0;
+    overflow-y: auto;
+    padding: 8px 20px 110px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 14px 4px 24px;
+  }
+  .tab-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .tab-sub {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .header-links { display: flex; gap: 16px; align-self: flex-start; margin-top: 10px; }
+  .header-link { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.01em; }
+
+  /* SESSION SUMMARY BAR */
+  .session-summary {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .session-summary-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .session-tag {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+  }
+  .session-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .session-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 18px;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  .session-duration {
+    font-size: 12px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .session-summary-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .session-stat-num {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .session-stat-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+
+  /* EXERCISE BLOCK */
+  .exercise {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .exercise-header {
+    padding: 16px 18px 12px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .exercise-name {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 17px;
+    letter-spacing: -0.005em;
+    line-height: 1.2;
+  }
+  .exercise-meta {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .exercise-last {
+    font-size: 11px;
+    color: var(--muted-soft);
+    padding: 0 18px 10px;
+    font-style: italic;
+    font-family: var(--font-display);
+  }
+  .exercise-last strong {
+    font-weight: 500;
+    color: var(--muted);
+    font-style: normal;
+    font-family: var(--font-body);
+    font-size: 11px;
+  }
+
+  /* SETS GRID */
+  .sets {
+    padding: 0 8px 8px;
+  }
+  .set-row {
+    display: grid;
+    grid-template-columns: 24px 1fr 1fr 32px;
+    align-items: center;
+    padding: 9px 10px;
+    border-radius: 9px;
+    gap: 10px;
+    transition: background 120ms;
+  }
+  .set-row.done {
+    background: var(--card-bg-warm);
+  }
+  .set-row.current {
+    background: var(--bg);
+    box-shadow: inset 0 0 0 1.5px var(--text);
+  }
+  .set-num {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted-soft);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-family: var(--font-body);
+  }
+  .set-value {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .set-value-unit {
+    font-family: var(--font-body);
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .set-row.current .set-value {
+    color: var(--muted-soft);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 14px;
+  }
+  .set-row.current .set-value-unit { color: var(--muted-soft); }
+  .set-check {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--text);
+    color: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    line-height: 1;
+    justify-self: end;
+  }
+  .set-row.current .set-check {
+    background: transparent;
+    border: 1.5px dashed var(--border);
+    color: transparent;
+  }
+
+  /* ADD SET BUTTON */
+  .add-set {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: calc(100% - 16px);
+    margin: 4px 8px 12px;
+    padding: 10px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 9px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .add-set:hover { color: var(--text); border-color: var(--muted); }
+
+  /* PR BADGE */
+  .pr-badge {
+    display: inline-block;
+    background: var(--good);
+    color: var(--bg);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    padding: 3px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    text-transform: uppercase;
+    line-height: 1;
+    vertical-align: middle;
+  }
+
+  /* SECONDARY ACTIVITY (cardio etc) */
+  .activity-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .activity-card.recovery {
+    background: var(--card-bg-warm);
+    border-style: dashed;
+    border-color: var(--border);
+  }
+  .activity-card.recovery .activity-icon {
+    background: var(--bg);
+  }
+  .activity-card.recovery .activity-icon svg {
+    stroke: var(--accent-deep);
+  }
+  .activity-icon {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--card-bg-warm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .activity-icon svg {
+    width: 18px; height: 18px;
+    stroke: var(--accent-deep);
+    fill: none;
+    stroke-width: 1.5;
+  }
+  .activity-body { flex: 1; min-width: 0; }
+  .activity-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: -0.005em;
+    line-height: 1.2;
+  }
+  .activity-meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    letter-spacing: 0.01em;
+  }
+  .activity-source {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--muted-soft);
+    text-transform: uppercase;
+  }
+
+  /* ADD WORKOUT FAB-ish */
+  .add-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .add-btn {
+    flex: 1;
+    padding: 13px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .add-btn .plus { font-size: 16px; line-height: 0; color: var(--muted); }
+
+  /* END SESSION */
+  .end-session {
+    width: 100%;
+    padding: 14px 18px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .end-session .arrow { font-size: 18px; }
+
+  /* BOTTOM TAB BAR */
+  .tab-strip {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(245, 242, 238, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-soft);
+    padding: 10px 12px 22px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 2px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .tab.active { color: var(--text); font-weight: 600; }
+  .tab-icon {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tab-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Train — Today <span>strength session in progress</span></div>
+
+<div class="mockup-row">
+
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>6:48</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="tab-title">Train</div>
+            <div class="tab-sub" style="margin-top: 6px;">Wed · Push Day</div>
+          </div>
+          <div class="header-links">
+            <span class="header-link">Progress</span>
+            <span class="header-link">Body</span>
+          </div>
+        </div>
+
+        <!-- Session summary -->
+        <div class="session-summary">
+          <div class="session-summary-left">
+            <div class="session-tag">Active session</div>
+            <div class="session-title-row">
+              <div class="session-title">Push · Day 1</div>
+              <div class="session-duration">38:14</div>
+            </div>
+          </div>
+          <div class="session-summary-right">
+            <div class="session-stat-num">7,820</div>
+            <div class="session-stat-label">kg · vol</div>
+          </div>
+        </div>
+
+        <!-- Exercise 1: Bench (completed) -->
+        <div class="exercise">
+          <div class="exercise-header">
+            <div class="exercise-name">Barbell Bench Press</div>
+            <div class="exercise-meta">3 sets</div>
+          </div>
+          <div class="exercise-last">
+            <strong>Last</strong> · 3×8 @ 82.5 kg, May 10
+          </div>
+          <div class="sets">
+            <div class="set-row done">
+              <div class="set-num">1</div>
+              <div class="set-value">8<span class="set-value-unit">reps</span></div>
+              <div class="set-value">85<span class="set-value-unit">kg</span></div>
+              <div class="set-check">✓</div>
+            </div>
+            <div class="set-row done">
+              <div class="set-num">2</div>
+              <div class="set-value">8<span class="set-value-unit">reps</span></div>
+              <div class="set-value">85<span class="set-value-unit">kg</span></div>
+              <div class="set-check">✓</div>
+            </div>
+            <div class="set-row done">
+              <div class="set-num">3</div>
+              <div class="set-value">7<span class="set-value-unit">reps</span></div>
+              <div class="set-value">85<span class="set-value-unit">kg</span> <span class="pr-badge">PR</span></div>
+              <div class="set-check">✓</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Exercise 2: Incline DB (in progress) -->
+        <div class="exercise">
+          <div class="exercise-header">
+            <div class="exercise-name">Incline DB Press</div>
+            <div class="exercise-meta">2 of 3 sets</div>
+          </div>
+          <div class="exercise-last">
+            <strong>Last</strong> · 3×10 @ 30 kg, May 10
+          </div>
+          <div class="sets">
+            <div class="set-row done">
+              <div class="set-num">1</div>
+              <div class="set-value">10<span class="set-value-unit">reps</span></div>
+              <div class="set-value">32.5<span class="set-value-unit">kg</span></div>
+              <div class="set-check">✓</div>
+            </div>
+            <div class="set-row done">
+              <div class="set-num">2</div>
+              <div class="set-value">9<span class="set-value-unit">reps</span></div>
+              <div class="set-value">32.5<span class="set-value-unit">kg</span></div>
+              <div class="set-check">✓</div>
+            </div>
+            <div class="set-row current">
+              <div class="set-num">3</div>
+              <div class="set-value">10<span class="set-value-unit">reps</span></div>
+              <div class="set-value">32.5<span class="set-value-unit">kg</span></div>
+              <div class="set-check">✓</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Exercise 3: Cable Fly (upcoming) -->
+        <div class="exercise">
+          <div class="exercise-header">
+            <div class="exercise-name">Cable Fly</div>
+            <div class="exercise-meta">0 of 3 sets</div>
+          </div>
+          <div class="exercise-last">
+            <strong>Last</strong> · 3×12 @ 18 kg, May 10
+          </div>
+          <button class="add-set">
+            <span style="font-size: 14px;">+</span> Start first set
+          </button>
+        </div>
+
+        <!-- Cardio activity pulled from Oura -->
+        <div class="activity-card">
+          <div class="activity-icon">
+            <svg viewBox="0 0 24 24"><path d="M4 12h4l3-7 4 14 3-7h2"/></svg>
+          </div>
+          <div class="activity-body">
+            <div class="activity-title">Zone 2 · Walk</div>
+            <div class="activity-meta">42 min · avg HR 118 · 4.1 km</div>
+          </div>
+          <div class="activity-source">Oura</div>
+        </div>
+
+        <!-- Recovery: Steam -->
+        <div class="activity-card recovery">
+          <div class="activity-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M7 14c0-2 1.5-3 1.5-4.5S7 7 7 5"/>
+              <path d="M12 14c0-2 1.5-3 1.5-4.5S12 7 12 5"/>
+              <path d="M17 14c0-2 1.5-3 1.5-4.5S17 7 17 5"/>
+              <path d="M4 18h16"/>
+            </svg>
+          </div>
+          <div class="activity-body">
+            <div class="activity-title">Steam · Recovery</div>
+            <div class="activity-meta">15 min · post-session</div>
+          </div>
+          <div class="activity-source">Manual</div>
+        </div>
+
+        <!-- Add another -->
+        <div class="add-row">
+          <button class="add-btn"><span class="plus">+</span> Add exercise</button>
+          <button class="add-btn"><span class="plus">+</span> Log activity</button>
+        </div>
+
+        <!-- End session -->
+        <button class="end-session">
+          End session
+          <span class="arrow">→</span>
+        </button>
+      </div>
+
+      <!-- Bottom nav -->
+      <div class="tab-strip">
+        <div class="tab active">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>
+          Train
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>
+          Fuel
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>
+          Sip
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>
+          Indulge
+        </div>
+        <div class="tab">
+          <div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>
+          Stack
+        </div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      Train — Today, mid-session
+      <small>Push day in progress. Bench done with a PR, Incline DB mid-set, Cable Fly upcoming, Zone 2 walk auto-pulled from Oura, Steam logged as recovery.</small>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

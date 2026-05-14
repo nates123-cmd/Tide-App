@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tide v2 — Fuel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F2EE;
+    --text: #1C1C1C;
+    --muted: #6B6560;
+    --muted-soft: #8E8884;
+    --accent: #A89880;
+    --accent-deep: #8C7A60;
+    --card-bg: #EDEBE7;
+    --card-bg-warm: #EFE9E0;
+    --border: #D8D4CE;
+    --border-soft: #E3DFD9;
+    --warn: #B5754A;
+    --good: #7A8B6F;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --font-display: 'Fraunces', 'Times New Roman', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: #DDD7CF;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-title {
+    max-width: 1400px;
+    margin: 0 auto 40px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    color: #4A453F;
+    letter-spacing: -0.01em;
+  }
+  .page-title span {
+    color: #8E8884;
+    font-weight: 400;
+    font-size: 15px;
+    margin-left: 12px;
+  }
+
+  .mockup-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .mockup-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .mockup-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6B6560;
+  }
+  .mockup-label small {
+    display: block;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    color: #8E8884;
+    font-size: 11px;
+    margin-top: 4px;
+    max-width: 320px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  /* Phone */
+  .phone {
+    width: 380px;
+    height: 760px;
+    background: var(--bg);
+    border-radius: 36px;
+    box-shadow:
+      0 0 0 8px #2B2724,
+      0 1px 0 9px #1C1A18,
+      0 30px 60px -20px rgba(28, 26, 24, 0.35),
+      0 12px 24px -10px rgba(28, 26, 24, 0.2);
+    overflow: hidden;
+    position: relative;
+  }
+  .notch {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 28px;
+    background: #1C1A18;
+    border-radius: 14px;
+    z-index: 10;
+  }
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    z-index: 9;
+  }
+  .status-bar-right { display: flex; gap: 6px; align-items: center; }
+  .battery {
+    width: 24px; height: 12px;
+    border: 1.5px solid var(--text);
+    border-radius: 3px;
+    position: relative;
+    padding: 1px;
+  }
+  .battery::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 3px;
+    width: 2px; height: 4px;
+    background: var(--text);
+    border-radius: 0 1px 1px 0;
+  }
+  .battery-fill { background: var(--text); height: 100%; width: 70%; border-radius: 1px; }
+
+  .screen {
+    position: absolute;
+    top: 50px; bottom: 0; left: 0; right: 0;
+    overflow-y: auto;
+    padding: 8px 20px 110px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 14px 4px 20px;
+  }
+  .tab-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .tab-sub {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+  .header-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    cursor: pointer;
+  }
+
+  /* SUMMARY CARD — ring + macros */
+  .summary-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 22px 20px 20px;
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 20px;
+    align-items: center;
+  }
+
+  /* Ring */
+  .ring-wrap {
+    width: 130px;
+    height: 130px;
+    position: relative;
+  }
+  .ring-wrap svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  .ring-bg {
+    fill: none;
+    stroke: var(--border-soft);
+    stroke-width: 10;
+  }
+  .ring-fill {
+    fill: none;
+    stroke: var(--text);
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 400ms;
+  }
+  .ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .ring-num {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 32px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .ring-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+  .ring-total {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Macros */
+  .macros {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .macro {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .macro-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .macro-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+  .macro-value {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+  }
+  .macro-value .target {
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 11px;
+  }
+  .macro-bar-track {
+    height: 4px;
+    background: var(--border-soft);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .macro-bar-fill {
+    height: 100%;
+    background: var(--text);
+    border-radius: 2px;
+  }
+  .macro-bar-fill.protein { background: var(--text); }
+  .macro-bar-fill.carbs { background: var(--accent-deep); }
+  .macro-bar-fill.fat { background: var(--accent); }
+
+  /* Quick add */
+  .quick-section {
+    margin-bottom: 16px;
+  }
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+    margin: 4px 2px 10px;
+  }
+  .recents-row {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px 2px 6px;
+    margin: 0 -2px;
+  }
+  .recents-row::-webkit-scrollbar { display: none; }
+  .recent-chip {
+    flex-shrink: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    padding: 8px 14px 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .recent-chip-name {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.005em;
+  }
+  .recent-chip-kcal {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .recent-chip-dot {
+    width: 3px; height: 3px;
+    background: var(--muted-soft);
+    border-radius: 50%;
+  }
+
+  /* Text input */
+  .meal-input-wrap {
+    margin-top: 10px;
+    position: relative;
+  }
+  .meal-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 50px 14px 18px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text);
+    letter-spacing: 0.01em;
+    outline: none;
+  }
+  .meal-input::placeholder { color: var(--muted-soft); }
+  .meal-input:focus { border-color: var(--text); }
+  .meal-input-icon {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--text);
+    color: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .meal-input-icon svg {
+    width: 14px; height: 14px;
+    stroke: var(--bg);
+    fill: none;
+    stroke-width: 2;
+  }
+  .meal-input-hint {
+    margin-top: 8px;
+    padding-left: 4px;
+    font-size: 11px;
+    color: var(--muted-soft);
+    font-style: italic;
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.3;
+  }
+
+  /* TODAY's meals */
+  .meal {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .meal-left { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+  .meal-top-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .meal-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 15px;
+    letter-spacing: -0.005em;
+    line-height: 1.2;
+  }
+  .meal-time {
+    font-size: 11px;
+    color: var(--muted-soft);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .meal-macros {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .meal-kcal {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  .meal-kcal-num {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .meal-kcal-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+
+  /* Remaining hint */
+  .remaining-hint {
+    background: var(--card-bg-warm);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-top: 14px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .remaining-hint-text {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--accent-deep);
+    letter-spacing: -0.005em;
+  }
+
+  /* Bottom tab strip */
+  .tab-strip {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(245, 242, 238, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-soft);
+    padding: 10px 12px 22px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 2px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .tab.active { color: var(--text); font-weight: 600; }
+  .tab-icon { width: 22px; height: 22px; }
+  .tab-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Fuel — Today <span>mid-afternoon, lunch logged, planning dinner</span></div>
+
+<div class="mockup-row">
+
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>3:42</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="tab-title">Fuel</div>
+            <div class="tab-sub">Wed · May 13</div>
+          </div>
+          <div style="display: flex; gap: 16px; align-self: flex-start; margin-top: 10px;">
+            <div class="header-link">Library</div>
+            <div class="header-link">Goal</div>
+          </div>
+        </div>
+
+        <!-- Summary: ring + macros -->
+        <div class="summary-card">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 100 100">
+              <!-- ring math: circumference = 2*pi*r = 2*pi*42 ≈ 263.89 -->
+              <!-- consumed = 1240, goal = 2200 → 56.4% -->
+              <!-- dashoffset = 263.89 * (1 - 0.564) = 115.06 -->
+              <circle cx="50" cy="50" r="42" class="ring-bg" />
+              <circle cx="50" cy="50" r="42" class="ring-fill"
+                stroke-dasharray="263.89"
+                stroke-dashoffset="115.06" />
+            </svg>
+            <div class="ring-center">
+              <div class="ring-num">960</div>
+              <div class="ring-label">left</div>
+              <div class="ring-total">1,240 / 2,200</div>
+            </div>
+          </div>
+          <div class="macros">
+            <div class="macro">
+              <div class="macro-row">
+                <div class="macro-label">Protein</div>
+                <div class="macro-value">82 <span class="target">/ 165 g</span></div>
+              </div>
+              <div class="macro-bar-track">
+                <div class="macro-bar-fill protein" style="width: 49.7%;"></div>
+              </div>
+            </div>
+            <div class="macro">
+              <div class="macro-row">
+                <div class="macro-label">Carbs</div>
+                <div class="macro-value">128 <span class="target">/ 220 g</span></div>
+              </div>
+              <div class="macro-bar-track">
+                <div class="macro-bar-fill carbs" style="width: 58.2%;"></div>
+              </div>
+            </div>
+            <div class="macro">
+              <div class="macro-row">
+                <div class="macro-label">Fat</div>
+                <div class="macro-value">38 <span class="target">/ 70 g</span></div>
+              </div>
+              <div class="macro-bar-track">
+                <div class="macro-bar-fill fat" style="width: 54.3%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick add: recents + text input -->
+        <div class="quick-section">
+          <div class="section-label">Recents</div>
+          <div class="recents-row">
+            <div class="recent-chip">
+              <span class="recent-chip-name">Salmon bowl</span>
+              <span class="recent-chip-dot"></span>
+              <span class="recent-chip-kcal">580</span>
+            </div>
+            <div class="recent-chip">
+              <span class="recent-chip-name">Greek yogurt</span>
+              <span class="recent-chip-dot"></span>
+              <span class="recent-chip-kcal">220</span>
+            </div>
+            <div class="recent-chip">
+              <span class="recent-chip-name">Chicken &amp; rice</span>
+              <span class="recent-chip-dot"></span>
+              <span class="recent-chip-kcal">620</span>
+            </div>
+            <div class="recent-chip">
+              <span class="recent-chip-name">Protein shake</span>
+              <span class="recent-chip-dot"></span>
+              <span class="recent-chip-kcal">180</span>
+            </div>
+            <div class="recent-chip">
+              <span class="recent-chip-name">Almonds</span>
+              <span class="recent-chip-dot"></span>
+              <span class="recent-chip-kcal">170</span>
+            </div>
+            <div class="recent-chip" style="background: transparent; border-style: dashed; color: var(--muted);">
+              <span class="recent-chip-name" style="color: var(--muted); font-style: italic;">All in Library</span>
+              <span style="font-size: 14px; line-height: 1; color: var(--muted);">›</span>
+            </div>
+          </div>
+
+          <div class="meal-input-wrap">
+            <input type="text" class="meal-input" placeholder="Log a meal — or describe it" />
+            <div class="meal-input-icon">
+              <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>
+            </div>
+          </div>
+          <div class="meal-input-hint">
+            Describe what you ate — Claude estimates calories and macros.
+          </div>
+        </div>
+
+        <!-- Today's meals -->
+        <div class="section-label">Today</div>
+
+        <div class="meal">
+          <div class="meal-left">
+            <div class="meal-top-row">
+              <div class="meal-title">Greek yogurt &amp; berries</div>
+              <div class="meal-time">7:42a</div>
+            </div>
+            <div class="meal-macros">22 P · 28 C · 8 F</div>
+          </div>
+          <div class="meal-kcal">
+            <div class="meal-kcal-num">280</div>
+            <div class="meal-kcal-label">kcal</div>
+          </div>
+        </div>
+
+        <div class="meal">
+          <div class="meal-left">
+            <div class="meal-top-row">
+              <div class="meal-title">Salmon bowl, brown rice</div>
+              <div class="meal-time">12:48p</div>
+            </div>
+            <div class="meal-macros">42 P · 68 C · 22 F</div>
+          </div>
+          <div class="meal-kcal">
+            <div class="meal-kcal-num">680</div>
+            <div class="meal-kcal-label">kcal</div>
+          </div>
+        </div>
+
+        <div class="meal">
+          <div class="meal-left">
+            <div class="meal-top-row">
+              <div class="meal-title">Almonds &amp; coffee</div>
+              <div class="meal-time">3:14p</div>
+            </div>
+            <div class="meal-macros">8 P · 12 C · 16 F</div>
+          </div>
+          <div class="meal-kcal">
+            <div class="meal-kcal-num">280</div>
+            <div class="meal-kcal-label">kcal</div>
+          </div>
+        </div>
+
+        <!-- Remaining hint -->
+        <div class="remaining-hint">
+          <div class="remaining-hint-text">
+            ~960 kcal left for dinner. Aim for 80g protein to hit your target.
+          </div>
+        </div>
+
+      </div>
+
+      <div class="tab-strip">
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>Train</div>
+        <div class="tab active"><div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>Fuel</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>Sip</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>Indulge</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>Stack</div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      Fuel — Today, mid-afternoon
+      <small>1,240 / 2,200 kcal in. Three meals logged, dinner planning. Ring as hero, macros as side stats, recents above a Claude-estimating text input.</small>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

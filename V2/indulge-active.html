@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tide v2 — Indulge Active Session</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F2EE;
+    --text: #1C1C1C;
+    --muted: #6B6560;
+    --muted-soft: #8E8884;
+    --accent: #A89880;
+    --accent-deep: #8C7A60;
+    --card-bg: #EDEBE7;
+    --card-bg-warm: #EFE9E0;
+    --border: #D8D4CE;
+    --border-soft: #E3DFD9;
+    --warn: #B5754A;
+    --good: #7A8B6F;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --font-display: 'Fraunces', 'Times New Roman', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: #DDD7CF;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-title {
+    max-width: 1400px;
+    margin: 0 auto 40px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    color: #4A453F;
+    letter-spacing: -0.01em;
+  }
+  .page-title span {
+    color: #8E8884;
+    font-weight: 400;
+    font-size: 15px;
+    margin-left: 12px;
+  }
+
+  .mockup-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .mockup-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .mockup-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6B6560;
+  }
+  .mockup-label small {
+    display: block;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    color: #8E8884;
+    font-size: 11px;
+    margin-top: 4px;
+    max-width: 320px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  .phone {
+    width: 380px;
+    height: 760px;
+    background: var(--bg);
+    border-radius: 36px;
+    box-shadow:
+      0 0 0 8px #2B2724,
+      0 1px 0 9px #1C1A18,
+      0 30px 60px -20px rgba(28, 26, 24, 0.35),
+      0 12px 24px -10px rgba(28, 26, 24, 0.2);
+    overflow: hidden;
+    position: relative;
+  }
+  .notch {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 28px;
+    background: #1C1A18;
+    border-radius: 14px;
+    z-index: 10;
+  }
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    z-index: 9;
+  }
+  .status-bar-right { display: flex; gap: 6px; align-items: center; }
+  .battery {
+    width: 24px; height: 12px;
+    border: 1.5px solid var(--text);
+    border-radius: 3px;
+    position: relative;
+    padding: 1px;
+  }
+  .battery::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 3px;
+    width: 2px; height: 4px;
+    background: var(--text);
+    border-radius: 0 1px 1px 0;
+  }
+  .battery-fill { background: var(--text); height: 100%; width: 70%; border-radius: 1px; }
+
+  .screen {
+    position: absolute;
+    top: 50px; bottom: 0; left: 0; right: 0;
+    overflow-y: auto;
+    padding: 8px 20px 110px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 14px 4px 20px;
+  }
+  .tab-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .tab-sub {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+  .header-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    align-self: flex-start;
+    margin-top: 10px;
+    cursor: pointer;
+  }
+
+  /* PACE FUSED (locked F treatment) */
+  .pace-fused {
+    background: var(--card-bg-warm);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 20px 20px 16px;
+    margin-bottom: 14px;
+  }
+  .pace-fused-stats {
+    display: grid;
+    grid-template-columns: auto 1px auto;
+    gap: 18px;
+    align-items: stretch;
+    margin-bottom: 4px;
+  }
+  .pace-fused-divider {
+    background: var(--border-soft);
+    width: 1px;
+    height: auto;
+  }
+  .pace-fused-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    justify-content: center;
+  }
+  .pace-fused-num {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 44px;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .pace-fused-num-suffix {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 18px;
+    color: var(--muted);
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .pace-fused-stat-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+  .pace-fused-stat-detail {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    margin-top: 2px;
+  }
+  .pace-fused-stat-detail.muted-soft { color: var(--muted-soft); }
+  .pace-fused-status-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 2px;
+  }
+  .pace-fused-status {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+  }
+  .pace-fused-status.fast { color: var(--warn); }
+  .pace-fused-intention {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--accent-deep);
+    letter-spacing: -0.005em;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-soft);
+  }
+  .pace-fused-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+    letter-spacing: 0.02em;
+  }
+  .pace-fused-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-soft); }
+
+  /* Entries */
+  .entries-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+    margin: 4px 2px 10px;
+  }
+  .entry {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .entry-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+  .entry-icon {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--card-bg-warm);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent-deep);
+  }
+  .entry-icon.coded {
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    color: var(--muted);
+  }
+  .entry-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .entry-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 15px;
+    letter-spacing: -0.005em;
+    line-height: 1.2;
+  }
+  .entry-meta { font-size: 11px; color: var(--muted); letter-spacing: 0.01em; }
+  .entry-time {
+    font-size: 11px;
+    color: var(--muted-soft);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /* Add row */
+  .quick-chips {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .chip {
+    flex: 1;
+    padding: 11px 4px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    color: var(--text);
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+  .chip-label {
+    display: block;
+    font-family: var(--font-body);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .more-btn {
+    width: 100%;
+    padding: 11px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    margin-bottom: 16px;
+    cursor: pointer;
+  }
+  .more-btn:hover { color: var(--text); border-color: var(--muted); }
+
+  /* End session */
+  .end-session {
+    width: 100%;
+    padding: 14px 18px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .end-session .arrow { font-size: 18px; }
+
+  /* Bottom tab strip */
+  .tab-strip {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(245, 242, 238, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-soft);
+    padding: 10px 12px 22px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 2px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .tab.active { color: var(--text); font-weight: 600; }
+  .tab-icon { width: 22px; height: 22px; }
+  .tab-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Indulge — Active session <span>F treatment locked</span></div>
+
+<div class="mockup-row">
+
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>10:42</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="tab-title">Indulge</div>
+            <div class="tab-sub">Fri · with Sam & Jules</div>
+          </div>
+          <div class="header-link">End</div>
+        </div>
+
+        <div class="pace-fused">
+          <div class="pace-fused-stats">
+            <div class="pace-fused-stat">
+              <div class="pace-fused-stat-label">Pace</div>
+              <div class="pace-fused-num">3<span class="pace-fused-num-suffix">/ 4</span></div>
+              <div class="pace-fused-stat-detail">1.2 / hr</div>
+            </div>
+            <div class="pace-fused-divider"></div>
+            <div class="pace-fused-stat">
+              <div class="pace-fused-stat-label">BAC · est</div>
+              <div class="pace-fused-num">.06</div>
+              <div class="pace-fused-stat-detail muted-soft">peak ~.07, trending down</div>
+            </div>
+          </div>
+          <div class="pace-fused-status-row">
+            <div class="pace-fused-status">Moderate</div>
+          </div>
+          <div class="pace-fused-intention">
+            Stay present, four drinks max, home by midnight.
+          </div>
+          <div class="pace-fused-meta">
+            <span>2h 28m in</span>
+            <span class="dot"></span>
+            <span>38m since last</span>
+          </div>
+        </div>
+
+        <div class="entries-label">Tonight</div>
+        <div class="entry">
+          <div class="entry-left">
+            <div class="entry-icon">B</div>
+            <div class="entry-body">
+              <div class="entry-title">Beer</div>
+              <div class="entry-meta">1 standard</div>
+            </div>
+          </div>
+          <div class="entry-time">8:14</div>
+        </div>
+        <div class="entry">
+          <div class="entry-left">
+            <div class="entry-icon">C</div>
+            <div class="entry-body">
+              <div class="entry-title">Cocktail</div>
+              <div class="entry-meta">1.5 standard</div>
+            </div>
+          </div>
+          <div class="entry-time">9:32</div>
+        </div>
+        <div class="entry">
+          <div class="entry-left">
+            <div class="entry-icon coded">T</div>
+            <div class="entry-body">
+              <div class="entry-title">T</div>
+              <div class="entry-meta">1 entry</div>
+            </div>
+          </div>
+          <div class="entry-time">9:58</div>
+        </div>
+        <div class="entry">
+          <div class="entry-left">
+            <div class="entry-icon">W</div>
+            <div class="entry-body">
+              <div class="entry-title">Wine</div>
+              <div class="entry-meta">1 standard</div>
+            </div>
+          </div>
+          <div class="entry-time">10:18</div>
+        </div>
+
+        <div class="entries-label" style="margin-top: 18px;">Add another</div>
+        <div class="quick-chips">
+          <div class="chip">½<span class="chip-label">unit</span></div>
+          <div class="chip">1<span class="chip-label">unit</span></div>
+          <div class="chip">1½<span class="chip-label">unit</span></div>
+          <div class="chip">2<span class="chip-label">unit</span></div>
+        </div>
+        <button class="more-btn">+ Type or coded entry</button>
+
+        <button class="end-session">
+          End session
+          <span class="arrow">→</span>
+        </button>
+      </div>
+
+      <div class="tab-strip">
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>Train</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>Fuel</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>Sip</div>
+        <div class="tab active"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>Indulge</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>Stack</div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      Indulge — Active session, mixed night
+      <small>3 alcohol entries + 1 coded entry (T). Pace at 3/4. Intention fused with pace card. Quick chips + sheet trigger for adding.</small>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

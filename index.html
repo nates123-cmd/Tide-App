@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#4A6B8A">
+<meta name="theme-color" content="#A89880">
 <title>Tide</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -12,29 +12,44 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Tide">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&display=swap">
 <style>
   :root {
-    --bg: #EEF2F6;
-    --text: #1A2230;
-    --muted: #5C6878;
-    --accent: #4A6B8A;
-    --accent-soft: #7B97B5;
-    --card-bg: #E2E8EF;
-    --card-bg-warm: #D9E3EC;
-    --border: #C5D0DB;
+    --bg: #F5F2EE;
+    --text: #1C1C1C;
+    --muted: #6B6560;
+    --muted-soft: #8E8884;
+    --accent: #A89880;
+    --accent-deep: #8C7A60;
+    --accent-soft: #C5B89E;
+    --card-bg: #EDEBE7;
+    --card-bg-warm: #EFE9E0;
+    --border: #D8D4CE;
+    --border-soft: #E3DFD9;
     --warn: #B5754A;
-    --good: #6F8B82;
+    --good: #7A8B6F;
     --radius: 14px;
+    --radius-sm: 10px;
     --radius-lg: 20px;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); line-height: 1.5; -webkit-font-smoothing: antialiased; }
   body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); min-height: 100vh; }
-  #app { max-width: 560px; margin: 0 auto; padding: 20px 18px 80px; }
-  h1, h2, h3 { font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; }
+  #app { max-width: 560px; margin: 0 auto; padding: 20px 18px calc(96px + env(safe-area-inset-bottom)); }
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; }
   h1 { font-size: 28px; }
   h2 { font-size: 20px; }
   h3 { font-size: 16px; }
+  .font-display { font-family: var(--font-display); }
+  .font-body { font-family: var(--font-body); }
+  .label-up { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .label-up-soft { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
+  .em-accent { font-family: var(--font-display); font-style: italic; color: var(--accent-deep); }
+  .tnum { font-variant-numeric: tabular-nums; }
   p { margin: 0 0 12px; color: var(--muted); }
   button { font-family: inherit; font-size: 15px; cursor: pointer; border: none; background: none; color: inherit; padding: 0; }
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 20px; border-radius: var(--radius); background: var(--accent); color: white; font-weight: 500; min-height: 48px; transition: opacity 0.15s; width: 100%; }
@@ -108,7 +123,7 @@
   .empty { text-align: center; padding: 48px 20px; color: var(--muted); }
   .empty .em { font-size: 32px; margin-bottom: 12px; opacity: 0.5; }
 
-  .quick-fab { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: max(20px, env(safe-area-inset-right)); width: 60px; height: 60px; border-radius: 50%; background: var(--accent); color: white; font-size: 28px; box-shadow: 0 4px 16px rgba(74, 107, 138, 0.35); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .quick-fab { position: fixed; bottom: calc(88px + env(safe-area-inset-bottom)); right: max(20px, env(safe-area-inset-right)); width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: white; font-size: 26px; box-shadow: 0 4px 16px rgba(140, 122, 96, 0.35); display: flex; align-items: center; justify-content: center; z-index: 50; }
 
   .tab-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--card-bg); padding: 4px; border-radius: var(--radius); margin-bottom: 14px; }
   .tab-strip .tab { padding: 10px 6px; text-align: center; font-size: 13px; color: var(--muted); border-radius: 10px; cursor: pointer; transition: background 0.15s, color 0.15s; min-height: 40px; display: flex; align-items: center; justify-content: center; }
@@ -136,25 +151,123 @@
   .key-form { padding: 40px 18px; }
   .key-form input { font-family: monospace; font-size: 13px; }
 
-  .oura-bar {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 4px;
+  /* ───── v2: Pulse home (mockup-matched) ───── */
+  .pulse-head { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 4px 24px; gap: 12px; }
+  .pulse-head .brand { font-family: var(--font-display); font-weight: 600; font-size: 28px; letter-spacing: -0.02em; line-height: 1; cursor: pointer; }
+  .pulse-head .date { font-family: var(--font-body); font-size: 12px; font-weight: 500; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; margin-top: 6px; }
+  .pulse-head .header-links { display: flex; gap: 16px; align-self: flex-start; margin-top: 10px; }
+  .pulse-head .header-link { font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.01em; cursor: pointer; }
+  .pulse-head .header-link:active { color: var(--text); }
+
+  .stat-grid {
     background: var(--card-bg);
+    border: 1px solid var(--border-soft);
     border-radius: var(--radius);
-    padding: 10px 8px;
-    margin-bottom: 12px;
-    cursor: pointer;
-    transition: background 0.15s;
-    border: 1px solid var(--border);
+    padding: 4px;
+    margin-bottom: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background-color: var(--border-soft);
   }
-  .oura-bar:active { background: var(--card-bg-warm); }
-  .oura-bar-stat { text-align: center; padding: 2px 4px; }
-  .oura-bar-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
-  .oura-bar-value { font-size: 20px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.1; }
-  .oura-bar-value.dim { color: var(--muted); font-weight: 400; }
-  .oura-bar-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
-  .oura-bar-meta { grid-column: 1 / -1; text-align: center; font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .stat-cell {
+    background: var(--card-bg);
+    padding: 18px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+  }
+  .stat-cell:nth-child(1) { border-top-left-radius: 11px; }
+  .stat-cell:nth-child(2) { border-top-right-radius: 11px; }
+  .stat-cell:nth-child(3) { border-bottom-left-radius: 11px; }
+  .stat-cell:nth-child(4) { border-bottom-right-radius: 11px; }
+  .stat-label { font-family: var(--font-body); font-size: 10px; font-weight: 500; color: var(--muted-soft); letter-spacing: 0.14em; text-transform: uppercase; }
+  .stat-value {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 34px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+  .stat-value.dim { color: var(--muted); font-weight: 400; }
+  .stat-unit { font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+  .stat-delta { font-family: var(--font-body); font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.02em; display: flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+  .stat-delta.up { color: var(--good); }
+  .stat-delta.down { color: var(--warn); }
+  .stat-delta.flat { color: var(--muted); }
+  .stat-delta.warn { color: var(--warn); }
+  /* Readiness dot precedes the value via ::before */
+  .stat-cell.readiness-good .stat-value::before,
+  .stat-cell.readiness-amber .stat-value::before,
+  .stat-cell.readiness-warn .stat-value::before {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+    align-self: center;
+  }
+  .stat-cell.readiness-good .stat-value::before  { background: var(--good); }
+  .stat-cell.readiness-amber .stat-value::before { background: var(--accent); }
+  .stat-cell.readiness-warn .stat-value::before  { background: var(--warn); }
+
+  .pulse-card { background: var(--card-bg-warm); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 22px 20px 18px; margin-bottom: 14px; }
+  .pulse-interp { font-family: var(--font-display); font-weight: 400; font-size: 18px; line-height: 1.35; letter-spacing: -0.005em; color: var(--text); margin-bottom: 18px; }
+  .pulse-interp em { font-style: italic; color: var(--accent-deep); }
+  .pulse-loading { font-family: var(--font-display); font-style: italic; font-size: 17px; color: var(--muted); }
+  .pulse-action {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .pulse-action:active { opacity: 0.88; }
+  .pulse-action .arrow { font-size: 18px; line-height: 1; }
+
+  .digest-card { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; transition: background 0.15s; }
+  .digest-card:active { background: var(--card-bg-warm); }
+  .digest-content { flex: 1; min-width: 0; }
+  .digest-tag { font-family: var(--font-body); font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); margin-bottom: 5px; }
+  .digest-headline { font-family: var(--font-display); font-weight: 400; font-size: 14px; line-height: 1.35; color: var(--text); letter-spacing: -0.005em; }
+  .digest-headline em { font-style: italic; color: var(--accent-deep); }
+  .digest-chevron { font-size: 18px; color: var(--muted); font-weight: 400; flex-shrink: 0; }
+  .digest-card.dim { opacity: 0.7; }
+
+  /* ───── v2: Bottom nav bar (mockup-matched) ───── */
+  .bottom-nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+    padding: 10px 12px calc(14px + env(safe-area-inset-bottom));
+    background: rgba(245, 242, 238, 0.92);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-soft);
+  }
+  .bottom-nav .nav-cell {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 4px 2px;
+    color: var(--muted); font-family: var(--font-body); font-size: 10px; font-weight: 500; letter-spacing: 0.02em;
+    cursor: pointer; transition: color 0.15s;
+    background: none; border: none;
+  }
+  .bottom-nav .nav-cell.active { color: var(--text); font-weight: 600; }
+  .bottom-nav .nav-cell:active { color: var(--text); }
+  .bottom-nav .nav-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+  .bottom-nav .nav-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
   .pat-window { display: flex; gap: 8px; margin-bottom: 14px; }
   .pat-window .chip { flex: 1; text-align: center; padding: 10px 0; }
@@ -491,6 +604,188 @@ async function loadOuraToday() {
   }
 }
 
+// Last 7 Oura rows for trailing-average deltas on the Pulse stat grid.
+async function loadOura7d() {
+  if (!getOuraPat()) { state.oura7d = []; return []; }
+  const end = todayISO();
+  const start = addDays(end, -7);
+  try {
+    const rows = await sbFetch(`/tide_oura_daily?date=gte.${start}&date=lte.${end}&order=date.desc`);
+    state.oura7d = rows || [];
+    return state.oura7d;
+  } catch (e) {
+    console.warn('loadOura7d failed:', e.message);
+    state.oura7d = [];
+    return [];
+  }
+}
+
+function average(arr) {
+  const vals = arr.filter(v => v != null && Number.isFinite(v));
+  if (!vals.length) return null;
+  return vals.reduce((s, v) => s + v, 0) / vals.length;
+}
+
+// ---------------------------------------------------------------------------
+// v2 Pulse — interpretation + action cascade
+// ---------------------------------------------------------------------------
+const PULSE_CACHE_KEY = 'tide_pulse_today';
+const PULSE_VERSION = 1;
+
+function getCachedPulse() {
+  try {
+    const raw = localStorage.getItem(PULSE_CACHE_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (p.date !== todayISO() || p.v !== PULSE_VERSION) return null;
+    return p;
+  } catch { return null; }
+}
+
+function setCachedPulse(text) {
+  try {
+    localStorage.setItem(PULSE_CACHE_KEY, JSON.stringify({
+      v: PULSE_VERSION, date: todayISO(), text, generated_at: new Date().toISOString(),
+    }));
+  } catch {}
+}
+
+function hydrationStats(now = new Date()) {
+  const target = waterPaceTarget(now);
+  const actualMl = (state.todayIntake || [])
+    .filter(r => r.category === 'water')
+    .reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+  const delta = actualMl - target;
+  let status;
+  if (target === 0) status = 'idle';
+  else if (delta > 200) status = 'ahead';
+  else if (delta < -300) status = 'behind';
+  else status = 'on-pace';
+  return { actualMl, target, delta, status, goal: WATER_GOAL_ML };
+}
+
+function readinessBand(score) {
+  if (score == null) return 'flat';
+  if (score >= 80) return 'good';
+  if (score >= 65) return 'accent';
+  return 'warn';
+}
+
+function formatDelta(curr, avg, suffix = '') {
+  if (curr == null || avg == null) return '';
+  const d = curr - avg;
+  if (Math.abs(d) < 1) return `<span class="delta-flat">flat vs 7d</span>`;
+  const sign = d > 0 ? '+' : '';
+  const cls = d > 0 ? 'delta-up' : 'delta-down';
+  return `<span class="${cls}">${sign}${Math.round(d)}${suffix} vs 7d</span>`;
+}
+
+function formatSleepDelta(currMin, avgMin) {
+  if (currMin == null || avgMin == null) return '';
+  const d = currMin - avgMin;
+  if (Math.abs(d) < 6) return `<span class="delta-flat">flat vs 7d</span>`;
+  const sign = d > 0 ? '+' : '−';
+  const cls = d > 0 ? 'delta-up' : 'delta-down';
+  const mins = Math.abs(d);
+  const lbl = mins >= 60 ? `${Math.floor(mins/60)}h${mins%60 ? ' ' + (mins%60) + 'm' : ''}` : `${mins}m`;
+  return `<span class="${cls}">${sign}${lbl} vs 7d</span>`;
+}
+
+// Returns one of:
+//   { label, target: { screen?, tab?, openLog?, fab? } }
+// Highest-priority rule fires first.
+function computePulseAction() {
+  const o   = state.ouraToday || {};
+  const hyd = hydrationStats();
+  const readiness = o.readiness_score;
+  const now = new Date();
+  const hour = now.getHours();
+  const dayOfWeek = now.getDay(); // 0 Sun … 6 Sat
+  const todayCaff = (state.todayIntake || []).filter(r => r.category === 'caffeine');
+  const lastCaff = todayCaff.length ? new Date(todayCaff[todayCaff.length - 1].logged_at) : null;
+  const lastCaffHour = lastCaff ? lastCaff.getHours() + lastCaff.getMinutes() / 60 : null;
+  const hasActiveSession = !!state.activeSession;
+  const recentIndulge = (state.history || []).some(s => {
+    const days = (Date.now() - new Date(s.started_at).getTime()) / 86400000;
+    return days < 7;
+  });
+  // Morning stack heuristic: any supplement check-offs logged today
+  const tookMorningStack = (state.todayIntake || []).some(r => r.category === 'supplement');
+  // Workout logged today (tide_activities doesn't exist yet — placeholder false)
+  const workoutLogged = false;
+
+  // 1. Recovery override
+  if (readiness != null && readiness < 65) {
+    return { label: 'Mark a recovery day', target: { fab: true } };
+  }
+  // 2. Hydration deficit
+  if (hyd.status === 'behind' && hyd.delta < -300) {
+    return { label: 'Log a glass', target: { tab: 'water' } };
+  }
+  // 3. Active session
+  if (hasActiveSession) {
+    return { label: "Open tonight's session", target: { tab: 'drinks' } };
+  }
+  // 4. Caffeine late
+  if (lastCaffHour != null && lastCaffHour >= 14) {
+    return { label: 'Note caffeine time', target: { tab: 'water' } };
+  }
+  // 5. Indulge intention (Fri/Sat after 4pm, indulge active last 7d)
+  if ((dayOfWeek === 5 || dayOfWeek === 6) && hour >= 16 && recentIndulge) {
+    return { label: "Set tonight's intention", target: { tab: 'drinks' } };
+  }
+  // 6. Morning stack unchecked past 10am
+  if (hour >= 10 && !tookMorningStack) {
+    return { label: 'Mark morning stack', target: { tab: 'supplements' } };
+  }
+  // 7. Training opportunity (high readiness, no workout logged by 4pm) — placeholder until Train tab
+  if (readiness != null && readiness > 80 && hour >= 16 && !workoutLogged) {
+    return { label: 'Log workout', target: { fab: true } };
+  }
+  // 8. Default
+  const defaultTab = state.tab || 'water';
+  return { label: 'Log what you have had', target: { tab: defaultTab } };
+}
+
+async function generatePulse() {
+  const o = state.ouraToday || {};
+  const hyd = hydrationStats();
+  const todayCaff = (state.todayIntake || []).filter(r => r.category === 'caffeine');
+  const caffMg = todayCaff.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+  const lastIndulge = (state.history || [])[0] || null;
+  const lastDrinkCount = lastIndulge ? (lastIndulge.drink_count || 0) : null;
+  const lastFeeling = lastIndulge ? lastIndulge.feeling : null;
+
+  const haveOura = o.readiness_score != null || o.sleep_score != null || o.hrv_avg != null;
+  if (!haveOura) {
+    const fallback = 'Not enough signal today — log as you go.';
+    setCachedPulse(fallback);
+    return fallback;
+  }
+
+  const ctx = {
+    readiness: o.readiness_score,
+    sleep_score: o.sleep_score,
+    sleep_min: o.total_sleep_min,
+    hrv: o.hrv_avg,
+    activity_score: o.activity_score,
+    hydration_actual_ml: hyd.actualMl,
+    hydration_expected_ml: hyd.target,
+    caffeine_mg: caffMg,
+    last_indulge_drinks: lastDrinkCount,
+    last_indulge_feeling: lastFeeling,
+  };
+
+  const fallback = { text: 'Solid baseline today. Log as you go.' };
+  const pj = await callClaudeJSON(
+    `You are writing today's "Pulse" for a body-signal tracking app. ONE sentence, tight, imperative, Course's clipped voice. Wrap ONE load-bearing phrase in <em>…</em> for italic emphasis (a directive or the key observation). No preamble. No emoji. No second sentence. Max 18 words.\n\nData: ${JSON.stringify(ctx)}\n\nReturn JSON: {"text": "..."}`,
+    fallback
+  );
+  const text = pj.text || fallback.text;
+  setCachedPulse(text);
+  return text;
+}
+
 // ---------------------------------------------------------------------------
 // Standard drink units (US standard = 14g pure alcohol)
 // ---------------------------------------------------------------------------
@@ -598,13 +893,28 @@ function computeBAC(drinks, profile) {
 // Render — root
 // ---------------------------------------------------------------------------
 function render() {
-  if (!getKey()) return renderKeyForm();
+  if (!getKey()) {
+    document.querySelector('.bottom-nav')?.remove();
+    return renderKeyForm();
+  }
   const screen = state.screen || 'home';
   if (screen === 'home') renderHome();
   else if (screen === 'history') renderHistory();
   else if (screen === 'morning') renderMorning(state.morningSession);
   else if (screen === 'settings') renderSettings();
   else if (screen === 'patterns') renderPatterns();
+  mountBottomNav(screen === 'home' ? (state.tab || null) : null);
+}
+
+// Bottom nav is a singleton fixed element. Re-mounted each render with the right active state.
+function mountBottomNav(activeTabId) {
+  let nav = document.querySelector('.bottom-nav');
+  if (nav) nav.remove();
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = renderBottomNav(activeTabId);
+  nav = wrapper.firstElementChild;
+  document.body.appendChild(nav);
+  wireBottomNav();
 }
 
 function renderKeyForm() {
@@ -627,20 +937,19 @@ function renderKeyForm() {
 }
 
 // ---------------------------------------------------------------------------
-// Home screen
+// Home screen — Pulse (no active tab) OR tab content (bottom-nav selected)
 // ---------------------------------------------------------------------------
 function renderHome() {
-  const tab = state.tab || 'water';
-  const tabs = [
-    { id: 'water',       label: 'Water' },
-    { id: 'food',        label: 'Food' },
-    { id: 'supplements', label: 'Supps' },
-    { id: 'drinks',      label: 'Drinks' },
-  ];
+  // No tab selected → render Pulse home. Otherwise render the active tab.
+  if (!state.tab) {
+    renderPulseHome();
+    return;
+  }
 
+  const tab = state.tab;
   $('#app').innerHTML = `
     <header class="app-head">
-      <div class="title">Tide</div>
+      <div class="title" data-brand>Tide</div>
       <div style="display: flex; gap: 8px">
         <button class="nav-btn" data-nav="settings">Profile</button>
         <button class="nav-btn" data-nav="patterns">Patterns</button>
@@ -648,23 +957,14 @@ function renderHome() {
       </div>
     </header>
 
-    ${renderOuraStatBar()}
-
-    <div class="tab-strip" role="tablist">
-      ${tabs.map(t => `<div class="tab ${t.id === tab ? 'active' : ''}" data-tab="${t.id}" role="tab">${t.label}</div>`).join('')}
-    </div>
-
     <div id="tab-content">${renderTabContent(tab)}</div>
 
     <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
   `;
 
-  // Wire shared events
   $$('[data-nav]').forEach(b => b.onclick = () => { state.screen = b.dataset.nav; render(); });
-  $$('[data-tab]').forEach(b => b.onclick = () => { state.tab = b.dataset.tab; renderHome(); });
+  $('[data-brand]')?.addEventListener('click', () => { state.tab = null; render(); });
   $('#any-fab').onclick = openLogAny;
-  const ouraBar = $('#oura-bar');
-  if (ouraBar) ouraBar.onclick = () => { state.screen = 'patterns'; render(); };
 
   wireTabEvents(tab);
 
@@ -677,33 +977,224 @@ function renderHome() {
   }
 }
 
-function renderOuraStatBar() {
-  if (!getOuraPat() || !state.ouraToday) return '';
-  const o = state.ouraToday;
-  const sleep     = o.sleep_score;
-  const readiness = o.readiness_score;
-  const activity  = o.activity_score;
-  if (sleep == null && readiness == null && activity == null) return '';
-  const sleepSub = o.total_sleep_min != null
-    ? `${Math.floor(o.total_sleep_min / 60)}h ${String(o.total_sleep_min % 60).padStart(2, '0')}m`
-    : '';
-  const readinessSub = o.hrv_avg != null ? `HRV ${o.hrv_avg}` : '';
-  const activitySub  = '';
-  const cell = (label, val, sub) => `
-    <div class="oura-bar-stat">
-      <div class="oura-bar-label">${label}</div>
-      <div class="oura-bar-value${val == null ? ' dim' : ''}">${val == null ? '—' : val}</div>
-      ${sub ? `<div class="oura-bar-sub">${escapeHtml(sub)}</div>` : ''}
-    </div>`;
-  const dateLabel = o.date === todayISO() ? 'Today' : fmtDate(o.date + 'T12:00:00');
+// Bottom nav: 5 tabs (Train / Fuel / Sip / Indulge / Stack). Train is not yet built;
+// the others map to existing v1 tab content until later chunks replace them.
+function renderBottomNav(activeTabId) {
+  const cells = [
+    { id: 'train',       label: 'Train',   icon: '<path d="M6 18l3-9 3 5 3-3 3 7"/>' },
+    { id: 'food',        label: 'Fuel',    icon: '<circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/>' },
+    { id: 'water',       label: 'Sip',     icon: '<path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/>' },
+    { id: 'drinks',      label: 'Indulge', icon: '<path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/>' },
+    { id: 'supplements', label: 'Stack',   icon: '<rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/>' },
+  ];
   return `
-    <div class="oura-bar" id="oura-bar" role="button" aria-label="Open Patterns">
-      ${cell('Sleep', sleep, sleepSub)}
-      ${cell('Readiness', readiness, readinessSub)}
-      ${cell('Activity', activity, activitySub)}
-      <div class="oura-bar-meta">${dateLabel} · Oura</div>
+    <nav class="bottom-nav" role="tablist">
+      ${cells.map(c => `
+        <button class="nav-cell ${c.id === activeTabId ? 'active' : ''}" data-bn="${c.id}" role="tab" aria-label="${c.label}">
+          <span class="nav-icon"><svg viewBox="0 0 24 24">${c.icon}</svg></span>
+          ${c.label}
+        </button>
+      `).join('')}
+    </nav>
+  `;
+}
+
+function wireBottomNav() {
+  $$('[data-bn]').forEach(b => b.onclick = () => {
+    const id = b.dataset.bn;
+    if (id === 'train') {
+      // Train tab is built in a later chunk; for now route nowhere and toast.
+      toast('Train tab coming next');
+      return;
+    }
+    state.tab = id;
+    state.screen = 'home';
+    render();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Pulse home (v2 chunk 1)
+// ---------------------------------------------------------------------------
+function renderPulseHome() {
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    .replace(/,/g, ' ·').replace(/\s+/g, ' ');
+
+  const cached = getCachedPulse();
+  const initialPulseHtml = cached
+    ? cached.text
+    : `<span class="pulse-loading">Reading the signal…</span>`;
+
+  const action = computePulseAction();
+
+  $('#app').innerHTML = `
+    <header class="pulse-head">
+      <div>
+        <div class="brand" data-brand>Tide</div>
+        <div class="date">${escapeHtml(dateLabel)}</div>
+      </div>
+      <div class="header-links">
+        <span class="header-link" data-nav="patterns">Patterns</span>
+        <span class="header-link" data-nav="history">History</span>
+        <span class="header-link" data-nav="settings">Profile</span>
+      </div>
+    </header>
+
+    <div id="pulse-stat-grid">${renderPulseStatGrid()}</div>
+
+    <div class="pulse-card">
+      <div class="pulse-interp" id="pulse-interp">${initialPulseHtml}</div>
+      <button class="pulse-action" id="pulse-action">
+        ${escapeHtml(action.label)}
+        <span class="arrow">→</span>
+      </button>
+    </div>
+
+    <div class="digest-card" id="digest-card">
+      <div class="digest-content">
+        <div class="digest-tag">This week</div>
+        <div class="digest-headline">${escapeHtml(renderDigestHeadlinePlaceholder())}</div>
+      </div>
+      <div class="digest-chevron">›</div>
     </div>
   `;
+
+  // Wire header links + brand (brand is a no-op on Pulse home but keeps the gesture consistent)
+  $$('[data-nav]').forEach(b => b.onclick = () => { state.screen = b.dataset.nav; render(); });
+  $('[data-brand]')?.addEventListener('click', () => { state.tab = null; render(); });
+
+  // Action button
+  $('#pulse-action').onclick = () => routePulseAction(action.target);
+
+  // Digest card → Patterns (chunk 11 will replace this with the digest expanded view)
+  $('#digest-card').onclick = () => { state.screen = 'patterns'; render(); };
+
+  // Kick the Pulse generation if no cached entry for today.
+  if (!cached) {
+    generatePulse().then(text => {
+      const el = $('#pulse-interp');
+      if (el && state.screen === 'home' && !state.tab) el.innerHTML = text;
+    }).catch(e => {
+      const el = $('#pulse-interp');
+      if (el) el.innerHTML = 'Not enough signal today — log as you go.';
+      console.warn('generatePulse failed', e);
+    });
+  }
+}
+
+function routePulseAction(target) {
+  if (!target) return;
+  if (target.fab)  { openLogAny(); return; }
+  if (target.tab)  { state.tab = target.tab; state.screen = 'home'; render(); return; }
+  if (target.screen) { state.screen = target.screen; render(); return; }
+}
+
+function renderPulseStatGrid() {
+  const o   = state.ouraToday || {};
+  const avg = sevenDayAverages(state.oura7d || []);
+  const hyd = hydrationStats();
+
+  const readiness = o.readiness_score;
+  const readinessClass = (() => {
+    if (readiness == null) return '';
+    if (readiness >= 80) return 'readiness-good';
+    if (readiness >= 65) return 'readiness-amber';
+    return 'readiness-warn';
+  })();
+
+  const readinessDelta = (readiness != null && avg.readiness != null)
+    ? deltaSpan(readiness - avg.readiness, '')
+    : '<span class="stat-delta flat">—</span>';
+
+  const sleepMin = o.total_sleep_min;
+  const sleepValueHtml = sleepMin != null
+    ? `${Math.floor(sleepMin / 60)}<span class="stat-unit">h</span> ${String(sleepMin % 60).padStart(2, '0')}<span class="stat-unit">m</span>`
+    : `<span class="stat-value dim">—</span>`;
+  const sleepDelta = (sleepMin != null && avg.sleep_min != null)
+    ? sleepDeltaSpan(sleepMin - avg.sleep_min)
+    : '<span class="stat-delta flat">—</span>';
+
+  const hrv = o.hrv_avg;
+  const hrvValueHtml = hrv != null ? `${hrv}<span class="stat-unit">ms</span>` : `<span class="stat-value dim">—</span>`;
+  const hrvDelta = (hrv != null && avg.hrv != null)
+    ? deltaSpan(hrv - avg.hrv, '')
+    : '<span class="stat-delta flat">—</span>';
+
+  // Hydration cell
+  let hydValueHtml, hydDeltaHtml;
+  if (hyd.actualMl >= 1000) {
+    hydValueHtml = `${(hyd.actualMl / 1000).toFixed(1)}<span class="stat-unit">L</span>`;
+  } else {
+    hydValueHtml = `${hyd.actualMl}<span class="stat-unit">ml</span>`;
+  }
+  if (hyd.status === 'behind') {
+    hydDeltaHtml = `<span class="stat-delta warn">behind ${Math.abs(hyd.delta)}ml</span>`;
+  } else if (hyd.status === 'ahead') {
+    hydDeltaHtml = `<span class="stat-delta up">ahead ${hyd.delta}ml</span>`;
+  } else if (hyd.status === 'idle') {
+    hydDeltaHtml = `<span class="stat-delta flat">starting the day</span>`;
+  } else {
+    hydDeltaHtml = `<span class="stat-delta flat">on pace</span>`;
+  }
+
+  return `
+    <div class="stat-grid">
+      <div class="stat-cell ${readinessClass}">
+        <div class="stat-label">Readiness</div>
+        <div class="stat-value">${readiness != null ? readiness : '—'}</div>
+        ${readinessDelta}
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">Sleep</div>
+        <div class="stat-value">${sleepValueHtml}</div>
+        ${sleepDelta}
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">HRV</div>
+        <div class="stat-value">${hrvValueHtml}</div>
+        ${hrvDelta}
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">Hydration</div>
+        <div class="stat-value">${hydValueHtml}</div>
+        ${hydDeltaHtml}
+      </div>
+    </div>
+  `;
+}
+
+function sevenDayAverages(rows) {
+  return {
+    readiness: average(rows.map(r => r.readiness_score)),
+    sleep_min: average(rows.map(r => r.total_sleep_min)),
+    hrv:       average(rows.map(r => r.hrv_avg)),
+  };
+}
+
+function deltaSpan(diff, suffix) {
+  if (diff == null || !Number.isFinite(diff)) return '<span class="stat-delta flat">—</span>';
+  const rounded = Math.round(diff);
+  if (Math.abs(rounded) < 1) return '<span class="stat-delta flat">flat vs avg</span>';
+  const sign = rounded > 0 ? '+' : '−';
+  const cls = rounded > 0 ? 'up' : 'down';
+  return `<span class="stat-delta ${cls}">${sign}${Math.abs(rounded)}${suffix} vs avg</span>`;
+}
+
+function sleepDeltaSpan(diffMin) {
+  if (diffMin == null || !Number.isFinite(diffMin)) return '<span class="stat-delta flat">—</span>';
+  const abs = Math.abs(diffMin);
+  if (abs < 6) return '<span class="stat-delta flat">flat vs avg</span>';
+  const sign = diffMin > 0 ? '+' : '−';
+  const cls = diffMin > 0 ? 'up' : 'down';
+  const lbl = abs >= 60 ? `${Math.floor(abs / 60)}h ${abs % 60}m` : `${abs}m`;
+  return `<span class="stat-delta ${cls}">${sign}${lbl} vs avg</span>`;
+}
+
+function renderDigestHeadlinePlaceholder() {
+  // Real digest pipeline ships in chunk 11. Until then, surface a neutral placeholder
+  // that points the user to the existing Patterns screen.
+  return 'Last 7 days — tap to see the joined view.';
 }
 
 function renderTabContent(tab) {
@@ -2582,19 +3073,22 @@ async function loadHistory() {
 async function boot() {
   if (!getKey()) { renderKeyForm(); return; }
   loadLocal();
-  // Render fast from local cache
+  // v2: home opens on the Pulse, not on a tab. Clear any v1 default.
+  state.tab = null;
   state.screen = 'home';
   render();
   // Then refresh from server
   await loadActiveSession();
   await loadHistory();
   await Promise.all([loadTodayIntake(), loadSupplements(), loadAliases(), loadTodayOther()]);
-  // Pull cached Oura row immediately for the home stat bar, then sync in background
-  await loadOuraToday();
+  // Pull cached Oura today + 7d for the stat grid hero, then sync in background
+  await Promise.all([loadOuraToday(), loadOura7d()]);
   if (state.screen === 'home') render();
   syncOura().then(r => {
     if (r && r.ok && r.count) {
-      loadOuraToday().then(() => { if (state.screen === 'home') render(); });
+      Promise.all([loadOuraToday(), loadOura7d()]).then(() => {
+        if (state.screen === 'home') render();
+      });
     }
   }).catch(() => {});
   // Auto-prompt morning-after if there's a recently-ended session pending

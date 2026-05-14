@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tide v2 — Indulge Empty + Reflection Prompt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F2EE;
+    --text: #1C1C1C;
+    --muted: #6B6560;
+    --muted-soft: #8E8884;
+    --accent: #A89880;
+    --accent-deep: #8C7A60;
+    --card-bg: #EDEBE7;
+    --card-bg-warm: #EFE9E0;
+    --border: #D8D4CE;
+    --border-soft: #E3DFD9;
+    --warn: #B5754A;
+    --good: #7A8B6F;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --font-display: 'Fraunces', 'Times New Roman', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: #DDD7CF;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-title {
+    max-width: 1700px;
+    margin: 0 auto 40px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    color: #4A453F;
+    letter-spacing: -0.01em;
+  }
+  .page-title span {
+    color: #8E8884;
+    font-weight: 400;
+    font-size: 15px;
+    margin-left: 12px;
+  }
+
+  .mockup-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1700px;
+    margin: 0 auto;
+  }
+
+  .mockup-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .mockup-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6B6560;
+  }
+  .mockup-label small {
+    display: block;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    color: #8E8884;
+    font-size: 11px;
+    margin-top: 4px;
+    max-width: 320px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  /* Phone */
+  .phone {
+    width: 380px;
+    height: 760px;
+    background: var(--bg);
+    border-radius: 36px;
+    box-shadow:
+      0 0 0 8px #2B2724,
+      0 1px 0 9px #1C1A18,
+      0 30px 60px -20px rgba(28, 26, 24, 0.35),
+      0 12px 24px -10px rgba(28, 26, 24, 0.2);
+    overflow: hidden;
+    position: relative;
+  }
+  .notch {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 28px;
+    background: #1C1A18;
+    border-radius: 14px;
+    z-index: 10;
+  }
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    z-index: 9;
+  }
+  .status-bar-right { display: flex; gap: 6px; align-items: center; }
+  .battery {
+    width: 24px; height: 12px;
+    border: 1.5px solid var(--text);
+    border-radius: 3px;
+    position: relative;
+    padding: 1px;
+  }
+  .battery::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 3px;
+    width: 2px; height: 4px;
+    background: var(--text);
+    border-radius: 0 1px 1px 0;
+  }
+  .battery-fill { background: var(--text); height: 100%; width: 70%; border-radius: 1px; }
+
+  .screen {
+    position: absolute;
+    top: 50px; bottom: 0; left: 0; right: 0;
+    overflow-y: auto;
+    padding: 8px 20px 110px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 14px 4px 20px;
+  }
+  .tab-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .tab-sub {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+  .header-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    cursor: pointer;
+  }
+  .header-links {
+    display: flex; gap: 16px;
+    align-self: flex-start; margin-top: 10px;
+  }
+
+  /* === INDULGE EMPTY (shared) === */
+  .empty-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .empty-prompt {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    margin-bottom: 6px;
+  }
+  .empty-sub {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--muted);
+    letter-spacing: -0.005em;
+    margin-bottom: 18px;
+  }
+
+  /* === A: inline form === */
+  .form-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 20px 20px 18px;
+    margin-bottom: 14px;
+  }
+  .form-row { margin-bottom: 16px; }
+  .form-row:last-child { margin-bottom: 0; }
+  .form-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .form-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: -0.005em;
+    outline: none;
+    line-height: 1.4;
+  }
+  .form-input::placeholder { color: var(--muted-soft); font-style: italic; }
+  .form-input:focus { border-color: var(--text); }
+  .form-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .form-chip {
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    cursor: pointer;
+  }
+  .form-chip.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+
+  .start-btn {
+    width: 100%;
+    padding: 14px 18px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .start-btn .arrow { font-size: 18px; }
+
+  /* === B: card + sheet === */
+  .intent-card {
+    background: var(--card-bg-warm);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 28px 24px 24px;
+    margin-bottom: 16px;
+    cursor: pointer;
+  }
+  .intent-card-mark {
+    font-family: var(--font-display);
+    font-size: 48px;
+    line-height: 0.6;
+    color: var(--accent);
+    opacity: 0.4;
+    font-weight: 500;
+    margin-bottom: 12px;
+    height: 30px;
+  }
+  .intent-card-prompt {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 17px;
+    line-height: 1.4;
+    color: var(--accent-deep);
+    letter-spacing: -0.005em;
+    margin-bottom: 16px;
+    padding-right: 8px;
+  }
+  .intent-card-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-soft);
+  }
+  .intent-card-cta-text {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .intent-card-cta-arrow {
+    font-size: 18px;
+    color: var(--text);
+  }
+
+  /* History list — recent sessions / nights */
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+    margin: 12px 2px 10px;
+  }
+  .past-row {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 13px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .past-left {
+    display: flex; flex-direction: column; gap: 3px;
+    min-width: 0; flex: 1;
+  }
+  .past-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: -0.005em;
+    line-height: 1.2;
+  }
+  .past-meta {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .past-right {
+    text-align: right;
+    display: flex; flex-direction: column; gap: 2px;
+    align-items: flex-end;
+  }
+  .past-units {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+  }
+  .past-units-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+
+  /* === REFLECTION PROMPT (Pulse home) === */
+
+  /* Reuse Pulse home styles */
+  .stat-grid {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background-color: var(--border-soft);
+  }
+  .stat-cell {
+    background: var(--card-bg);
+    padding: 18px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .stat-cell:nth-child(1) { border-top-left-radius: 11px; }
+  .stat-cell:nth-child(2) { border-top-right-radius: 11px; }
+  .stat-cell:nth-child(3) { border-bottom-left-radius: 11px; }
+  .stat-cell:nth-child(4) { border-bottom-right-radius: 11px; }
+  .stat-label {
+    font-size: 10px; font-weight: 500;
+    color: var(--muted-soft);
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .stat-value {
+    font-family: var(--font-display);
+    font-weight: 500; font-size: 34px;
+    letter-spacing: -0.02em; line-height: 1;
+    font-variant-numeric: tabular-nums;
+    display: flex; align-items: baseline; gap: 4px;
+  }
+  .stat-unit { font-size: 14px; font-weight: 500; color: var(--muted); }
+  .stat-delta {
+    font-size: 11px; font-weight: 500;
+    color: var(--muted); letter-spacing: 0.02em;
+  }
+  .stat-delta.down { color: var(--warn); }
+  .stat-cell.readiness-warn .stat-value::before {
+    content: ''; width: 8px; height: 8px;
+    background: var(--warn); border-radius: 50%;
+    margin-right: 8px; align-self: center;
+  }
+
+  /* The reflection prompt — soft, dismissable */
+  .reflect-prompt {
+    background: var(--card-bg-warm);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 18px 18px 16px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .reflect-prompt-dismiss {
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 1px solid var(--border-soft);
+    background: transparent;
+    color: var(--muted-soft);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .reflect-prompt-dismiss:hover {
+    color: var(--text);
+    border-color: var(--muted);
+  }
+  .reflect-prompt-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .reflect-prompt-text {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--accent-deep);
+    letter-spacing: -0.005em;
+    margin-bottom: 14px;
+    padding-right: 32px;
+  }
+  .reflect-prompt-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .reflect-btn {
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border: none;
+  }
+  .reflect-btn.primary {
+    background: var(--text);
+    color: var(--bg);
+  }
+  .reflect-btn.ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  .pulse-card {
+    background: var(--card-bg-warm);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 22px 20px 18px;
+    margin-bottom: 14px;
+  }
+  .pulse-interp {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 1.35;
+    letter-spacing: -0.005em;
+    margin-bottom: 18px;
+  }
+  .pulse-interp em { font-style: italic; color: var(--accent-deep); }
+  .pulse-action {
+    display: flex; width: 100%;
+    align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    background: var(--text); color: var(--bg);
+    border: none; border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 14px; font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+  }
+  .pulse-action .arrow { font-size: 18px; line-height: 1; }
+
+  /* Tab strip */
+  .tab-strip {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(245, 242, 238, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-soft);
+    padding: 10px 12px 22px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .tab {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+    padding: 4px 2px;
+    color: var(--muted);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .tab.active { color: var(--text); font-weight: 600; }
+  .tab-icon { width: 22px; height: 22px; }
+  .tab-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Tide v2 — Indulge empty + Reflection prompt <span>final three</span></div>
+
+<div class="mockup-row">
+
+  <!-- A: INDULGE EMPTY — inline form -->
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>7:52</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="tab-title">Indulge</div>
+            <div class="tab-sub">Fri night</div>
+          </div>
+          <div class="header-links">
+            <div class="header-link">History</div>
+          </div>
+        </div>
+
+        <div class="empty-eyebrow">Set tonight's intention</div>
+        <div class="empty-prompt">What's tonight for?</div>
+        <div class="empty-sub">Set the shape now and the rest writes itself.</div>
+
+        <div class="form-card">
+          <div class="form-row">
+            <div class="form-label">Intention</div>
+            <input class="form-input" type="text" placeholder="Stay present, drinks max, home by midnight…" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-label">Drinks ceiling</div>
+            <div class="form-chips">
+              <div class="form-chip">1–3</div>
+              <div class="form-chip active">4–6</div>
+              <div class="form-chip">7–10</div>
+              <div class="form-chip">12+</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-label">Setting</div>
+            <div class="form-chips">
+              <div class="form-chip active">Out</div>
+              <div class="form-chip">Home</div>
+              <div class="form-chip">Event</div>
+              <div class="form-chip">Travel</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-label">With</div>
+            <input class="form-input" type="text" placeholder="Sam & Jules" />
+          </div>
+        </div>
+
+        <button class="start-btn">
+          Start session
+          <span class="arrow">→</span>
+        </button>
+
+        <div class="section-label">Recent nights</div>
+        <div class="past-row">
+          <div class="past-left">
+            <div class="past-title">Sat May 10 · at home</div>
+            <div class="past-meta">2 alcohol · slept 7h 24m</div>
+          </div>
+          <div class="past-right">
+            <div class="past-units">2.5</div>
+            <div class="past-units-label">units</div>
+          </div>
+        </div>
+        <div class="past-row">
+          <div class="past-left">
+            <div class="past-title">Fri May 2 · out, with Sam</div>
+            <div class="past-meta">5 alcohol · slept 5h 41m</div>
+          </div>
+          <div class="past-right">
+            <div class="past-units">6.5</div>
+            <div class="past-units-label">units</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="tab-strip">
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>Train</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>Fuel</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>Sip</div>
+        <div class="tab active"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>Indulge</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>Stack</div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      A — Inline form
+      <small>Set everything on the spot. Intention text, drinks ceiling, setting, who-with — all on one screen. Lowest-friction. Past nights below for context.</small>
+    </div>
+  </div>
+
+  <!-- B: INDULGE EMPTY — card + sheet (sheet visible behind) -->
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>7:52</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div class="tab-title">Indulge</div>
+            <div class="tab-sub">Fri night</div>
+          </div>
+          <div class="header-links">
+            <div class="header-link">History</div>
+          </div>
+        </div>
+
+        <div class="empty-eyebrow">No session running</div>
+        <div class="empty-prompt">Tonight starts with a vow.</div>
+        <div class="empty-sub">A few words to anchor the night — what for, what limit, what to remember. Then the pace tracks itself.</div>
+
+        <div class="intent-card">
+          <div class="intent-card-mark">"</div>
+          <div class="intent-card-prompt">
+            Set tonight's intention.
+          </div>
+          <div class="intent-card-cta">
+            <div class="intent-card-cta-text">Begin</div>
+            <div class="intent-card-cta-arrow">›</div>
+          </div>
+        </div>
+
+        <div class="section-label">Recent nights</div>
+        <div class="past-row">
+          <div class="past-left">
+            <div class="past-title">Sat May 10 · at home</div>
+            <div class="past-meta">2 alcohol · slept 7h 24m</div>
+          </div>
+          <div class="past-right">
+            <div class="past-units">2.5</div>
+            <div class="past-units-label">units</div>
+          </div>
+        </div>
+        <div class="past-row">
+          <div class="past-left">
+            <div class="past-title">Fri May 2 · out, with Sam</div>
+            <div class="past-meta">5 alcohol · slept 5h 41m</div>
+          </div>
+          <div class="past-right">
+            <div class="past-units">6.5</div>
+            <div class="past-units-label">units</div>
+          </div>
+        </div>
+        <div class="past-row">
+          <div class="past-left">
+            <div class="past-title">Sat Apr 26 · event</div>
+            <div class="past-meta">7 alcohol · slept 6h 02m</div>
+          </div>
+          <div class="past-right">
+            <div class="past-units">8.5</div>
+            <div class="past-units-label">units</div>
+          </div>
+        </div>
+        <div class="past-row">
+          <div class="past-left">
+            <div class="past-title">Fri Apr 18 · at home</div>
+            <div class="past-meta">1 alcohol · slept 7h 48m</div>
+          </div>
+          <div class="past-right">
+            <div class="past-units">1.0</div>
+            <div class="past-units-label">units</div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-strip">
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>Train</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>Fuel</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>Sip</div>
+        <div class="tab active"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>Indulge</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>Stack</div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      B — Card + ceremony
+      <small>Empty state is a quiet invitation. Tap the card to open a sheet/full flow. More ceremony, more weight, lets the past-nights list breathe.</small>
+    </div>
+  </div>
+
+  <!-- C: PULSE HOME WITH REFLECTION PROMPT -->
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>9:42</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+      <div class="screen">
+        <div class="header">
+          <div>
+            <div style="font-family: var(--font-display); font-weight: 600; font-size: 28px; letter-spacing: -0.02em; line-height: 1;">Tide</div>
+            <div class="tab-sub">Sat · May 11</div>
+          </div>
+          <div class="header-links">
+            <div class="header-link">Patterns</div>
+            <div class="header-link">History</div>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-cell readiness-warn">
+            <div class="stat-label">Readiness</div>
+            <div class="stat-value">58</div>
+            <div class="stat-delta down">−20 vs avg</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">Sleep</div>
+            <div class="stat-value">5<span class="stat-unit">h</span> 32<span class="stat-unit">m</span></div>
+            <div class="stat-delta down">−1h 32m</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">HRV</div>
+            <div class="stat-value">38<span class="stat-unit">ms</span></div>
+            <div class="stat-delta down">−16 vs avg</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">Hydration</div>
+            <div class="stat-value">120<span class="stat-unit">ml</span></div>
+            <div class="stat-delta down">behind 480ml</div>
+          </div>
+        </div>
+
+        <!-- The reflection prompt -->
+        <div class="reflect-prompt">
+          <button class="reflect-prompt-dismiss">×</button>
+          <div class="reflect-prompt-eyebrow">Last night</div>
+          <div class="reflect-prompt-text">
+            How did last night land? A quick note now would catch what you'd lose by tonight.
+          </div>
+          <div class="reflect-prompt-actions">
+            <button class="reflect-btn primary">Reflect</button>
+            <button class="reflect-btn ghost">Not now</button>
+          </div>
+        </div>
+
+        <div class="pulse-card">
+          <div class="pulse-interp">
+            Body's asking for a quiet day. <em>Water and recovery first</em> — last night's still settling.
+          </div>
+          <button class="pulse-action">
+            Mark recovery day
+            <span class="arrow">→</span>
+          </button>
+        </div>
+
+      </div>
+      <div class="tab-strip">
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>Train</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>Fuel</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>Sip</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>Indulge</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>Stack</div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      C — Reflection prompt on Pulse home
+      <small>The morning after. Soft dashed card sits between stat grid and Pulse. Two actions: Reflect or Not now. × dismisses without prompting again.</small>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

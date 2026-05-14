@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tide v2 — Fuel Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F2EE;
+    --text: #1C1C1C;
+    --muted: #6B6560;
+    --muted-soft: #8E8884;
+    --accent: #A89880;
+    --accent-deep: #8C7A60;
+    --card-bg: #EDEBE7;
+    --card-bg-warm: #EFE9E0;
+    --border: #D8D4CE;
+    --border-soft: #E3DFD9;
+    --warn: #B5754A;
+    --good: #7A8B6F;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --font-display: 'Fraunces', 'Times New Roman', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: #DDD7CF;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-title {
+    max-width: 1400px;
+    margin: 0 auto 40px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    color: #4A453F;
+    letter-spacing: -0.01em;
+  }
+  .page-title span {
+    color: #8E8884;
+    font-weight: 400;
+    font-size: 15px;
+    margin-left: 12px;
+  }
+
+  .mockup-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .mockup-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .mockup-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6B6560;
+  }
+  .mockup-label small {
+    display: block;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    color: #8E8884;
+    font-size: 11px;
+    margin-top: 4px;
+    max-width: 320px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  /* Phone */
+  .phone {
+    width: 380px;
+    height: 760px;
+    background: var(--bg);
+    border-radius: 36px;
+    box-shadow:
+      0 0 0 8px #2B2724,
+      0 1px 0 9px #1C1A18,
+      0 30px 60px -20px rgba(28, 26, 24, 0.35),
+      0 12px 24px -10px rgba(28, 26, 24, 0.2);
+    overflow: hidden;
+    position: relative;
+  }
+  .notch {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 28px;
+    background: #1C1A18;
+    border-radius: 14px;
+    z-index: 10;
+  }
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    z-index: 9;
+  }
+  .status-bar-right { display: flex; gap: 6px; align-items: center; }
+  .battery {
+    width: 24px; height: 12px;
+    border: 1.5px solid var(--text);
+    border-radius: 3px;
+    position: relative;
+    padding: 1px;
+  }
+  .battery::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 3px;
+    width: 2px; height: 4px;
+    background: var(--text);
+    border-radius: 0 1px 1px 0;
+  }
+  .battery-fill { background: var(--text); height: 100%; width: 70%; border-radius: 1px; }
+
+  .screen {
+    position: absolute;
+    top: 50px; bottom: 0; left: 0; right: 0;
+    overflow-y: auto;
+    padding: 8px 20px 110px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* Header */
+  .header {
+    padding: 14px 4px 16px;
+  }
+  .header-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .header-back-arrow { font-size: 16px; line-height: 1; }
+  .tab-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .tab-sub {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* Search bar */
+  .search-wrap {
+    margin: 16px 0 14px;
+    position: relative;
+  }
+  .search-input {
+    width: 100%;
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px 12px 42px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+  }
+  .search-input::placeholder { color: var(--muted-soft); }
+  .search-input:focus { border-color: var(--text); background: var(--bg); }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    pointer-events: none;
+  }
+  .search-icon svg { stroke: var(--muted-soft); fill: none; stroke-width: 1.5; }
+
+  /* Filter chips */
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding: 2px;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    flex-shrink: 0;
+    padding: 7px 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    cursor: pointer;
+  }
+  .filter-chip.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+
+  /* Sort row */
+  .sort-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2px;
+    margin-bottom: 10px;
+  }
+  .sort-count {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+  .sort-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .sort-toggle .caret { font-size: 9px; }
+
+  /* Section header (alphabetical / frequency grouping) */
+  .group-label {
+    font-family: var(--font-body);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 600;
+    margin: 14px 2px 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .group-label:first-of-type { margin-top: 4px; }
+
+  /* Library entry */
+  .lib-entry {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .lib-entry-left {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+  }
+  .lib-entry-top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .lib-entry-name {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 15px;
+    letter-spacing: -0.005em;
+    line-height: 1.2;
+  }
+  .lib-entry-freq {
+    font-size: 10px;
+    color: var(--muted-soft);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+  .lib-entry-macros {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .lib-entry-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  .lib-entry-kcal {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .lib-entry-kcal-unit {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    font-weight: 500;
+  }
+  .lib-entry-add {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: 4px;
+  }
+  .lib-entry-add:hover { color: var(--text); border-color: var(--text); }
+
+  /* Bottom tab strip */
+  .tab-strip {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(245, 242, 238, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-soft);
+    padding: 10px 12px 22px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 2px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .tab.active { color: var(--text); font-weight: 600; }
+  .tab-icon { width: 22px; height: 22px; }
+  .tab-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Fuel — Library <span>full meal bank with search & filter</span></div>
+
+<div class="mockup-row">
+
+  <div class="mockup-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>3:46</span>
+        <div class="status-bar-right">
+          <span style="font-size: 11px; letter-spacing: 0.05em;">●●●●</span>
+          <div class="battery"><div class="battery-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="header">
+          <div class="header-back">
+            <span class="header-back-arrow">‹</span> Fuel
+          </div>
+          <div class="tab-title">Library</div>
+          <div class="tab-sub">142 meals</div>
+        </div>
+
+        <!-- Search -->
+        <div class="search-wrap">
+          <div class="search-icon">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16 16l4 4"/></svg>
+          </div>
+          <input class="search-input" type="text" placeholder="Search meals" />
+        </div>
+
+        <!-- Filter chips -->
+        <div class="filter-row">
+          <div class="filter-chip active">All</div>
+          <div class="filter-chip">Meals</div>
+          <div class="filter-chip">Snacks</div>
+          <div class="filter-chip">Drinks</div>
+          <div class="filter-chip">High protein</div>
+        </div>
+
+        <!-- Sort -->
+        <div class="sort-row">
+          <div class="sort-count">142 entries</div>
+          <div class="sort-toggle">Most logged <span class="caret">▾</span></div>
+        </div>
+
+        <!-- Most logged group -->
+        <div class="lib-entry">
+          <div class="lib-entry-left">
+            <div class="lib-entry-top">
+              <div class="lib-entry-name">Greek yogurt &amp; berries</div>
+              <div class="lib-entry-freq">38×</div>
+            </div>
+            <div class="lib-entry-macros">22 P · 28 C · 8 F · 280 kcal</div>
+          </div>
+          <button class="lib-entry-add">+</button>
+        </div>
+
+        <div class="lib-entry">
+          <div class="lib-entry-left">
+            <div class="lib-entry-top">
+              <div class="lib-entry-name">Salmon bowl, brown rice</div>
+              <div class="lib-entry-freq">24×</div>
+            </div>
+            <div class="lib-entry-macros">42 P · 68 C · 22 F · 680 kcal</div>
+          </div>
+          <button class="lib-entry-add">+</button>
+        </div>
+
+        <div class="lib-entry">
+          <div class="lib-entry-left">
+            <div class="lib-entry-top">
+              <div class="lib-entry-name">Protein shake (whey + oat milk)</div>
+              <div class="lib-entry-freq">22×</div>
+            </div>
+            <div class="lib-entry-macros">28 P · 12 C · 4 F · 180 kcal</div>
+          </div>
+          <button class="lib-entry-add">+</button>
+        </div>
+
+        <div class="lib-entry">
+          <div class="lib-entry-left">
+            <div class="lib-entry-top">
+              <div class="lib-entry-name">Almonds, small handful</div>
+              <div class="lib-entry-freq">19×</div>
+            </div>
+            <div class="lib-entry-macros">6 P · 6 C · 14 F · 170 kcal</div>
+          </div>
+          <button class="lib-entry-add">+</button>
+        </div>
+
+        <div class="lib-entry">
+          <div class="lib-entry-left">
+            <div class="lib-entry-top">
+              <div class="lib-entry-name">Chicken &amp; rice, mixed veg</div>
+              <div class="lib-entry-freq">17×</div>
+            </div>
+            <div class="lib-entry-macros">48 P · 62 C · 14 F · 620 kcal</div>
+          </div>
+          <button class="lib-entry-add">+</button>
+        </div>
+
+        <div class="group-label">Last 30 days</div>
+
+        <div class="lib-entry">
+          <div class="lib-entry-left">
+            <div class="lib-entry-top">
+              <div class="lib-entry-name">Tofu tacos, three</div>
+              <div class="lib-entry-freq">8×</div>
+            </div>
+            <div class="lib-entry-macros">24 P · 48 C · 18 F · 480 kcal</div>
+          </div>
+          <button class="lib-entry-add">+</button>
+        </div>
+
+        <div class="lib-entry">
+          <div class="lib-entry-left">
+            <div class="lib-entry-top">
+              <div class="lib-entry-name">Espresso</div>
+              <div class="lib-entry-freq">12×</div>
+            </div>
+            <div class="lib-entry-macros">0 P · 0 C · 0 F · 5 kcal</div>
+          </div>
+          <button class="lib-entry-add">+</button>
+        </div>
+
+        <div class="lib-entry">
+          <div class="lib-entry-left">
+            <div class="lib-entry-top">
+              <div class="lib-entry-name">Sourdough toast, avocado, egg</div>
+              <div class="lib-entry-freq">6×</div>
+            </div>
+            <div class="lib-entry-macros">18 P · 32 C · 22 F · 420 kcal</div>
+          </div>
+          <button class="lib-entry-add">+</button>
+        </div>
+
+        <div class="group-label">Earlier</div>
+
+        <div class="lib-entry">
+          <div class="lib-entry-left">
+            <div class="lib-entry-top">
+              <div class="lib-entry-name">Ramen, tonkotsu</div>
+              <div class="lib-entry-freq">3×</div>
+            </div>
+            <div class="lib-entry-macros">28 P · 78 C · 26 F · 720 kcal</div>
+          </div>
+          <button class="lib-entry-add">+</button>
+        </div>
+
+      </div>
+
+      <div class="tab-strip">
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M6 18l3-9 3 5 3-3 3 7"/></svg></div>Train</div>
+        <div class="tab active"><div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l4 3"/></svg></div>Fuel</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg></div>Sip</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M7 3h10l-2 6h-6L7 3z"/><path d="M9 9l-1 8h8l-1-8"/></svg></div>Indulge</div>
+        <div class="tab"><div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="3" rx="1"/><rect x="5" y="10.5" width="14" height="3" rx="1"/><rect x="5" y="16" width="14" height="3" rx="1"/></svg></div>Stack</div>
+      </div>
+    </div>
+    <div class="mockup-label">
+      Fuel — Library
+      <small>Searchable meal bank. Sortable by frequency, grouped by recency. Tap to log. Frequency badge so you can see what you actually eat.</small>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
