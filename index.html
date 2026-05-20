@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#A89880">
+<meta name="theme-color" content="#1a3a5c">
 <title>Tide</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./icons/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Tide">
@@ -191,6 +191,7 @@
   .stat-cell:nth-child(3) { border-bottom-left-radius: 11px; }
   .stat-cell:nth-child(4) { border-bottom-right-radius: 11px; }
   .stat-label { font-family: var(--font-body); font-size: 10px; font-weight: 500; color: var(--muted-soft); letter-spacing: 0.14em; text-transform: uppercase; }
+  .stat-label-score { color: var(--accent); font-weight: 700; letter-spacing: 0.02em; }
   .stat-value {
     font-family: var(--font-display);
     font-weight: 500;
@@ -429,6 +430,10 @@
   .add-tile:active { background: var(--card-bg-warm); }
   .add-tile-num { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
   .add-tile-name { font-family: var(--font-body); font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
+  .add-tile-custom { border-style: dashed; }
+  .add-tile-custom.removing { background: var(--warn); }
+  .add-tile-custom.removing .add-tile-num, .add-tile-custom.removing .add-tile-name { color: var(--bg); }
+  .add-hint { font-family: var(--font-body); font-size: 11px; color: var(--muted-soft); letter-spacing: 0.02em; margin: -8px 2px 16px; }
 
   .timeline-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; margin: 4px 2px 10px; }
   .timeline-row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--border-soft); }
@@ -491,6 +496,7 @@
   .ring-num { font-family: var(--font-display); font-weight: 500; font-size: 32px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
   .ring-label { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-soft); font-weight: 500; }
   .ring-total { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .ring-sub-alc { font-family: var(--font-body); font-size: 9.5px; color: var(--warn); letter-spacing: 0.02em; margin-top: 2px; font-variant-numeric: tabular-nums; opacity: 0.85; }
 
   .macros { display: flex; flex-direction: column; gap: 12px; }
   .macro { display: flex; flex-direction: column; gap: 5px; }
@@ -523,6 +529,8 @@
   .meal-input-hint { margin-top: 8px; padding-left: 4px; font-family: var(--font-display); font-size: 11px; font-style: italic; color: var(--muted-soft); font-weight: 400; line-height: 1.3; }
 
   .meal { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+  .meal-alc { background: rgba(181, 117, 74, 0.08); border-style: dashed; border-color: var(--warn); }
+  .meal-alc .meal-kcal-num, .meal-alc .meal-title { color: var(--warn); }
   .meal-left { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
   .meal-top-row { display: flex; align-items: baseline; gap: 8px; }
   .meal-title { font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: -0.005em; line-height: 1.2; }
@@ -574,6 +582,8 @@
   .swipe-row > .swipe-content > * { margin-bottom: 0 !important; }
   .swipe-row > .swipe-action { position: absolute; right: 0; top: 0; bottom: 0; width: 88px; display: flex; align-items: center; justify-content: center; background: var(--warn); color: var(--bg); font-family: var(--font-body); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; z-index: 1; }
   .swipe-row > .swipe-action:active { background: #9C5F37; }
+  .swipe-row > .swipe-action-left { position: absolute; left: 0; top: 0; bottom: 0; width: 104px; display: flex; align-items: center; justify-content: center; background: var(--good); color: var(--bg); font-family: var(--font-body); font-size: 12px; font-weight: 600; letter-spacing: 0.03em; cursor: pointer; z-index: 1; }
+  .swipe-row > .swipe-action-left:active { filter: brightness(0.92); }
 
   /* ───── v2: Train quick-start chips + Workouts screen (chunk 7) ───── */
   .quickstart-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; margin: 0 -2px 14px; }
@@ -915,7 +925,16 @@ const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
 const SUPP_TIMINGS = ['morning', 'afternoon', 'evening'];
 const ROUTES = ['oral', 'inhaled', 'other'];
 
-function todayISO() { return new Date().toISOString().slice(0, 10); }
+// The logical day starts at 5am LOCAL time, not midnight: anything logged
+// between midnight and 5am still counts toward the previous day (you're still
+// "up late", not starting a new day). Also fixes a latent bug — the old impl
+// used toISOString() (UTC), so the day flipped mid-evening in US timezones.
+const DAY_ROLLOVER_HOUR = 5;
+function todayISO() {
+  const d = new Date(Date.now() - DAY_ROLLOVER_HOUR * 3600 * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1118,10 +1137,14 @@ function setOuraPat(v) {
   }).catch(e => console.warn('PAT cloud sync failed:', e.message));
 }
 
+// Pure calendar arithmetic on a YYYY-MM-DD string. Uses UTC-component math so
+// the result never shifts by the viewer's local timezone offset.
 function addDays(iso, n) {
-  const d = new Date(iso + 'T00:00:00');
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = iso.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  t.setUTCDate(t.getUTCDate() + n);
+  const pad = x => String(x).padStart(2, '0');
+  return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
 }
 
 async function ouraFetch(path, startDate, endDate) {
@@ -1140,59 +1163,95 @@ async function ouraFetch(path, startDate, endDate) {
   return r.json();
 }
 
-// Build one tide_oura_daily row from same-day Oura sleep+readiness+activity records.
-function normalizeOuraRow(date, sleepRow, readinessRow, activityRow) {
-  const totalSec = sleepRow?.total_sleep_duration ?? null;
-  const remSec   = sleepRow?.rem_sleep_duration ?? null;
-  const deepSec  = sleepRow?.deep_sleep_duration ?? null;
+// Bump when the normalized row shape changes — forces a one-time full
+// re-sync so already-stored rows backfill the new fields.
+const OURA_SCHEMA_V = '3';
+
+// Build one tide_oura_daily row.
+// `dailyRow`   = a `daily_sleep` record (carries the sleep SCORE only).
+// `sleepPeriod`= a `sleep` record (carries durations / efficiency / HRV-ms /
+//                lowest HR — the `daily_sleep` endpoint does NOT have these,
+//                which is why sleep duration never loaded).
+function normalizeOuraRow(date, dailyRow, sleepPeriod, readinessRow, activityRow) {
+  const totalSec = sleepPeriod?.total_sleep_duration ?? null;
+  const remSec   = sleepPeriod?.rem_sleep_duration ?? null;
+  const deepSec  = sleepPeriod?.deep_sleep_duration ?? null;
   return {
     date,
-    sleep_score:      sleepRow?.score ?? null,
+    sleep_score:      dailyRow?.score ?? null,
     total_sleep_min:  totalSec != null ? Math.round(totalSec / 60) : null,
     rem_sleep_min:    remSec   != null ? Math.round(remSec   / 60) : null,
     deep_sleep_min:   deepSec  != null ? Math.round(deepSec  / 60) : null,
-    sleep_efficiency: sleepRow?.sleep_efficiency ?? sleepRow?.contributors?.efficiency ?? null,
-    hrv_avg:          readinessRow?.contributors?.hrv_balance ?? null,
-    resting_hr:       readinessRow?.contributors?.resting_heart_rate ?? null,
+    // Sleep-period-only metrics. NO readiness-contributor fallback: those are
+    // 0–100 balance scores, not real %/ms/bpm — mixing units corrupts the
+    // 7-day deltas. Null until Oura finalizes the night's `sleep` doc; the
+    // loader then carries the last complete night forward (see loadOuraToday).
+    sleep_efficiency: sleepPeriod?.efficiency ?? null,
+    hrv_avg:          sleepPeriod?.average_hrv ?? null,
+    resting_hr:       sleepPeriod?.lowest_heart_rate ?? null,
     readiness_score:  readinessRow?.score ?? null,
     activity_score:   activityRow?.score ?? null,
-    raw: { sleep: sleepRow || null, readiness: readinessRow || null, activity: activityRow || null },
+    raw: { daily_sleep: dailyRow || null, sleep: sleepPeriod || null, readiness: readinessRow || null, activity: activityRow || null },
     fetched_at: new Date().toISOString(),
   };
 }
 
+// Pick the main sleep period for each `day` from the `sleep` endpoint:
+// prefer type 'long_sleep', else the record with the most total sleep.
+// (Naps / 'rest' periods would otherwise win on days you napped.)
+function mainSleepByDate(sleepRes) {
+  const by = {};
+  (sleepRes?.data || []).forEach(rec => {
+    const d = rec.day;
+    if (!d) return;
+    const cur = by[d];
+    if (!cur) { by[d] = rec; return; }
+    const score = r => (r.type === 'long_sleep' ? 1e9 : 0) + (Number(r.total_sleep_duration) || 0);
+    if (score(rec) > score(cur)) by[d] = rec;
+  });
+  return by;
+}
+
 async function syncOura({ days = 14, force = false } = {}) {
   if (!getOuraPat()) return { ok: false, skipped: 'no_pat' };
+  // One-time forced re-sync after the row-shape change (backfills durations/HRV
+  // onto rows stored by the old daily_sleep-only code path).
+  const schemaStale = localStorage.getItem('tide_oura_schema_v') !== OURA_SCHEMA_V;
   const lastSync = parseInt(localStorage.getItem('tide_oura_last_sync') || '0', 10);
-  if (!force && Date.now() - lastSync < OURA_SYNC_MS) return { ok: true, skipped: 'recent' };
+  if (!force && !schemaStale && Date.now() - lastSync < OURA_SYNC_MS) return { ok: true, skipped: 'recent' };
   const endDate = todayISO();
   const startDate = addDays(endDate, -(days - 1));
   try {
-    const [sleepRes, readinessRes, activityRes] = await Promise.all([
+    const [dailySleepRes, sleepRes, readinessRes, activityRes] = await Promise.all([
       ouraFetch('daily_sleep', startDate, endDate).catch(() => null),
+      ouraFetch('sleep', startDate, endDate).catch(() => null),
       ouraFetch('daily_readiness', startDate, endDate).catch(() => null),
       ouraFetch('daily_activity', startDate, endDate).catch(() => null),
     ]);
     const byDate = (res) => Object.fromEntries((res?.data || []).map(r => [r.day, r]));
-    const sleepByDate     = byDate(sleepRes);
-    const readinessByDate = byDate(readinessRes);
-    const activityByDate  = byDate(activityRes);
+    const dailySleepByDate = byDate(dailySleepRes);
+    const sleepByDate      = mainSleepByDate(sleepRes);
+    const readinessByDate  = byDate(readinessRes);
+    const activityByDate   = byDate(activityRes);
     const dates = new Set([
+      ...Object.keys(dailySleepByDate),
       ...Object.keys(sleepByDate),
       ...Object.keys(readinessByDate),
       ...Object.keys(activityByDate),
     ]);
     if (!dates.size) {
       localStorage.setItem('tide_oura_last_sync', String(Date.now()));
+      localStorage.setItem('tide_oura_schema_v', OURA_SCHEMA_V);
       return { ok: true, count: 0 };
     }
-    const rows = [...dates].map(d => normalizeOuraRow(d, sleepByDate[d], readinessByDate[d], activityByDate[d]));
+    const rows = [...dates].map(d => normalizeOuraRow(d, dailySleepByDate[d], sleepByDate[d], readinessByDate[d], activityByDate[d]));
     await sbFetch('/tide_oura_daily?on_conflict=date', {
       method: 'POST',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify(rows),
     });
     localStorage.setItem('tide_oura_last_sync', String(Date.now()));
+    localStorage.setItem('tide_oura_schema_v', OURA_SCHEMA_V);
     return { ok: true, count: rows.length };
   } catch (e) {
     console.warn('Oura sync failed:', e.message);
@@ -1209,14 +1268,32 @@ async function loadOuraRange(startDate, endDate) {
   }
 }
 
-// Most recent Oura row (today, or yesterday if today not in yet). Cached in state.ouraToday.
+// Latest Oura snapshot for the home stat grid. Readiness/activity come from
+// the newest row (Oura publishes those early), but Oura finalizes the detailed
+// `sleep` doc hours later — so when the newest row has no sleep yet, we carry
+// the last COMPLETE night's sleep + HRV forward instead of showing "—".
 async function loadOuraToday() {
   if (!getOuraPat()) { state.ouraToday = null; return null; }
   const end = todayISO();
-  const start = addDays(end, -2);
+  const start = addDays(end, -4);
   try {
-    const rows = await sbFetch(`/tide_oura_daily?date=gte.${start}&date=lte.${end}&order=date.desc&limit=1`);
-    state.ouraToday = (rows && rows[0]) || null;
+    const rows = await sbFetch(`/tide_oura_daily?date=gte.${start}&date=lte.${end}&order=date.desc&limit=5`);
+    if (!rows || !rows.length) { state.ouraToday = null; return null; }
+    const base = { ...rows[0] };
+    if (base.total_sleep_min == null) {
+      const lastSleep = rows.find(r => r.total_sleep_min != null);
+      if (lastSleep) {
+        base.sleep_score      = lastSleep.sleep_score;
+        base.total_sleep_min  = lastSleep.total_sleep_min;
+        base.rem_sleep_min    = lastSleep.rem_sleep_min;
+        base.deep_sleep_min   = lastSleep.deep_sleep_min;
+        base.sleep_efficiency = lastSleep.sleep_efficiency;
+        base.hrv_avg          = lastSleep.hrv_avg;
+        base.resting_hr       = lastSleep.resting_hr;
+        base._sleep_date      = lastSleep.date; // available if a label ever wants it
+      }
+    }
+    state.ouraToday = base;
     return state.ouraToday;
   } catch (e) {
     console.warn('loadOuraToday failed:', e.message);
@@ -1424,6 +1501,22 @@ const DRINK_LABELS = {
   cocktail: 'Cocktail',
 };
 
+// kcal per ONE standard unit, by drink type. Awareness-grade estimates —
+// consistent with how the app already abstracts real pours into standard
+// units. Multiplied by the entry's standard_units. Unknown/alias types fall
+// back to ~100 (pure-ethanol floor: 14g × 7 kcal/g).
+const DRINK_KCAL = {
+  beer:     150,  // 12oz @ ~5% — ethanol + carbs
+  wine:     125,  // 5oz @ ~12% — ethanol + residual sugar
+  spirits:  100,  // 1.5oz @ ~40% neat / soda — ethanol only
+  cocktail: 150,  // per standard unit; logs at 1.4–1.5 → ~210–225 kcal
+};
+
+function drinkKcal(entry) {
+  const per = DRINK_KCAL[entry && entry.drink_type] ?? 100;
+  return Math.round(per * (Number(entry && entry.standard_units) || 1));
+}
+
 const SETTINGS = ['bar', 'restaurant', 'home', 'party', 'date', 'work event'];
 const COMPANY  = ['solo', 'friends', 'date', 'family', 'work'];
 const FEELINGS = ['great', 'good', 'okay', 'rough'];
@@ -1547,7 +1640,7 @@ function renderKeyForm() {
   $('#app').innerHTML = `
     <div class="key-form">
       <h1>Tide</h1>
-      <p>A mindful drinking companion. Paste your Anthropic API key to begin — it stays in your browser only.</p>
+      <p>Paste your Anthropic API key.<br>Stays in your browser only.</p>
       <input id="key-input" type="text" placeholder="sk-ant-..." autocomplete="off">
       <div style="height: 14px"></div>
       <button class="btn" id="key-save">Save key</button>
@@ -1754,6 +1847,7 @@ function renderPulseStatGrid() {
     ? deltaSpan(readiness - avg.readiness, '')
     : '<span class="stat-delta flat">—</span>';
 
+  const sleepScore = o.sleep_score;
   const sleepMin = o.total_sleep_min;
   const sleepValueHtml = sleepMin != null
     ? `${Math.floor(sleepMin / 60)}<span class="stat-unit">h</span> ${String(sleepMin % 60).padStart(2, '0')}<span class="stat-unit">m</span>`
@@ -1793,7 +1887,7 @@ function renderPulseStatGrid() {
         ${readinessDelta}
       </div>
       <div class="stat-cell">
-        <div class="stat-label">Sleep</div>
+        <div class="stat-label">Sleep${sleepScore != null ? ` <span class="stat-label-score">${sleepScore}</span>` : ''}</div>
         <div class="stat-value">${sleepValueHtml}</div>
         ${sleepDelta}
       </div>
@@ -1830,11 +1924,11 @@ function deltaSpan(diff, suffix) {
 
 function sleepDeltaSpan(diffMin) {
   if (diffMin == null || !Number.isFinite(diffMin)) return '<span class="stat-delta flat">—</span>';
-  const abs = Math.abs(diffMin);
-  if (abs < 6) return '<span class="stat-delta flat">flat vs avg</span>';
+  const total = Math.round(Math.abs(diffMin)); // whole minutes — the raw value is a float average
+  if (total < 6) return '<span class="stat-delta flat">flat vs avg</span>';
   const sign = diffMin > 0 ? '+' : '−';
   const cls = diffMin > 0 ? 'up' : 'down';
-  const lbl = abs >= 60 ? `${Math.floor(abs / 60)}h ${abs % 60}m` : `${abs}m`;
+  const lbl = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
   return `<span class="stat-delta ${cls}">${sign}${lbl} vs avg</span>`;
 }
 
@@ -4991,6 +5085,25 @@ function todayFoodTotals() {
   }, { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 });
 }
 
+// Today's alcohol entries (the "fourth macro" — energy only, not P/C/F).
+// Merges the active session's live state.drinks with state.todayAlcohol
+// (earlier ended-session drinks loaded at boot), deduped by id, so the count
+// is correct whether or not a session is currently active.
+function todayAlcoholEntries() {
+  const today = todayISO();
+  const map = new Map();
+  (state.todayAlcohol || []).forEach(e => map.set(e.id, e));
+  (state.drinks || []).forEach(e => {
+    const d = e.log_date || (e.entry_at || e.drink_at || '').slice(0, 10);
+    if (d === today) map.set(e.id, e);
+  });
+  return [...map.values()].filter(e => !e.kind || e.kind === 'alcohol');
+}
+
+function todayAlcoholKcal() {
+  return todayAlcoholEntries().reduce((s, e) => s + drinkKcal(e), 0);
+}
+
 // Normalize a meal name into a library key — lowercased + collapsed whitespace.
 function libraryKey(name) {
   return (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -5090,10 +5203,16 @@ function renderFuelTab() {
     .sort((a, b) => (b.count - a.count) || (new Date(b.last_at) - new Date(a.last_at)))
     .slice(0, 6);
 
-  // Ring math (radius 42 → circumference 263.89)
-  const pct = Math.min(1, totals.kcal / Math.max(1, goal.kcal));
+  // Alcohol is the "fourth macro": its kcal counts toward the energy ring but
+  // not the P/C/F bars (food macros stay honest). Derived from indulge entries.
+  const alcEntries = todayAlcoholEntries();
+  const alcoholKcal = todayAlcoholKcal();
+  const energyTotal = totals.kcal + alcoholKcal;
+
+  // Ring math (radius 42 → circumference 263.89) — based on total energy.
+  const pct = Math.min(1, energyTotal / Math.max(1, goal.kcal));
   const dashoffset = 263.89 * (1 - pct);
-  const kcalLeft = Math.max(0, goal.kcal - totals.kcal);
+  const kcalLeft = Math.max(0, goal.kcal - energyTotal);
 
   const sub = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(/,/g, ' ·');
 
@@ -5120,7 +5239,8 @@ function renderFuelTab() {
         <div class="ring-center">
           <div class="ring-num">${kcalLeft}</div>
           <div class="ring-label">left</div>
-          <div class="ring-total">${totals.kcal.toLocaleString()} / ${goal.kcal.toLocaleString()}</div>
+          <div class="ring-total">${energyTotal.toLocaleString()} / ${goal.kcal.toLocaleString()}</div>
+          ${alcoholKcal ? `<div class="ring-sub-alc">incl. ~${alcoholKcal.toLocaleString()} kcal alcohol</div>` : ''}
         </div>
       </div>
       <div class="macros">
@@ -5155,9 +5275,24 @@ function renderFuelTab() {
     </div>
     <div class="meal-input-hint">Describe what you ate — Claude estimates calories and macros.</div>
 
-    ${todayMeals.length ? `
+    ${(todayMeals.length || alcEntries.length) ? `
       <div class="section-label" style="margin-top: 16px">Today</div>
       ${todayMeals.map(r => renderMealRow(r)).join('')}
+      ${alcEntries.length ? `
+        <div class="meal meal-alc" id="fuel-alc-row" role="button" tabindex="0">
+          <div class="meal-left">
+            <div class="meal-top-row">
+              <div class="meal-title">Alcohol</div>
+              <div class="meal-time">${alcEntries.length} drink${alcEntries.length === 1 ? '' : 's'} ›</div>
+            </div>
+            <div class="meal-macros">Logged in Indulge — estimate</div>
+          </div>
+          <div class="meal-kcal">
+            <div class="meal-kcal-num">${alcoholKcal}</div>
+            <div class="meal-kcal-label">kcal</div>
+          </div>
+        </div>
+      ` : ''}
     ` : ''}
 
     <div class="remaining-hint">
@@ -5184,16 +5319,37 @@ function renderFuelTab() {
   });
   $('#recent-library')?.addEventListener('click', () => { state.screen = 'library'; render(); });
 
-  $$('.meal').forEach(row => row.onclick = () => openMealDetail(row.dataset.mealId));
-  attachSwipeToDelete($$('.swipe-row.swipe-meal'), async (id) => {
-    await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'DELETE' });
-    state.todayIntake = state.todayIntake.filter(x => x.id !== id);
-    state.foodLibraryRows = (state.foodLibraryRows || []).filter(x => x.id !== id);
-    render();
+  $$('.meal:not(.meal-alc)').forEach(row => row.onclick = () => openMealDetail(row.dataset.mealId));
+  $('#fuel-alc-row')?.addEventListener('click', () => { state.tab = 'drinks'; render(); });
+  attachSwipeActions($$('.swipe-row.swipe-meal'), {
+    onDelete: async (id) => {
+      await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'DELETE' });
+      state.todayIntake = state.todayIntake.filter(x => x.id !== id);
+      state.foodLibraryRows = (state.foodLibraryRows || []).filter(x => x.id !== id);
+      render();
+    },
+    // Swipe-right → move this meal to the previous logical day (the common
+    // "logged after midnight, belongs to yesterday" case).
+    onReschedule: async (id) => {
+      const r = (state.todayIntake || []).find(x => x.id === id);
+      if (!r) return;
+      const curDate = r.log_date || (r.logged_at || '').slice(0, 10);
+      const newDate = addDays(curDate, -1);
+      const newLoggedAt = new Date(new Date(r.logged_at).getTime() - 86400000).toISOString();
+      const patch = { logged_at: newLoggedAt, log_date: newDate };
+      const result = await sbFetch(`/tide_intake_logs?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+      const updated = (result && result[0]) || { ...r, ...patch };
+      // No longer part of today — drop from the today view, keep library fresh.
+      state.todayIntake = state.todayIntake.filter(x => x.id !== id);
+      state.foodLibraryRows = (state.foodLibraryRows || []).map(x => x.id === id ? updated : x);
+      toast('Moved to yesterday');
+      render();
+    },
   });
 
-  // Async hint refresh (Claude). Don't block initial paint.
-  fuelRemainingHint(totals, goal).then(t => {
+  // Async hint refresh (Claude). Don't block initial paint. Uses combined
+  // energy (food + alcohol) so the "kcal left" nudge matches the ring.
+  fuelRemainingHint({ ...totals, kcal: energyTotal }, goal).then(t => {
     if (state.screen === 'home' && state.tab === 'food') {
       const el = $('#fuel-hint');
       if (el) el.textContent = t;
@@ -5222,6 +5378,7 @@ function renderMealRow(r) {
   const t = time.toLowerCase().replace(':00', '');
   return `
     <div class="swipe-row swipe-meal" data-id="${r.id}">
+      <div class="swipe-action-left">→ Yesterday</div>
       <div class="swipe-content">
         <div class="meal" data-meal-id="${r.id}">
           <div class="meal-left">
@@ -5325,6 +5482,7 @@ async function logMealRow({ name, kcal, protein_g, carbs_g, fat_g, source = 'man
     quantity: kcal,
     unit: 'kcal',
     logged_at: new Date().toISOString(),
+    log_date: todayISO(),
     metadata: { kcal, protein_g, carbs_g, fat_g, source },
   };
   const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(row) });
@@ -5432,26 +5590,40 @@ function openMealDetail(id) {
 //     <div class="swipe-action">Delete</div>
 //   </div>
 // onDelete is async (id) => void. Supports touch + mouse drag.
+// Backward-compatible: delete-only (swipe-left). Existing callers unchanged.
 function attachSwipeToDelete(rows, onDelete) {
+  attachSwipeActions(rows, { onDelete });
+}
+
+// Generalized swipe row. Swipe LEFT reveals the right-side `.swipe-action`
+// (delete); swipe RIGHT reveals the optional left-side `.swipe-action-left`
+// (reschedule). A row only opens in a direction whose handler + element exist.
+function attachSwipeActions(rows, { onDelete, onReschedule } = {}) {
   rows.forEach(row => {
-    const content = row.querySelector(':scope > .swipe-content');
-    const action  = row.querySelector(':scope > .swipe-action');
-    if (!content || !action) return;
-    let startX = 0;
-    let currentX = 0;
-    let dragging = false;
-    let opened = false;
-    let pointerMoved = false;
-    const OPEN_X = -88;
-    const COMMIT_THRESHOLD = -40;
+    const content    = row.querySelector(':scope > .swipe-content');
+    const action     = row.querySelector(':scope > .swipe-action');
+    const actionLeft = row.querySelector(':scope > .swipe-action-left');
+    if (!content) return;
+    const canDelete = !!action && typeof onDelete === 'function';
+    const canResched = !!actionLeft && typeof onReschedule === 'function';
+    if (!canDelete && !canResched) return;
+
+    let startX = 0, currentX = 0, dragging = false, pointerMoved = false;
+    let openSide = null; // 'left' | 'right' | null
+    const OPEN_RIGHT = -88;   // delete panel revealed
+    const OPEN_LEFT  = 104;   // reschedule panel revealed
+    const COMMIT = 44;
 
     const setX = (x) => {
-      const clamped = Math.max(-110, Math.min(0, x));
+      const min = canDelete ? -110 : 0;
+      const max = canResched ? 120 : 0;
+      const clamped = Math.max(min, Math.min(max, x));
       content.style.transform = `translateX(${clamped}px)`;
       currentX = clamped;
     };
-    const open = () => { content.style.transform = `translateX(${OPEN_X}px)`; currentX = OPEN_X; opened = true; };
-    const close = () => { content.style.transform = ''; currentX = 0; opened = false; };
+    const openRight = () => { content.style.transform = `translateX(${OPEN_RIGHT}px)`; currentX = OPEN_RIGHT; openSide = 'right'; };
+    const openLeft  = () => { content.style.transform = `translateX(${OPEN_LEFT}px)`;  currentX = OPEN_LEFT;  openSide = 'left'; };
+    const close     = () => { content.style.transform = ''; currentX = 0; openSide = null; };
 
     const onStart = (clientX) => {
       startX = clientX - currentX;
@@ -5469,7 +5641,8 @@ function attachSwipeToDelete(rows, onDelete) {
       if (!dragging) return;
       dragging = false;
       content.classList.remove('dragging');
-      if (currentX < COMMIT_THRESHOLD) open();
+      if (canDelete && currentX < -COMMIT) openRight();
+      else if (canResched && currentX > COMMIT) openLeft();
       else close();
     };
 
@@ -5480,7 +5653,6 @@ function attachSwipeToDelete(rows, onDelete) {
 
     // Mouse drag fallback (desktop testing)
     content.addEventListener('mousedown', (e) => {
-      // Don't start a drag on input fields, buttons, etc.
       if (e.target.closest('input, textarea, button, select, [contenteditable]')) return;
       onStart(e.clientX);
       const onMouseMove = (ev) => onMove(ev.clientX);
@@ -5493,18 +5665,22 @@ function attachSwipeToDelete(rows, onDelete) {
       window.addEventListener('mouseup', onMouseUp);
     });
 
-    // Intercept click while open OR while a drag just happened (so the row's
-    // tap-to-edit doesn't fire after a swipe).
+    // Intercept click while open OR right after a drag (so tap-to-edit doesn't
+    // fire after a swipe).
     content.addEventListener('click', (e) => {
-      if (opened) { e.preventDefault(); e.stopPropagation(); close(); }
+      if (openSide) { e.preventDefault(); e.stopPropagation(); close(); }
       else if (pointerMoved) { e.preventDefault(); e.stopPropagation(); pointerMoved = false; }
     }, { capture: true });
 
-    action.addEventListener('click', async (e) => {
+    if (canDelete) action.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const id = row.dataset.id;
-      try { await onDelete(id); }
+      try { await onDelete(row.dataset.id); }
       catch (err) { toast('Could not delete: ' + err.message); close(); }
+    });
+    if (canResched) actionLeft.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try { await onReschedule(row.dataset.id); }
+      catch (err) { toast('Could not move: ' + err.message); close(); }
     });
   });
 }
@@ -5824,6 +6000,7 @@ function openAddRecipeSheet() {
           quantity: kcal,
           unit: 'kcal',
           logged_at: new Date().toISOString(),
+          log_date: todayISO(),
           metadata: {
             kcal, protein_g: p, carbs_g: c, fat_g: f,
             source: 'recipe',
@@ -6042,8 +6219,15 @@ function renderSipCaffeine(rows, total) {
           <div class="add-tile-name">${escapeHtml(p.label)} · mg</div>
         </div>
       `).join('')}
+      ${(state.caffeinePresets || []).map(p => `
+        <div class="add-tile add-tile-custom" data-caff-id="${escapeHtml(p.label)}" data-caff-mg="${p.mg}" data-caff-preset-id="${p.id}">
+          <div class="add-tile-num">${p.mg}</div>
+          <div class="add-tile-name">${escapeHtml(p.label)} · mg</div>
+        </div>
+      `).join('')}
     </div>
     <button class="more-btn" id="caff-custom">+ Custom amount</button>
+    ${(state.caffeinePresets || []).length ? `<div class="add-hint">Long-press a saved tile to remove it.</div>` : ''}
 
     ${rows.length ? `
       <div class="timeline-label">Today</div>
@@ -6071,10 +6255,24 @@ function wireSipAdd(sub) {
   if (sub === 'water') {
     $$('[data-water-ml]').forEach(t => t.onclick = () => logWater(parseInt(t.dataset.waterMl, 10)));
   } else {
-    $$('[data-caff-id]').forEach(t => t.onclick = () => {
-      const id = t.dataset.caffId;
-      const mg = parseInt(t.dataset.caffMg, 10);
-      logCaffeine(id, mg);
+    $$('[data-caff-id]').forEach(t => {
+      let lp = null, longPressed = false;
+      const presetId = t.dataset.caffPresetId;
+      const fire = () => { if (!longPressed) logCaffeine(t.dataset.caffId, parseInt(t.dataset.caffMg, 10)); };
+      if (presetId) {
+        const startLP = () => {
+          longPressed = false;
+          lp = setTimeout(() => { longPressed = true; t.classList.add('removing'); confirmDeleteCaffeinePreset(presetId, t.dataset.caffId, () => t.classList.remove('removing')); }, 550);
+        };
+        const cancelLP = () => clearTimeout(lp);
+        t.addEventListener('touchstart', startLP, { passive: true });
+        t.addEventListener('touchend', cancelLP);
+        t.addEventListener('touchmove', cancelLP, { passive: true });
+        t.addEventListener('mousedown', startLP);
+        t.addEventListener('mouseup', cancelLP);
+        t.addEventListener('mouseleave', cancelLP);
+      }
+      t.onclick = fire;
     });
     $('#caff-custom')?.addEventListener('click', openLogCustomCaffeine);
   }
@@ -7001,6 +7199,7 @@ function openStartSession() {
 async function startSession(sel) {
   const row = {
     started_at: new Date().toISOString(),
+    log_date: todayISO(),
     intention: sel.intention,
     intention_text: sel.intention_text || null,
     setting: sel.setting,
@@ -7101,11 +7300,17 @@ async function logDrink(sel) {
     drink_type: sel.drink_type,
     standard_units: sel.standard_units,
     entry_at: new Date().toISOString(),
+    log_date: todayISO(),
   };
   const result = await sbFetch('/tide_indulge_entries', { method: 'POST', body: JSON.stringify(row) });
   // Keep drink_at alias for computePace/computeBAC/renderDrinkList compatibility.
   const r = result[0];
   state.drinks.push({ ...r, drink_at: r.entry_at });
+  // Mirror into today's alcohol so the Fuel energy ring stays right even
+  // after the session ends (state.drinks gets cleared then).
+  if ((r.log_date || (r.entry_at || '').slice(0, 10)) === todayISO()) {
+    state.todayAlcohol = (state.todayAlcohol || []).concat(r);
+  }
   saveLocal();
   render();
 }
@@ -7113,6 +7318,7 @@ async function logDrink(sel) {
 async function undoDrink(id) {
   await sbFetch(`/tide_indulge_entries?id=eq.${id}`, { method: 'DELETE' });
   state.drinks = state.drinks.filter(d => d.id !== id);
+  state.todayAlcohol = (state.todayAlcohol || []).filter(d => d.id !== id);
   saveLocal();
   render();
 }
@@ -7123,6 +7329,7 @@ async function logWater(ml) {
     quantity: ml,
     unit: 'ml',
     logged_at: new Date().toISOString(),
+    log_date: todayISO(),
   };
   try {
     const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(row) });
@@ -7208,6 +7415,7 @@ async function logCaffeine(item_type, mg, note = null) {
     unit: 'mg',
     note,
     logged_at: new Date().toISOString(),
+    log_date: todayISO(),
   };
   try {
     const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(row) });
@@ -7229,6 +7437,12 @@ function openLogCustomCaffeine() {
       <div class="label">Source (optional)</div>
       <input id="caff-note" type="text" placeholder="e.g., cold brew, matcha" maxlength="40">
     </div>
+    <div class="modal-section">
+      <label class="row" style="cursor: pointer">
+        <span class="small">Save as a quick tile</span>
+        <input type="checkbox" id="caff-save-tile" checked style="width: auto">
+      </label>
+    </div>
     <div class="btn-row">
       <button class="btn btn-soft" data-close>Cancel</button>
       <button class="btn" id="caff-go">Log</button>
@@ -7239,9 +7453,11 @@ function openLogCustomCaffeine() {
       const mg = parseInt($('#caff-mg').value, 10);
       if (!mg || mg < 1 || mg > 1000) { toast('Enter a valid mg'); return; }
       const note = $('#caff-note').value.trim() || null;
+      const saveTile = $('#caff-save-tile')?.checked;
       $('#caff-go').disabled = true; $('#caff-go').textContent = 'Logging…';
       try {
         await logCaffeine(note || 'custom', mg, note);
+        if (saveTile) await saveCaffeinePreset(note || `${mg}mg`, mg);
         closeModal();
       } catch (e) {
         toast('Could not log: ' + e.message);
@@ -7374,7 +7590,7 @@ function openLogFood() {
 }
 
 async function logFood(item_type, note, kcal) {
-  const row = { category: 'food', item_type, note, quantity: kcal, unit: 'kcal', logged_at: new Date().toISOString() };
+  const row = { category: 'food', item_type, note, quantity: kcal, unit: 'kcal', logged_at: new Date().toISOString(), log_date: todayISO() };
   const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(row) });
   state.todayIntake.push(result[0]);
   render();
@@ -7788,6 +8004,7 @@ async function logOther(row) {
     amount,
     notes: notesParts.length ? notesParts.join(' · ') : null,
     entry_at: new Date().toISOString(),
+    log_date: todayISO(),
   };
   const result = await sbFetch('/tide_indulge_entries', { method: 'POST', body: JSON.stringify(v2) });
   // Keep v1-shaped fields on the row so existing renderers work.
@@ -7827,6 +8044,12 @@ function openEndSession() {
     </div>
 
     <div class="modal-section">
+      <div class="label">Ended at</div>
+      <input id="end-time" type="datetime-local" value="${escapeHtml(isoToLocalDatetimeInput(new Date().toISOString()))}">
+      <div class="small muted" style="margin-top: 6px">Forgot to end it last night? Set when it actually wrapped.</div>
+    </div>
+
+    <div class="modal-section">
       <div class="label">Note (optional)</div>
       <textarea id="end-note" rows="3" placeholder="One thought…"></textarea>
     </div>
@@ -7843,10 +8066,15 @@ function openEndSession() {
       $('#end-go').disabled = false; $('#end-go').style.opacity = 1;
     });
     $('#end-go').onclick = async () => {
+      const endedAtIso = localDatetimeInputToIso($('#end-time').value) || new Date().toISOString();
+      const startedMs = new Date(state.activeSession.started_at).getTime();
+      if (new Date(endedAtIso).getTime() < startedMs) {
+        toast('End time can’t be before the session started'); return;
+      }
       $('#end-go').disabled = true; $('#end-go').textContent = 'Ending…';
       try {
         const note = $('#end-note').value.trim();
-        await endSession(feeling, note);
+        await endSession(feeling, note, endedAtIso);
         closeModal();
       } catch (e) {
         toast('Could not end: ' + e.message);
@@ -7856,9 +8084,9 @@ function openEndSession() {
   });
 }
 
-async function endSession(feeling, note) {
-  const ended_at = new Date().toISOString();
-  const duration_min = Math.round((Date.now() - new Date(state.activeSession.started_at).getTime()) / 60000);
+async function endSession(feeling, note, endedAtIso) {
+  const ended_at = endedAtIso || new Date().toISOString();
+  const duration_min = Math.max(0, Math.round((new Date(ended_at).getTime() - new Date(state.activeSession.started_at).getTime()) / 60000));
   const update = { ended_at, feeling, note: note || null, duration_min };
   await sbFetch(`/tide_indulge_sessions?id=eq.${state.activeSession.id}`, {
     method: 'PATCH',
@@ -8375,6 +8603,80 @@ async function loadTodayOther() {
   }
 }
 
+// Today's alcohol entries (any session, ended or not) for the Fuel energy ring.
+// The active session's drinks already live in state.drinks; this catches
+// earlier ended-session drinks so the ring is right on a fresh app open.
+async function loadTodayAlcohol() {
+  try {
+    const rows = await sbFetch(
+      `/tide_indulge_entries?kind=eq.alcohol&log_date=eq.${todayISO()}&order=entry_at.asc`
+    );
+    state.todayAlcohol = rows || [];
+  } catch (e) {
+    console.warn('loadTodayAlcohol failed:', e.message);
+    state.todayAlcohol = [];
+  }
+}
+
+// User-defined caffeine tiles (in addition to the fixed Coffee/Espresso/Tea).
+async function loadCaffeinePresets() {
+  try {
+    const rows = await sbFetch('/tide_caffeine_presets?order=position.asc,created_at.asc');
+    state.caffeinePresets = rows || [];
+  } catch (e) {
+    console.warn('loadCaffeinePresets failed:', e.message);
+    state.caffeinePresets = [];
+  }
+}
+
+// Save a custom caffeine entry as a reusable tile. Deduped case-insensitively
+// by label+mg so logging the same custom drink twice doesn't pile up tiles.
+async function saveCaffeinePreset(label, mg) {
+  const name = (label || '').trim();
+  if (!name || !mg) return;
+  const dup = (state.caffeinePresets || []).some(
+    p => p.label.trim().toLowerCase() === name.toLowerCase() && Number(p.mg) === Number(mg)
+  );
+  if (dup) return;
+  try {
+    const pos = (state.caffeinePresets || []).length;
+    const result = await sbFetch('/tide_caffeine_presets', {
+      method: 'POST',
+      body: JSON.stringify({ label: name, mg, position: pos }),
+    });
+    if (result && result[0]) state.caffeinePresets = (state.caffeinePresets || []).concat(result[0]);
+  } catch (e) {
+    console.warn('saveCaffeinePreset failed:', e.message);
+  }
+}
+
+function confirmDeleteCaffeinePreset(id, label, onCancel) {
+  showModal(`
+    <h2>Remove tile?</h2>
+    <p class="small muted">"${escapeHtml(label)}" will no longer appear as a quick tile. Past logs are unaffected.</p>
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Keep</button>
+      <button class="btn btn-warm" id="caff-preset-del">Remove</button>
+    </div>
+  `, () => {
+    let removed = false;
+    $('#caff-preset-del').onclick = async () => {
+      removed = true;
+      try {
+        await sbFetch(`/tide_caffeine_presets?id=eq.${id}`, { method: 'DELETE' });
+        state.caffeinePresets = (state.caffeinePresets || []).filter(p => p.id !== id);
+      } catch (e) {
+        toast('Could not remove: ' + e.message);
+      }
+      closeModal();
+      render();
+    };
+    // Restore the tile's pressed style if they back out.
+    const obs = () => { if (!removed && typeof onCancel === 'function') onCancel(); };
+    $('[data-close]')?.addEventListener('click', obs, { once: true });
+  });
+}
+
 async function loadHistory() {
   try {
     // Pull last 30 indulge sessions with alcohol entry counts (two queries; simple is fine).
@@ -8418,6 +8720,41 @@ async function loadHistory() {
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
+// All per-logical-day data. Reused by boot and by the day-rollover handler so
+// every "Today" surface (Train/Fuel/Sip/Indulge/Stack) reflects the current
+// logical day (5am boundary), not whatever day the app was last loaded on.
+async function loadDayData() {
+  await loadActiveSession();
+  await loadHistory();
+  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther(), loadTodayAlcohol(), loadCaffeinePresets(), loadFoodLibrary(), loadTodayActivities(), loadWorkoutTemplates(), loadRecentTemplateUses(), loadLatestDigest()]);
+  state.loadedDay = todayISO();
+}
+
+// If the logical day has rolled over since data was last loaded (the app was
+// left open / backgrounded across 5am), refresh everything and re-render so
+// the active tabs reset. Guarded against concurrent runs.
+let _rolloverInFlight = false;
+async function maybeRollover() {
+  if (_rolloverInFlight || !getKey()) return;
+  if (todayISO() === state.loadedDay) return;
+  _rolloverInFlight = true;
+  try {
+    await loadDayData();
+    await Promise.all([loadOuraToday(), loadOura7d()]);
+    render();
+    syncOura().then(r => {
+      if (r && r.ok && r.count) Promise.all([loadOuraToday(), loadOura7d()]).then(() => render());
+    }).catch(() => {});
+  } finally {
+    _rolloverInFlight = false;
+  }
+}
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden) maybeRollover(); });
+window.addEventListener('focus', maybeRollover);
+// Also catch the boundary while the app stays foregrounded (e.g. up at 5am).
+setInterval(maybeRollover, 60000);
+
 async function boot() {
   if (!getKey()) { renderKeyForm(); return; }
   loadLocal();
@@ -8428,10 +8765,8 @@ async function boot() {
   // Profile + PAT sync — non-blocking, but kicked off early so the rest of
   // boot can grab the latest values from localStorage after it lands.
   await syncProfileOnBoot().catch(() => {});
-  // Then refresh from server
-  await loadActiveSession();
-  await loadHistory();
-  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther(), loadFoodLibrary(), loadTodayActivities(), loadWorkoutTemplates(), loadRecentTemplateUses(), loadLatestDigest()]);
+  // Then refresh from server (per-day data, tagged with the logical day)
+  await loadDayData();
   // Pull cached Oura today + 7d for the stat grid hero, then sync in background
   await Promise.all([loadOuraToday(), loadOura7d()]);
   if (state.screen === 'home') render();
