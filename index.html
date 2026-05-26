@@ -774,6 +774,23 @@
   .activity-title { font-family: var(--font-display); font-weight: 500; font-size: 14px; letter-spacing: -0.005em; line-height: 1.2; }
   .activity-meta { font-family: var(--font-body); font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: 0.01em; }
   .activity-source { font-family: var(--font-body); font-size: 9px; font-weight: 500; letter-spacing: 0.12em; color: var(--muted-soft); text-transform: uppercase; flex-shrink: 0; }
+  .trainer-nudge { margin-top: 6px; font-family: var(--font-display); font-size: 12px; color: var(--accent-deep); font-style: italic; display: flex; align-items: baseline; gap: 6px; }
+  .trainer-nudge em { font-style: italic; flex: 1; }
+  .trainer-nudge-x { background: none; border: none; color: var(--muted-soft); font-size: 14px; line-height: 1; padding: 2px 4px; cursor: pointer; }
+  .trainer-nudge-x:hover { color: var(--text); }
+  .primary-btn.ghost { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
+  .primary-btn.ghost .arrow { color: var(--accent-deep); }
+  .oura-refresh-row { display: flex; justify-content: flex-end; margin-top: -6px; margin-bottom: 10px; }
+  .oura-refresh-link { background: none; border: none; color: var(--accent-deep); font-family: var(--font-body); font-size: 12px; padding: 4px 0; cursor: pointer; text-align: right; }
+  .oura-refresh-link .oura-refresh-sub { display: block; color: var(--muted); font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; margin-top: 1px; }
+  .act-suggest-wrap { position: relative; }
+  .act-suggest-list { position: absolute; left: 0; right: 0; top: 100%; z-index: 5; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm, 10px); margin-top: 4px; max-height: 240px; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+  .act-suggest-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border-soft); font-family: var(--font-body); font-size: 13px; }
+  .act-suggest-item:last-child { border-bottom: none; }
+  .act-suggest-item:hover { background: var(--card-bg); }
+  .act-suggest-item .act-suggest-name { color: var(--text); }
+  .act-suggest-item .act-suggest-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .act-suggest-item .act-suggest-tag { float: right; font-size: 10px; color: var(--accent-deep); text-transform: uppercase; letter-spacing: 0.06em; }
 
   /* ───── v2: Bottom nav bar (mockup-matched) ───── */
   .bottom-nav {
@@ -911,6 +928,7 @@ const CAFFEINE_PRESETS = [
   { id: 'coffee',   label: 'Coffee',   mg: 95 },
   { id: 'espresso', label: 'Espresso', mg: 65 },
   { id: 'tea',      label: 'Tea',      mg: 40 },
+  { id: 'itoen',    label: 'Ito En',   mg: 70 },
 ];
 const CAFFEINE_SOFT_LIMIT_MG = 400; // FDA "safe" daily upper bound
 
@@ -1242,6 +1260,7 @@ async function syncOura({ days = 14, force = false } = {}) {
     if (!dates.size) {
       localStorage.setItem('tide_oura_last_sync', String(Date.now()));
       localStorage.setItem('tide_oura_schema_v', OURA_SCHEMA_V);
+      setOuraLastSyncResult('no_data');
       return { ok: true, count: 0 };
     }
     const rows = [...dates].map(d => normalizeOuraRow(d, dailySleepByDate[d], sleepByDate[d], readinessByDate[d], activityByDate[d]));
@@ -1252,9 +1271,11 @@ async function syncOura({ days = 14, force = false } = {}) {
     });
     localStorage.setItem('tide_oura_last_sync', String(Date.now()));
     localStorage.setItem('tide_oura_schema_v', OURA_SCHEMA_V);
+    setOuraLastSyncResult('ok');
     return { ok: true, count: rows.length };
   } catch (e) {
     console.warn('Oura sync failed:', e.message);
+    setOuraLastSyncResult('error', e.message);
     return { ok: false, error: e.message };
   }
 }
@@ -1777,6 +1798,7 @@ function renderPulseHome() {
     </header>
 
     <div id="pulse-stat-grid">${renderPulseStatGrid()}</div>
+    <div id="oura-refresh-row">${renderOuraRefreshRow()}</div>
 
     ${renderReflectPromptCard(pendingReflection)}
 
@@ -1803,6 +1825,9 @@ function renderPulseHome() {
 
   // Reflection prompt actions (if present)
   wireReflectPrompt(pendingReflection);
+
+  // Refresh-Oura link (shown only when Oura looks stale or broken)
+  wireOuraRefreshRow();
 
   // Action button
   $('#pulse-action').onclick = () => routePulseAction(action.target);
@@ -1930,6 +1955,142 @@ function sleepDeltaSpan(diffMin) {
   const cls = diffMin > 0 ? 'up' : 'down';
   const lbl = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
   return `<span class="stat-delta ${cls}">${sign}${lbl} vs avg</span>`;
+}
+
+// ---------------------------------------------------------------------------
+// Refresh-Oura link on the Pulse home — surfaces only when Oura looks broken
+// (no PAT, stale row, or last sync errored). Tap → in-place reconnect.
+// See spec § "Refresh-Oura affordance on the Pulse".
+// ---------------------------------------------------------------------------
+const OURA_LAST_SYNC_RESULT_KEY = 'tide_oura_last_sync_result';
+
+function getOuraLastSyncResult() {
+  try { return JSON.parse(localStorage.getItem(OURA_LAST_SYNC_RESULT_KEY) || 'null'); }
+  catch { return null; }
+}
+function setOuraLastSyncResult(outcome, errorMsg = null) {
+  const payload = { outcome, errorMsg: errorMsg || null, at: new Date().toISOString() };
+  localStorage.setItem(OURA_LAST_SYNC_RESULT_KEY, JSON.stringify(payload));
+}
+
+function ouraRefreshState() {
+  const pat = getOuraPat();
+  const last = getOuraLastSyncResult();
+  if (!pat) return { surface: true, reason: 'missing', label: 'Token missing' };
+  const today = state.ouraToday;
+  const todayIso = todayISO();
+  let ageHr = null;
+  if (today?.date) {
+    // Rows are date strings (YYYY-MM-DD). Use logical-day diff in hours.
+    const a = new Date(todayIso + 'T00:00:00').getTime();
+    const b = new Date(today.date + 'T00:00:00').getTime();
+    ageHr = (a - b) / 3600000;
+  } else {
+    ageHr = Infinity;
+  }
+  // If Tide successfully reached Oura's cloud recently but got 0 rows, the
+  // most likely cause is the ring hasn't synced (Oura phone app needs to be
+  // opened in the foreground — we can't trigger that from here). Be honest
+  // about that rather than nudging the user to retry a refresh.
+  if (last?.outcome === 'no_data' && ageHr > 36) {
+    return { surface: true, reason: 'ring_unsynced', label: 'Open Oura app to sync ring' };
+  }
+  if (ageHr > 36) {
+    const days = Number.isFinite(ageHr) ? Math.round(ageHr / 24) : null;
+    return { surface: true, reason: 'stale', label: days ? `Last sync ${days}d ago` : 'No recent sync' };
+  }
+  if (last?.outcome === 'error') {
+    return { surface: true, reason: 'error', label: 'Last sync failed' };
+  }
+  return { surface: false, reason: 'ok' };
+}
+
+function renderOuraRefreshRow() {
+  const s = ouraRefreshState();
+  if (!s.surface) return '';
+  return `
+    <div class="oura-refresh-row">
+      <button class="oura-refresh-link" id="oura-refresh-link" type="button">
+        Refresh Oura →
+        <span class="oura-refresh-sub">${escapeHtml(s.label)}</span>
+      </button>
+    </div>
+  `;
+}
+
+function wireOuraRefreshRow() {
+  const btn = $('#oura-refresh-link');
+  if (!btn) return;
+  btn.onclick = async () => {
+    if (!getOuraPat()) { openOuraReconnectSheet(); return; }
+    btn.disabled = true;
+    btn.innerHTML = 'Syncing… <span class="oura-refresh-sub">working</span>';
+    try {
+      localStorage.removeItem('tide_oura_last_sync');
+      const r = await syncOura({ force: true });
+      if (r?.ok && r.count > 0) {
+        // syncOura already wrote 'ok' to last_sync_result.
+        await Promise.all([loadOuraToday(), loadOura7d()]);
+        toast(`Synced · ${r.count} ${r.count === 1 ? 'day' : 'days'}`);
+        render();
+      } else if (r?.ok && r.count === 0) {
+        // syncOura already wrote 'no_data'. We reached Oura's cloud successfully
+        // but found nothing new — almost always because the ring hasn't synced
+        // to Oura's servers. PWAs can't trigger that; only the Oura phone app
+        // (foreground, Bluetooth) can. Be honest.
+        toast('Oura cloud is empty — open the Oura app on your phone to sync your ring');
+        render();
+      } else {
+        setOuraLastSyncResult('error', r?.error || 'unknown');
+        // If the PAT is the culprit, fall through to the reconnect sheet.
+        if (/401|403|unauthorized|invalid/i.test(r?.error || '')) {
+          openOuraReconnectSheet();
+        } else {
+          render();
+        }
+      }
+    } catch (e) {
+      setOuraLastSyncResult('error', e.message);
+      render();
+    }
+  };
+}
+
+function openOuraReconnectSheet() {
+  showModal(`
+    <h2>Reconnect Oura</h2>
+    <p class="small muted" style="margin-bottom: 12px">Paste a fresh Personal Access Token from
+      <a href="https://cloud.ouraring.com/personal-access-tokens" target="_blank" rel="noopener" style="color: var(--accent)">cloud.ouraring.com/personal-access-tokens</a>.</p>
+    <input id="oura-relink-input" type="password" placeholder="Personal Access Token" autocomplete="off" style="width: 100%; padding: 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-family: inherit; font-size: 14px; margin-bottom: 10px">
+    <p class="small muted" id="oura-relink-status" style="margin: 6px 0 12px"></p>
+    <p class="small muted" style="margin: 6px 0 12px; font-style: italic">A fresh token won't help if today's ring data hasn't reached Oura's cloud yet — open the Oura app on your phone first so the ring can upload.</p>
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="oura-relink-save">Save & sync</button>
+    </div>
+  `, () => {
+    setTimeout(() => $('#oura-relink-input')?.focus(), 50);
+    $('#oura-relink-save').onclick = async () => {
+      const v = $('#oura-relink-input').value.trim();
+      if (!v) { $('#oura-relink-status').textContent = 'Paste a token first.'; return; }
+      setOuraPat(v);
+      localStorage.removeItem('tide_oura_last_sync');
+      $('#oura-relink-status').textContent = 'Syncing…';
+      $('#oura-relink-save').disabled = true;
+      const r = await syncOura({ force: true });
+      if (r?.ok) {
+        setOuraLastSyncResult('ok');
+        await Promise.all([loadOuraToday(), loadOura7d()]);
+        closeModal();
+        toast('Oura reconnected');
+        render();
+      } else {
+        setOuraLastSyncResult('error', r?.error || 'unknown');
+        $('#oura-relink-status').textContent = 'Sync failed: ' + (r?.error || 'unknown');
+        $('#oura-relink-save').disabled = false;
+      }
+    };
+  });
 }
 
 function renderDigestHeadlinePlaceholder() {
@@ -2748,8 +2909,9 @@ async function startSessionFromTemplate(template) {
       body: JSON.stringify(rows),
     });
     if (Array.isArray(result)) {
-      // Newest first to match the existing order=logged_at.desc load.
-      state.todayActivities = result.slice().reverse().concat(state.todayActivities || []);
+      // Ascending order — append the new batch after any existing rows so the
+      // first exercise of the template sits below earlier-logged activities.
+      state.todayActivities = (state.todayActivities || []).concat(result);
       state.templateLastUse = { ...(state.templateLastUse || {}), [template.id]: todayISO() };
     }
     toast(`Started · ${template.name} (${rows.length})`);
@@ -3149,12 +3311,179 @@ const ACTIVITY_ICONS = {
 
 async function loadTodayActivities() {
   try {
-    const rows = await sbFetch(`/tide_activities?date=eq.${todayISO()}&order=logged_at.desc`);
+    // Ascending: oldest at top, newest appended below. A workout reads
+    // top-to-bottom in the order you did it.
+    const rows = await sbFetch(`/tide_activities?date=eq.${todayISO()}&order=logged_at.asc`);
     state.todayActivities = rows || [];
   } catch (e) {
     console.warn('loadTodayActivities failed:', e.message);
     state.todayActivities = [];
   }
+}
+
+// One-tap Steam log. Tap = 10 min; long-press = duration picker.
+async function logSteam(durationMin = 10) {
+  const row = {
+    date: todayISO(),
+    type: 'Steam',
+    category: 'recovery',
+    source: 'manual',
+    duration_min: durationMin,
+    logged_at: new Date().toISOString(),
+  };
+  try {
+    const result = await sbFetch('/tide_activities', { method: 'POST', body: JSON.stringify(row) });
+    if (result && result[0]) state.todayActivities = (state.todayActivities || []).concat([result[0]]);
+    toast(`Logged · Steam ${durationMin}m`);
+    render();
+  } catch (e) {
+    toast('Could not log steam: ' + e.message);
+  }
+}
+
+function openSteamDurationSheet() {
+  const opts = [10, 15, 20, 30, 45];
+  showModal(`
+    <h2>Steam — how long?</h2>
+    <div class="grid-3" id="steam-durs" style="gap: 8px">
+      ${opts.map(m => `<div class="chip" data-steam-dur="${m}">${m} min</div>`).join('')}
+    </div>
+    <div class="btn-row" style="margin-top: 14px">
+      <button class="btn btn-soft" data-close>Cancel</button>
+    </div>
+  `, (m) => {
+    m.querySelectorAll('[data-steam-dur]').forEach(c => c.onclick = () => {
+      const mins = parseInt(c.dataset.steamDur, 10);
+      closeModal();
+      logSteam(mins);
+    });
+  });
+}
+
+function wireSteamButton(btn) {
+  if (!btn) return;
+  let lp = null, longPressed = false;
+  const startLP = () => {
+    longPressed = false;
+    lp = setTimeout(() => { longPressed = true; openSteamDurationSheet(); }, 550);
+  };
+  const cancelLP = () => clearTimeout(lp);
+  btn.addEventListener('touchstart', startLP, { passive: true });
+  btn.addEventListener('touchend', cancelLP);
+  btn.addEventListener('touchmove', cancelLP, { passive: true });
+  btn.addEventListener('mousedown', startLP);
+  btn.addEventListener('mouseup', cancelLP);
+  btn.addEventListener('mouseleave', cancelLP);
+  btn.onclick = () => { if (!longPressed) logSteam(10); };
+}
+
+// ---------------------------------------------------------------------------
+// AI trainer nudge — measured, rule-based.
+// Fires after a strength activity is logged with RPE ≤ 7 when the user has
+// previously cleared the same weight on the same exercise. The suggestion is
+// attached to the activity row in localStorage (not server-side) so we can
+// re-render without re-querying. See spec § "AI trainer nudge (measured)".
+// ---------------------------------------------------------------------------
+const TRAINER_DISMISS_KEY = 'tide_trainer_dismissed';
+const TRAINER_SUGGEST_KEY = 'tide_trainer_suggestions';
+const TRAINER_DISMISS_COOLDOWN_DAYS = 14;
+
+function getTrainerDismissed() {
+  try { return JSON.parse(localStorage.getItem(TRAINER_DISMISS_KEY) || '{}') || {}; }
+  catch { return {}; }
+}
+function setTrainerDismissed(map) {
+  localStorage.setItem(TRAINER_DISMISS_KEY, JSON.stringify(map));
+}
+function getTrainerSuggestions() {
+  try { return JSON.parse(localStorage.getItem(TRAINER_SUGGEST_KEY) || '{}') || {}; }
+  catch { return {}; }
+}
+function setTrainerSuggestions(map) {
+  localStorage.setItem(TRAINER_SUGGEST_KEY, JSON.stringify(map));
+}
+
+function trainerIncrement(weight) {
+  if (!Number.isFinite(weight) || weight <= 0) return 0;
+  const base = weight >= 50 ? 5 : 2.5;
+  const cap = weight * 0.10;
+  return Math.min(base, cap);
+}
+
+function trainerPhrase(exerciseName, currentWeight, nextWeight) {
+  const n = (exerciseName || '').toLowerCase();
+  const isPush = /(bench|press|dip|fly|pushdown|raise|tricep)/.test(n);
+  const isPull = /(row|pull|curl|deadlift|face)/.test(n);
+  const isLeg  = /(squat|lunge|leg|hip|thrust|calf|rdl|romanian)/.test(n);
+  if (isPush) return `Smooth at ${currentWeight} lb — try ${nextWeight} next time?`;
+  if (isPull) return `Clean reps at ${currentWeight} lb — try ${nextWeight} on the next pull?`;
+  if (isLeg)  return `${currentWeight} lb moved well — push to ${nextWeight} next leg day?`;
+  return `Felt easy at ${currentWeight} lb — try ${nextWeight} next time?`;
+}
+
+async function maybeRunTrainerNudge(activity) {
+  if (!activity || activity.category !== 'strength') return;
+  const m = activity.metadata || {};
+  const w = parseFloat(m.weight_lb);
+  const rpe = parseInt(activity.perceived_effort, 10);
+  if (!Number.isFinite(w) || w <= 0) return;
+  if (!Number.isFinite(rpe) || rpe > 7) return;
+  if (!m.sets || !m.reps) return;
+  const name = (activity.type || '').trim();
+  if (!name) return;
+  const key = name.toLowerCase();
+
+  // Cooldown check
+  const dismissed = getTrainerDismissed();
+  const last = dismissed[key];
+  if (last) {
+    const ageDays = (Date.now() - new Date(last).getTime()) / 86400000;
+    if (ageDays < TRAINER_DISMISS_COOLDOWN_DAYS) return;
+  }
+
+  // Need a prior same-or-lower working weight in the past 60 days. We query
+  // tide_activities (manual + apple_health) filtered by type + strength.
+  try {
+    const since = addDays(todayISO(), -60);
+    const enc = encodeURIComponent(name);
+    const rows = await sbFetch(
+      `/tide_activities?category=eq.strength&type=eq.${enc}&date=gte.${since}&date=lt.${todayISO()}&select=metadata,date&order=date.desc&limit=20`
+    );
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    const prevMax = rows.reduce((mx, r) => {
+      const pw = parseFloat(r.metadata?.weight_lb);
+      return Number.isFinite(pw) && pw > mx ? pw : mx;
+    }, 0);
+    if (prevMax <= 0) return;
+    if (prevMax > w) return; // they regressed today — don't push harder
+    const inc = trainerIncrement(w);
+    if (inc <= 0) return;
+    const next = Math.round((w + inc) * 2) / 2; // round to half-pound
+    const suggestion = {
+      activityId: activity.id,
+      exercise: name,
+      currentWeight: w,
+      nextWeight: next,
+      phrase: trainerPhrase(name, w, next),
+      generatedAt: new Date().toISOString(),
+    };
+    const all = getTrainerSuggestions();
+    all[activity.id] = suggestion;
+    setTrainerSuggestions(all);
+    render();
+  } catch (e) {
+    console.warn('trainer nudge failed:', e.message);
+  }
+}
+
+function dismissTrainerNudge(activityId, exerciseName) {
+  const dismissed = getTrainerDismissed();
+  dismissed[(exerciseName || '').toLowerCase()] = new Date().toISOString();
+  setTrainerDismissed(dismissed);
+  const all = getTrainerSuggestions();
+  delete all[activityId];
+  setTrainerSuggestions(all);
+  render();
 }
 
 function renderTrainTab() {
@@ -3212,10 +3541,16 @@ function renderTrainTab() {
     ${acts.map(renderActivityCard).join('')}
     ${showOuraCard ? renderOuraActivityCard(oura) : ''}
 
-    <button class="primary-btn" id="log-activity-btn" style="margin-top: 4px">
-      <span>+ Log activity</span>
-      <span class="arrow">→</span>
-    </button>
+    <div class="train-quick-row" style="margin-top: 4px; display: flex; gap: 8px">
+      <button class="primary-btn" id="log-activity-btn" style="flex: 1">
+        <span>+ Log activity</span>
+        <span class="arrow">→</span>
+      </button>
+      <button class="primary-btn ghost" id="log-steam-btn" style="flex: 0 0 auto; padding-left: 16px; padding-right: 16px" aria-label="Log Steam (tap-and-hold for duration)">
+        <span>Steam</span>
+        <span class="arrow">+</span>
+      </button>
+    </div>
 
     <button class="quick-fab" id="any-fab" aria-label="Log anything">+</button>
   `;
@@ -3223,7 +3558,17 @@ function renderTrainTab() {
   $('[data-brand]')?.addEventListener('click', () => { state.tab = null; render(); });
   $('#any-fab').onclick = openLogAny;
   $('#log-activity-btn').onclick = () => openLogActivityModal();
-  $$('.activity-card[data-activity-id]').forEach(c => c.onclick = () => openActivityDetail(c.dataset.activityId));
+  wireSteamButton($('#log-steam-btn'));
+  $$('.activity-card[data-activity-id]').forEach(c => c.onclick = (e) => {
+    if (e.target.closest('[data-trainer-dismiss]')) return;
+    openActivityDetail(c.dataset.activityId);
+  });
+  $$('[data-trainer-dismiss]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
+    const activityId = b.dataset.trainerDismiss;
+    const exerciseEl = b.closest('[data-trainer-exercise]');
+    dismissTrainerNudge(activityId, exerciseEl?.dataset.trainerExercise || '');
+  });
   attachSwipeToDelete($$('.swipe-row.swipe-activity'), async (id) => {
     await sbFetch(`/tide_activities?id=eq.${id}`, { method: 'DELETE' });
     state.todayActivities = state.todayActivities.filter(a => a.id !== id);
@@ -3269,6 +3614,14 @@ function renderActivityCard(a) {
   ].filter(Boolean).join(' · ');
   const icon = ACTIVITY_ICONS[a.category] || ACTIVITY_ICONS.cardio;
   const source = (a.source || 'manual').toUpperCase();
+  const trainerMap = getTrainerSuggestions();
+  const nudge = trainerMap[a.id];
+  const nudgeHtml = nudge ? `
+    <div class="trainer-nudge" data-trainer-activity="${a.id}" data-trainer-exercise="${escapeHtml(nudge.exercise)}">
+      <em>${escapeHtml(nudge.phrase)}</em>
+      <button class="trainer-nudge-x" data-trainer-dismiss="${a.id}" aria-label="Dismiss">×</button>
+    </div>
+  ` : '';
   return `
     <div class="swipe-row swipe-activity" data-id="${a.id}">
       <div class="swipe-content">
@@ -3277,6 +3630,7 @@ function renderActivityCard(a) {
           <div class="activity-body">
             <div class="activity-title">${escapeHtml(a.type || ACTIVITY_CATEGORIES.find(c => c.id === a.category)?.label || 'Activity')}</div>
             ${meta ? `<div class="activity-meta">${escapeHtml(meta)}</div>` : ''}
+            ${nudgeHtml}
           </div>
           <div class="activity-source">${escapeHtml(source)}</div>
         </div>
@@ -3307,6 +3661,123 @@ function renderOuraActivityCard(oura) {
   `;
 }
 
+// ---------------------------------------------------------------------------
+// Activity name type-ahead — drops a dropdown under the Name/type input that
+// matches against the category library + the user's own history. Picking an
+// item autofills sets/reps/weight from the user's most recent matching log
+// (any template), not the library's static defaults.
+// See spec § "Activity name type-ahead with history autofill".
+// ---------------------------------------------------------------------------
+async function loadRecentActivities(days = 90) {
+  try {
+    const since = addDays(todayISO(), -days);
+    const rows = await sbFetch(
+      `/tide_activities?date=gte.${since}&select=type,category,metadata,perceived_effort,date,logged_at&order=logged_at.desc&limit=400`
+    );
+    const map = {};
+    (rows || []).forEach(r => {
+      if (!r.type) return;
+      const key = `${r.category}::${r.type.trim().toLowerCase()}`;
+      if (!map[key]) map[key] = r;  // first hit is the most recent
+    });
+    state.recentActivitiesByType = map;
+    return map;
+  } catch (e) {
+    console.warn('loadRecentActivities failed:', e.message);
+    state.recentActivitiesByType = state.recentActivitiesByType || {};
+    return state.recentActivitiesByType;
+  }
+}
+
+function getLibraryForCategory(category) {
+  if (category === 'cardio')   return CARDIO_LIBRARY;
+  if (category === 'recovery') return RECOVERY_LIBRARY;
+  return EXERCISE_LIBRARY;
+}
+
+function buildTypeaheadCandidates(category, query) {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return [];
+  const recent = state.recentActivitiesByType || {};
+  const seen = new Set();
+  const out = [];
+
+  // 1) User history first (any historical type in this category)
+  Object.keys(recent).forEach(key => {
+    const [cat, name] = key.split('::');
+    if (cat !== category) return;
+    if (!name.includes(q)) return;
+    if (seen.has(name)) return;
+    seen.add(name);
+    const r = recent[key];
+    const m = r.metadata || {};
+    out.push({
+      name: r.type,
+      source: 'history',
+      sets: m.sets ?? null,
+      reps: m.reps ?? null,
+      weight_lb: m.weight_lb ?? null,
+      sub: m.weight_lb
+        ? `Last · ${m.sets || '?'} × ${m.reps || '?'} @ ${m.weight_lb} lb`
+        : (m.sets && m.reps ? `Last · ${m.sets} × ${m.reps}` : `Last · ${fmtDate((r.date || todayISO()) + 'T12:00:00')}`),
+    });
+  });
+
+  // 2) Library
+  const lib = getLibraryForCategory(category);
+  lib.forEach(item => {
+    const lower = item.name.toLowerCase();
+    if (!lower.includes(q)) return;
+    if (seen.has(lower)) return;
+    seen.add(lower);
+    out.push({
+      name: item.name,
+      source: 'library',
+      sets: item.sets,
+      reps: item.reps,
+      weight_lb: null,
+      sub: item.sets && item.reps ? `${item.sets} × ${item.reps}` : item.group,
+    });
+  });
+
+  return out.slice(0, 8);
+}
+
+function wireActivityTypeahead(rootEl, getCategory, onPick) {
+  const input = rootEl.querySelector('#act-type');
+  const list = rootEl.querySelector('#act-suggest');
+  if (!input || !list) return;
+  // Load history in the background.
+  loadRecentActivities(90);
+
+  const renderList = () => {
+    const cat = getCategory();
+    const candidates = buildTypeaheadCandidates(cat, input.value);
+    if (!candidates.length) { list.style.display = 'none'; list.innerHTML = ''; return; }
+    list.innerHTML = candidates.map((c, i) => `
+      <div class="act-suggest-item" data-act-suggest-idx="${i}">
+        <div class="act-suggest-name">${escapeHtml(c.name)}<span class="act-suggest-tag">${c.source === 'history' ? 'Yours' : ''}</span></div>
+        <div class="act-suggest-meta">${escapeHtml(c.sub || '')}</div>
+      </div>
+    `).join('');
+    list.style.display = '';
+    list.querySelectorAll('[data-act-suggest-idx]').forEach((row, i) => {
+      row.onclick = () => {
+        const picked = candidates[i];
+        list.style.display = 'none';
+        if (onPick) onPick(picked);
+      };
+    });
+  };
+
+  input.addEventListener('input', renderList);
+  input.addEventListener('focus', renderList);
+  input.addEventListener('blur', () => setTimeout(() => { list.style.display = 'none'; }, 150));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') list.style.display = 'none';
+  });
+}
+
 function openLogActivityModal(existing = null) {
   const editing = !!existing;
   const cat = editing ? existing.category : 'strength';
@@ -3326,7 +3797,10 @@ function openLogActivityModal(existing = null) {
         <div class="label" style="margin-bottom: 0">Name / type</div>
         <button type="button" id="act-pick-list" class="head-link" style="border: none; background: none; padding: 0; cursor: pointer">Pick from list</button>
       </div>
-      <input id="act-type" type="text" value="${escapeHtml(existing?.type || '')}" placeholder="Bench press, Zone 2 walk, Steam…">
+      <div class="act-suggest-wrap">
+        <input id="act-type" type="text" value="${escapeHtml(existing?.type || '')}" placeholder="Bench press, Zone 2 walk, Steam…" autocomplete="off">
+        <div id="act-suggest" class="act-suggest-list" style="display: none"></div>
+      </div>
     </div>
 
     <div id="act-strength" style="${cat === 'strength' ? '' : 'display:none'}">
@@ -3386,6 +3860,26 @@ function openLogActivityModal(existing = null) {
     m.querySelectorAll('[data-feeling]').forEach(c => c.onclick = () => {
       m.querySelectorAll('[data-feeling]').forEach(x => x.classList.remove('selected'));
       c.classList.add('selected'); feeling = c.dataset.feeling;
+    });
+
+    // Type-ahead — kick off a history load on open, then wire the suggestion list.
+    wireActivityTypeahead(m, () => category, (picked) => {
+      const draft = {
+        ...existing,
+        type: picked.name,
+        category,
+        perceived_effort: existing?.perceived_effort ?? null,
+        metadata: {
+          ...(existing?.metadata || {}),
+          ...(category === 'strength' ? {
+            sets: picked.sets ?? existing?.metadata?.sets ?? null,
+            reps: picked.reps ?? existing?.metadata?.reps ?? null,
+            weight_lb: picked.weight_lb ?? existing?.metadata?.weight_lb ?? null,
+          } : {}),
+        },
+      };
+      closeModal();
+      setTimeout(() => openLogActivityModal(draft), 60);
     });
 
     $('#act-pick-list').onclick = () => {
@@ -3453,7 +3947,9 @@ function openLogActivityModal(existing = null) {
         } else {
           const row = { ...payload, date: todayISO(), source: 'manual', logged_at: new Date().toISOString() };
           const result = await sbFetch('/tide_activities', { method: 'POST', body: JSON.stringify(row) });
-          if (result && result[0]) state.todayActivities = [result[0]].concat(state.todayActivities);
+          // Ascending order — append the new row below existing today rows.
+          if (result && result[0]) state.todayActivities = state.todayActivities.concat([result[0]]);
+          if (result && result[0]) maybeRunTrainerNudge(result[0]);
         }
         closeModal();
         render();
@@ -8755,6 +9251,121 @@ window.addEventListener('focus', maybeRollover);
 // Also catch the boundary while the app stays foregrounded (e.g. up at 5am).
 setInterval(maybeRollover, 60000);
 
+// ---------------------------------------------------------------------------
+// Apple Watch workout push — handle ?log=workout&... deeplinks from an iOS
+// Shortcut that pulls the most recent HealthKit workout and lands here.
+// See spec § "Apple Watch workout push (URL handler)".
+// ---------------------------------------------------------------------------
+const PENDING_PUSH_KEY = 'tide_pending_push';
+
+function pendingPushQueue() {
+  try { return JSON.parse(localStorage.getItem(PENDING_PUSH_KEY) || '[]') || []; }
+  catch { return []; }
+}
+function setPendingPushQueue(arr) {
+  localStorage.setItem(PENDING_PUSH_KEY, JSON.stringify(arr));
+}
+
+function stripDeeplinkFromHistory() {
+  try {
+    const url = new URL(window.location.href);
+    ['log', 'type', 'category', 'duration', 'start', 'source', 'kcal', 'distance_km', 'hr_avg', 'note', 'dedupe'].forEach(k => url.searchParams.delete(k));
+    history.replaceState(null, '', url.toString());
+  } catch (e) { /* noop */ }
+}
+
+function paramsToPushRow(params) {
+  const type = (params.get('type') || '').trim() || null;
+  const category = params.get('category') || 'cardio';
+  const source = params.get('source') || 'apple_health';
+  const duration = parseInt(params.get('duration') || '', 10);
+  const start = params.get('start');
+  const kcal = parseFloat(params.get('kcal'));
+  const distance = parseFloat(params.get('distance_km'));
+  const hr = parseInt(params.get('hr_avg') || '', 10);
+  const note = (params.get('note') || '').trim() || null;
+  const dedupe = (params.get('dedupe') || '').trim() || null;
+  const metadata = {};
+  if (Number.isFinite(kcal))     metadata.kcal = kcal;
+  if (Number.isFinite(distance)) metadata.distance_km = distance;
+  if (Number.isFinite(hr))       metadata.hr_avg = hr;
+  if (dedupe)                    metadata.dedupe = dedupe;
+  const loggedAt = start && !Number.isNaN(Date.parse(start)) ? new Date(start).toISOString() : new Date().toISOString();
+  return {
+    date: todayISO(),
+    type,
+    category: ['strength', 'cardio', 'recovery'].includes(category) ? category : 'cardio',
+    source,
+    duration_min: Number.isFinite(duration) ? duration : null,
+    notes: note,
+    logged_at: loggedAt,
+    metadata: Object.keys(metadata).length ? metadata : null,
+  };
+}
+
+async function pushAlreadyExists(dedupe) {
+  if (!dedupe) return false;
+  try {
+    const rows = await sbFetch(`/tide_activities?metadata->>dedupe=eq.${encodeURIComponent(dedupe)}&select=id&limit=1`);
+    return Array.isArray(rows) && rows.length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function handleWorkoutPushFromUrl(params) {
+  const row = paramsToPushRow(params);
+  stripDeeplinkFromHistory();
+  if (!row.type && !row.duration_min) {
+    toast('Workout push missing type and duration');
+    return;
+  }
+  const dedupe = row.metadata?.dedupe || null;
+  try {
+    if (await pushAlreadyExists(dedupe)) {
+      toast('Already logged');
+      return;
+    }
+    const result = await sbFetch('/tide_activities', { method: 'POST', body: JSON.stringify(row) });
+    if (result && result[0]) {
+      // If we're showing today, splice it in. Otherwise it'll load on next refresh.
+      if (row.date === todayISO()) {
+        state.todayActivities = (state.todayActivities || []).concat([result[0]]);
+      }
+      const dur = row.duration_min ? ` ${row.duration_min}m` : '';
+      toast(`Logged · ${row.type || 'Workout'}${dur}`);
+      render();
+    }
+  } catch (e) {
+    const q = pendingPushQueue();
+    q.push({ qs: params.toString(), queued_at: new Date().toISOString() });
+    setPendingPushQueue(q);
+    toast('Queued — will log when online.');
+  }
+}
+
+async function replayPendingWorkoutPushes() {
+  const q = pendingPushQueue();
+  if (!q.length) return;
+  const remaining = [];
+  for (const item of q) {
+    try {
+      const p = new URLSearchParams(item.qs);
+      const row = paramsToPushRow(p);
+      const dedupe = row.metadata?.dedupe || null;
+      if (await pushAlreadyExists(dedupe)) continue;
+      const result = await sbFetch('/tide_activities', { method: 'POST', body: JSON.stringify(row) });
+      if (result && result[0] && row.date === todayISO()) {
+        state.todayActivities = (state.todayActivities || []).concat([result[0]]);
+      }
+    } catch (e) {
+      remaining.push(item);
+    }
+  }
+  setPendingPushQueue(remaining);
+  if (remaining.length < q.length && state.screen === 'home') render();
+}
+
 async function boot() {
   if (!getKey()) { renderKeyForm(); return; }
   loadLocal();
@@ -8763,14 +9374,23 @@ async function boot() {
   state.screen = 'home';
   // Deep-link support: ?tab=train|food|water|drinks|supplements opens that
   // tab directly. Used by the suite (e.g. Today's Gym block → ?tab=train).
-  const deepTab = new URLSearchParams(window.location.search).get('tab');
+  const params = new URLSearchParams(window.location.search);
+  const deepTab = params.get('tab');
   if (deepTab && ['train', 'food', 'water', 'drinks', 'supplements'].includes(deepTab)) {
     state.tab = deepTab;
+  }
+  // Apple Watch / Shortcuts workout push: ?log=workout&type=...&duration=...
+  const logKind = params.get('log');
+  if (logKind === 'workout') {
+    // Pulled into a microtask so the Pulse can render first.
+    queueMicrotask(() => handleWorkoutPushFromUrl(params));
   }
   render();
   // Profile + PAT sync — non-blocking, but kicked off early so the rest of
   // boot can grab the latest values from localStorage after it lands.
   await syncProfileOnBoot().catch(() => {});
+  // Replay any pending push queued from earlier failures
+  replayPendingWorkoutPushes().catch(() => {});
   // Then refresh from server (per-day data, tagged with the logical day)
   await loadDayData();
   // Pull cached Oura today + 7d for the stat grid hero, then sync in background

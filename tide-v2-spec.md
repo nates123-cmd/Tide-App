@@ -277,6 +277,22 @@ Quick-start row appears at top when no session is active: template chips with la
 - Confirm → logs to `tide_intake_logs` with metadata
 - Adjust → user can edit any field before confirming
 
+#### Alcohol energy (cross-tab — added v2.x)
+
+**Problem:** Drinks are logged in Indulge (`tide_indulge_entries`, `kind='alcohol'`) but carry no calorie value and never reach the Fuel ring. A 6-drink night (~900+ kcal) leaves the ring reading well under goal.
+
+**Fix — derived, not double-logged.** Alcohol calories are *computed* from existing indulge entries; no new table, no second log. The drink stays authored in Indulge; Fuel only reflects it (same philosophy as the derived meal Library).
+
+- Per-standard-unit kcal by type (awareness-grade estimates, consistent with how the app already abstracts pours into standard units):
+  - beer 150 · wine 125 · spirits 100 · cocktail 150 — multiplied by the entry's `standard_units` (cocktails log at 1.4–1.5 units → ~210–225 kcal)
+  - unknown / alias type → 100 per unit (≈ pure-ethanol floor: 14 g × 7 kcal)
+- `todayAlcoholKcal()` sums today's `kind='alcohol'` entries by `log_date = today`, merging the active session's `state.drinks` with `state.todayAlcohol` (earlier ended-session drinks loaded at boot), deduped by id — independent of whether a session is active or started yesterday.
+- **Ring total = food kcal + alcohol kcal.** "X left", the ring arc, and the Claude remaining-hint all use the combined energy figure.
+- **Macros stay food-only.** Alcohol is the "fourth macro" — fuzzy carb/sugar content is *not* added to the P/C/F bars, keeping food macro tracking honest. A future refinement could attribute beer/wine/cocktail carbs explicitly.
+- **Transparency:** a muted "incl. ~N kcal alcohol" sub-line under the ring total when alcohol kcal > 0; in the Today section, one distinct warn-toned "Alcohol · N drinks" row (not a meal card) showing the kcal, tap → Indulge tab (drinks are edited there, not in Fuel — satisfies the "Today rows are tappable to edit/delete" convention).
+
+**Schema:** none. Pure read-side derivation over `tide_indulge_entries`. New boot loader `loadTodayAlcohol()` mirrors `loadTodayOther()`.
+
 ---
 
 ### Sip
@@ -540,6 +556,118 @@ Bump `CACHE_NAME` in `sw.js` on every deploy. New PNG assets need to be added to
 - **Coded substance frequency analysis.** Patterns currently buckets alcohol drinks per night. Coded substance frequency stays unaggregated for v2.0. Revisit if requested.
 - **Tag-as-recipe.** "Recipe" tag on Library entries (multi-ingredient prep) — Claude infers during estimation. Doesn't change behavior in v2.0 but enables future recipe filter.
 - **Edit a logged entry.** All entries (water, caffeine, food, alcohol, coded, strength sets) support tap-to-edit. Time editable always; type/units editable until parent session ends (where applicable).
+
+---
+
+## Post-v2 Fixes (v2.x)
+
+Field-reported fixes, batched. Each is additive and ships with the alcohol-energy work.
+
+### Oura sleep duration not loading
+
+**Problem:** the Sleep stat cell always showed "—". `normalizeOuraRow()` read `total_sleep_duration` / `rem_sleep_duration` / `deep_sleep_duration` off the **`daily_sleep`** endpoint, which only carries `score` + `contributors` — no durations. HRV had the same class of bug (the 0–100 `hrv_balance` contributor was rendered as "ms").
+
+**Fix:** also fetch the **`sleep`** endpoint (already whitelisted in the shared `smooth-processor` proxy — no proxy redeploy). Per `day`, pick the main period (`type === 'long_sleep'`, else the record with the largest `total_sleep_duration`). Derive `total_sleep_min` / `rem_sleep_min` / `deep_sleep_min` / `sleep_efficiency` from it, plus **real** `hrv_avg` from `average_hrv` (ms) and `resting_hr` from `lowest_heart_rate`, each falling back to the readiness contributor when the sleep period is absent. `daily_sleep.score` still feeds `sleep_score`. A one-time forced re-sync (gated on `localStorage['tide_oura_schema_v']`) backfills existing `tide_oura_daily` rows. No schema change — columns already exist.
+
+### Swipe-right to reschedule (Fuel)
+
+`attachSwipeToDelete()` → generalized `attachSwipeActions(rows, { onDelete, onReschedule })`. Existing callers (Indulge / Activity / Sip) keep delete-only behavior unchanged. On Fuel meal rows, **swipe-right reveals "→ Yesterday"** which moves the row's `logged_at`/`log_date` back one logical day (common after-midnight case). Arbitrary-date moves remain available via tap → editor's datetime field.
+
+### Logical day starts at 5am local
+
+**Problem:** `todayISO()` used `toISOString()` (**UTC**) so the day flipped mid-evening in US timezones; and there was no grace for logging after midnight.
+
+**Fix:** one logical-day function — local date of *(now − `DAY_ROLLOVER_HOUR`)*, `DAY_ROLLOVER_HOUR = 5`. Before 5am local → still counts as the previous day. `addDays()` reworked to be timezone-pure (UTC-component math on the Y-M-D string, never shifts by local offset). Because Postgres's `current_date` default is UTC and now diverges from the client's logical day, **every client insert sets `log_date` explicitly** (`logMealRow` / `logWater` / `logCaffeine` / `logDrink` / coded entry / `startSession`). `logged_at`/`entry_at` keep the true wall-clock timestamp; only the day *bucket* uses the 5am rule. All 38 `todayISO()` callers route through the one function, so day-scoped queries, streaks, and "Today" filters all follow automatically.
+
+### Custom caffeine saved as a deletable tile
+
+New table **`tide_caffeine_presets`** (`id`, `label`, `mg`, `position`, `created_at`) — mirrors the `tide_stack_items` pattern, syncs across devices via the shared project. Logging a custom caffeine amount upserts a preset (deduped case-insensitively by `label`+`mg`); custom presets render as tiles in the Sip → Caffeine "Add" grid after the fixed Coffee / Espresso / Tea defaults. **Long-press a custom tile → confirm → delete.** Defaults are not deletable. Loader `loadCaffeinePresets()` added to boot; migration `migrations/2026-05-15_caffeine_presets.sql` + `schema.sql`.
+
+### Oura sleep stat: score + delta polish
+
+The home Sleep stat cell now shows the **sleep score** next to the label (`SLEEP 72`, accent-toned via `.stat-label-score`) in addition to the duration value. `sleepDeltaSpan()` rounded to whole minutes and switched to `h:mm` (the raw average was a float, producing `−56.857…m vs avg` → now `−0:57 vs avg`). The carried-forward last-complete-night logic (see Oura sleep fix) also carries `sleep_score`, so the score stays consistent with the duration shown.
+
+### Active tabs reset on the 5am logical-day boundary
+
+**Problem:** the 5am `todayISO()` change fixed *new* logging, but a PWA left open / backgrounded across the boundary never re-fetched — e.g., the Train tab kept showing yesterday's logged workout.
+
+**Fix:** per-day loading is factored into `loadDayData()` (tags `state.loadedDay = todayISO()`), reused by boot. `maybeRollover()` fires on `visibilitychange`→visible, `window` `focus`, and a 60s interval; when `todayISO() !== state.loadedDay` it reloads all per-day data + Oura and re-renders, so every "Today" surface (Train/Fuel/Sip/Indulge/Stack) resets at 5am without a manual reload. Concurrency-guarded. The active **Indulge session is intentionally not cleared** at rollover (it's server-truth until ended — see next item).
+
+### End an Indulge session with a retroactive time
+
+The end-session sheet gains an **"Ended at"** `datetime-local` field defaulting to now ("Forgot to end it last night? Set when it actually wrapped."). `endSession(feeling, note, endedAtIso)` writes the chosen `ended_at` and computes `duration_min` from `started_at → chosen end` (floored at 0). Validation: end can't precede `started_at`. `log_date` is unchanged (still the night the session began).
+
+### Ito En built-in caffeine tile
+
+The Sip → Caffeine "Add" grid bakes **Ito En** in as a fourth default preset alongside Coffee / Espresso / Tea (chosen mg: **70**, matching the canned matcha green tea). Lives in `CAFFEINE_PRESETS` so it appears for everyone (defaults are not deletable; user-saved custom tiles still come after the defaults). Adding it as a default — instead of leaving it as a saved-tile-after-first-use — is justified because the user drinks it daily and saved presets currently only show after the first custom log, which is friction on a fresh install / cache wipe.
+
+### Refresh-Oura affordance on the Pulse
+
+The Pulse stat grid silently shows "—" across Readiness / Sleep / HRV when the Oura PAT is missing, has been revoked, or the last sync failed — the only way back was Profile → Oura → Save token → Sync now. The Pulse now grows a thin **"Refresh Oura"** link that surfaces *only* when Oura looks broken:
+
+- **Surface condition:** PAT missing, OR the most recent `tide_oura_daily` row is more than 36hr old, OR the last sync recorded an `error` outcome, OR the last sync recorded `no_data` AND the most recent row is stale.
+- **Placement:** small accent-tinted text link directly under the stat grid, right-aligned. "Refresh Oura →" with current state in muted micro-copy underneath ("Token missing" / "Last sync 2d ago" / "Last sync failed" / "Open Oura app to sync ring").
+- **Tap behavior:** If PAT exists → `syncOura({ force: true })` immediately, swap to a "Syncing…" pill, then update label with the result. If PAT missing OR sync errors persist → open a slim **inline sheet** (not a full route to Profile) with a single PAT input + "Save & sync" — same code path as the Profile flow, just surfaced contextually. Lets the user paste a freshly-regenerated PAT without leaving home.
+- **Persistence:** Last sync result captured in `localStorage['tide_oura_last_sync_result']` (`ok` / `error` / `no_data`) so the surface decision is deterministic across reloads.
+
+**What this affordance cannot do — and why the copy reflects that.** Oura Ring → Oura cloud sync happens over Bluetooth via the Oura mobile app (foreground, ring within ~10m). The ring has no Wi-Fi/cellular path of its own; even with iOS Background App Refresh enabled, Oura's own support docs note that data may fail to import if the Oura app wasn't opened before midnight. Tide's PAT-based REST pull only touches the **cloud** layer — it cannot trigger a ring → cloud sync. So when our forced refresh succeeds but returns 0 rows (`no_data`), the most likely cause is that the user's ring hasn't talked to Oura's servers, not that our integration is broken. Copy is honest about that:
+- Forced refresh with 0 rows → toast: *"Oura cloud is empty — open the Oura app on your phone to sync your ring"*
+- Persistent no-data + stale row → sub-label becomes *"Open Oura app to sync ring"* instead of misleading retry-bait
+- Reconnect sheet carries a small italic note: *"A fresh token won't help if today's ring data hasn't reached Oura's cloud yet — open the Oura app on your phone first so the ring can upload."*
+
+This avoids the failure mode where a user keeps tapping "Refresh Oura" thinking it'll fix things and is silently confused when nothing changes — the constraint sits upstream of us.
+
+### Apple Watch workout push (URL handler)
+
+PWAs can't read HealthKit directly (spec open-question §1). The user's iOS Shortcut pulls the most recent workout from HealthKit; this fix gives it a single landing URL that turns Shortcut output into a `tide_activities` row.
+
+- **URL contract:** `https://nates123-cmd.github.io/Tide-App/?log=workout&type=<name>&category=<strength|cardio|recovery>&duration=<min>&start=<iso>&source=apple_health&kcal=<n>&distance_km=<n>&hr_avg=<bpm>&note=<text>&dedupe=<hash>`
+- **Where:** boot extends the existing `?tab=…` deep-link block (`index.html` ~line 8766). Reads params, normalizes (category defaults to `cardio`, source defaults to `apple_health`), inserts one `tide_activities` row with `metadata: {kcal, distance_km, hr_avg, dedupe}`, fires a toast (`Logged · Run 32m`), then strips the params from history via `history.replaceState`.
+- **Idempotency:** `dedupe=<hash>` from the Shortcut (HealthKit workout uuid hashed). Before insert, `select=id` query `tide_activities?metadata->>dedupe=eq.<hash>` — skip if already present. Shortcut can fire on a schedule; dedupe makes that safe.
+- **Failure mode:** if Supabase insert fails (offline at trigger time), queue the params in `localStorage['tide_pending_push']` and replay on next boot. Toast: "Queued — will log when online."
+- **Auth:** none new; uses existing anon key.
+- **Schema:** none. Reuses `tide_activities` + `source` field (`apple_health` value already permitted).
+- **Companion artifact:** Shortcut design lives outside the repo; doc the JSON-to-querystring mapping in `APPLE_HEALTH.md`.
+
+### Activity name type-ahead with history autofill
+
+When adding a workout via "Log activity", the **Name / type** input is just a free-text field today — the user either types blind or taps "Pick from list". This fix makes the input itself a suggestion source.
+
+- **As-you-type list:** after one character, a dropdown of matching exercises appears under the input. Source = union of `EXERCISE_LIBRARY` / `CARDIO_LIBRARY` / `RECOVERY_LIBRARY` (filtered by current category) **plus** every distinct `tide_activities.type` the user has logged in this category in the past 90 days. Match by case-insensitive substring; rank user-history hits above library hits.
+- **Auto-prefill on pick:** picking a suggestion fills sets/reps/weight from the user's **most recent matching session** of that exercise (any template), not the library's static defaults. Library defaults are only used when the exercise has never been logged. Fields stay editable.
+- **State:** loads on modal open via `loadRecentActivities(90)` → cached on `state.recentActivitiesByType` keyed by lowercase type → reused for the lifetime of the modal.
+- **Visual:** dropdown reuses the same chip/stack-item style as `openActivityTypePicker`. Tap-outside / Esc / blur dismisses.
+
+### Workouts log in ascending order
+
+The Train Today list orders activities by `logged_at desc` — newest exercise appears on top. When starting a session from a template, `startSessionFromTemplate` *also* reverses the resulting batch so exercise 1 sits at the top of the (descending) list. User reports this is the wrong mental model: a workout reads top-to-bottom in the order you did it, like a log, so the earliest exercise should be first and new logs should append below.
+
+- **Fix:** `loadTodayActivities` switches to `order=logged_at.asc`. `startSessionFromTemplate` drops the `.reverse()` and concatenates the new batch *after* existing rows. New manual logs from "Log activity" also append rather than prepend.
+- **Knock-on:** the "ghost-fill / set-row" rendering inside an exercise card is unaffected (those are set-level rows inside a single activity). The "Save as template" flow reads `state.todayActivities` order — verify that captures exercises in the visible order (top → bottom of the day).
+- **No schema change.**
+
+### One-tap "Log Steam" on Train
+
+Steam is already in `RECOVERY_LIBRARY`, but reaching it takes four taps (FAB → category=Recovery → Pick from list → Steam → Log). Per the spec ("recovery activity category — Steam first"), Steam is the canonical recovery activity for this user, so it deserves a primary affordance.
+
+- **Add a "Log Steam" chip** to the Train Today layout, placed inline with "+ Log activity" at the bottom of the tab. Inserts a `tide_activities` row with `{category: 'recovery', type: 'Steam', source: 'manual', duration_min: 10, date: todayISO(), logged_at: now}`. Single tap. Toast: "Logged · Steam 10m".
+- **Tap-and-hold (550ms)** opens a duration override sheet (chip row: 10 / 15 / 20 / 30 / 45 min) so the user can record a longer/shorter session without going through the full activity modal.
+- **Future:** other recovery activities (Sauna, Ice Bath) can grow into the same quick-log row via a settings-managed list. Not implemented in v2.x; Steam-only for now.
+
+### AI trainer nudge (measured)
+
+A small, opt-out suggestion on a *just-logged* strength activity card that says: "you have room — try a bit more next time." Rule-based for V1 (no Claude call), so it's cheap and predictable; we can swap in Claude generation later if the phrasing feels too rigid.
+
+- **Surface rule (all must be true):**
+  1. Activity is `category='strength'` with non-null `metadata.weight_lb` and an `metadata.sets`/`metadata.reps` pair
+  2. `perceived_effort` (RPE) is set and ≤ 7 (anything 8+ = leave them alone)
+  3. The previous session of this exercise (any template, past 60 days) has the **same or lower** working weight — i.e. they've already cleared this load before, indicating room
+  4. The increment hasn't been dismissed for this exercise in the last 14 days (`localStorage['tide_trainer_dismissed']`)
+- **Increment math:** suggest `weight_lb + 5` for lifts ≥ 50 lb working weight; `weight_lb + 2.5` for accessories under 50 lb (the dumbbell rack jump). Capped at +10% so we never suggest a leap.
+- **Surface:** a single italic line in `--accent-deep` Fraunces at the bottom of the activity card: *"Felt easy at 185 lb — try 190 next time?"* with a discreet ghost "×" to dismiss for this exercise. Tone matches the v2 italicized-emphasis convention used in Pulse interpretation.
+- **No Claude call** for V1. Phrasing is one of three templates picked deterministically by exercise category (push/pull/legs) so the line varies enough to avoid feeling robotic.
+- **Persistence of nudges:** `localStorage['tide_trainer_dismissed']` = `{ [exerciseLowerName]: dismissed_iso }`. Cleared on each new session of that exercise that *did* increase weight (positive feedback wipes the cooldown).
+- **Why measured:** the dismissal cooldown + the RPE-7 floor + the "you've already done this weight" guard mean the nudge only fires when the user has genuinely left calories on the table. Better to skip the suggestion when in doubt than to push someone into junk volume.
 
 ---
 
