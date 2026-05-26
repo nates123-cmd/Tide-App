@@ -8761,6 +8761,12 @@ async function boot() {
   // v2: home opens on the Pulse, not on a tab. Clear any v1 default.
   state.tab = null;
   state.screen = 'home';
+  // Deep-link support: ?tab=train|food|water|drinks|supplements opens that
+  // tab directly. Used by the suite (e.g. Today's Gym block → ?tab=train).
+  const deepTab = new URLSearchParams(window.location.search).get('tab');
+  if (deepTab && ['train', 'food', 'water', 'drinks', 'supplements'].includes(deepTab)) {
+    state.tab = deepTab;
+  }
   render();
   // Profile + PAT sync — non-blocking, but kicked off early so the rest of
   // boot can grab the latest values from localStorage after it lands.
