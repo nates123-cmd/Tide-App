@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tide-v53';
+const CACHE_NAME = 'tide-v54';
 const STATIC_ASSETS = ['./', './index.html', './manifest.json', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -24,11 +24,12 @@ self.addEventListener('fetch', (event) => {
   // Bypass entirely on localhost
   if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return;
 
-  // Network-first for Anthropic + Supabase APIs
-  if (url.hostname.includes('anthropic.com') || url.hostname.includes('supabase.co')) {
-    event.respondWith(fetch(request).catch(() => caches.match(request)));
-    return;
-  }
+  // Bypass the SW for Anthropic + Supabase: let the browser fetch them
+  // directly. The old caches.match fallback was never populated (API responses
+  // aren't cached), so on failure it resolved undefined and respondWith threw
+  // "FetchEvent ... returned response is null". Bypassing lets offline failures
+  // reject natively to the app instead of a manufactured null response.
+  if (url.hostname.includes('anthropic.com') || url.hostname.includes('supabase.co')) return;
 
   // Cache-first for static assets
   event.respondWith(
