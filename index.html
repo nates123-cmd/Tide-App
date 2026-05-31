@@ -37,6 +37,17 @@
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* Suite text-selection sweep: suppress accidental highlight-drag on chrome
+     (buttons, tabs, rows), re-enable on form fields + the user's own logged
+     text/notes below. */
+  body { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
+  input, textarea, select, [contenteditable],
+  .ind-entry-title, .ind-entry-body, .ind-entry-meta,
+  .lib-entry-name, .stack-item-name,
+  .stat-value, .macro-value,
+  .pace-fused-intention, .reflect-prompt-text {
+    -webkit-user-select: text; -moz-user-select: text; user-select: text;
+  }
   /* Lock horizontal motion + pinch zoom at the document level. Inner
      elements with their own gestures (swipe-to-delete rows) still work
      because they declare their own touch-action. */
