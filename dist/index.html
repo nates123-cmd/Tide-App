@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1a3a5c">
 <title>Tide</title>
-<link rel="manifest" href="./manifest.json">
-<link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="./icons/icon-16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png">
+<link rel="manifest" href="/assets/manifest-D_AiSGPe.json">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32-B-X-VZh5.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/icon-16-BAJeqyui.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/icon-180-DJu1UnTJ.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Tide">
@@ -37,17 +37,6 @@
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  /* Suite text-selection sweep: suppress accidental highlight-drag on chrome
-     (buttons, tabs, rows), re-enable on form fields + the user's own logged
-     text/notes below. */
-  body { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
-  input, textarea, select, [contenteditable],
-  .ind-entry-title, .ind-entry-body, .ind-entry-meta,
-  .lib-entry-name, .stack-item-name,
-  .stat-value, .macro-value,
-  .pace-fused-intention, .reflect-prompt-text {
-    -webkit-user-select: text; -moz-user-select: text; user-select: text;
-  }
   /* Lock horizontal motion + pinch zoom at the document level. Inner
      elements with their own gestures (swipe-to-delete rows) still work
      because they declare their own touch-action. */
@@ -385,6 +374,7 @@
   .ind-entry { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
   .ind-entry-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
   .ind-entry-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--card-bg-warm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font-display); font-size: 13px; font-weight: 500; color: var(--accent-deep); }
+  .ind-entry-icon.coded { background: var(--bg); border: 1px dashed var(--border); color: var(--muted); }
   .ind-entry-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .ind-entry-title { font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: -0.005em; line-height: 1.2; }
   .ind-entry-meta { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: 0.01em; }
@@ -822,19 +812,6 @@
 </style>
 </head>
 <body>
-<div id="otp-gate" style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:none;align-items:center;justify-content:center;padding:24px">
-  <div style="width:100%;max-width:360px;display:flex;flex-direction:column;gap:14px;text-align:center">
-    <div style="font-size:1.6rem;font-weight:600;color:var(--text)">Tide</div>
-    <p id="otp-msg" style="color:var(--muted);font-size:.95rem">Sign in with your email. We'll send you an 8-digit code.</p>
-    <input id="otp-email" type="email" placeholder="you@example.com" autocomplete="email" style="width:100%;padding:14px 16px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--card-bg);color:var(--text);font-size:1rem;outline:none" />
-    <input id="otp-code" type="text" inputmode="numeric" maxlength="8" placeholder="8-digit code" autocomplete="one-time-code" style="display:none;width:100%;padding:14px 16px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--card-bg);color:var(--text);font-size:1rem;outline:none;letter-spacing:4px;text-align:center" />
-    <button id="otp-send" style="width:100%;padding:14px;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;font-size:1rem;cursor:pointer">Email me a code</button>
-    <button id="otp-verify" style="display:none;width:100%;padding:14px;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;font-size:1rem;cursor:pointer">Sign in</button>
-    <button id="otp-back" style="display:none;background:none;border:none;color:var(--muted);font-size:.9rem;cursor:pointer">Use a different email</button>
-    <p id="otp-err" style="color:var(--warn);font-size:.85rem;display:none"></p>
-    <p style="color:var(--muted);font-size:.78rem">Your data is private to your account.</p>
-  </div>
-</div>
 <div id="app"></div>
 
 <script src="dev-config.js" onerror="void 0"></script>
@@ -844,78 +821,6 @@
 // ============================================================================
 const SB_URL = 'https://xsmnfcmtbpeaccnyinkr.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzbW5mY210YnBlYWNjbnlpbmtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzODQ3MjksImV4cCI6MjA5Mzk2MDcyOX0.flUt1SAkkt1ppcKCR2XnPKbAaS4PjCLMzi3Gu08jVWo';
-
-// ── Suite auth (Supabase email OTP, 8-digit). Shared session under the
-// supabase-js key → one sign-in across the same-origin suite. ──
-const SB_AUTH_KEY = 'sb-xsmnfcmtbpeaccnyinkr-auth-token';
-function _authSession() { try { return JSON.parse(localStorage.getItem(SB_AUTH_KEY) || 'null'); } catch (e) { return null; } }
-function _setAuthSession(x) { if (x && x.access_token) localStorage.setItem(SB_AUTH_KEY, JSON.stringify(x)); else localStorage.removeItem(SB_AUTH_KEY); }
-function hasSession() { const x = _authSession(); return !!(x && x.access_token); }
-function _sessionExpired(x) { const exp = x && x.expires_at ? x.expires_at * 1000 : 0; return Date.now() > exp - 60000; }
-// Single-flight refresh. Supabase rotates the refresh token on every use, so
-// concurrent callers (parallel boot reads, sibling suite tabs sharing this
-// session key) must share ONE round-trip — otherwise the losers present a
-// rotated token, get "Refresh Token Not Found", and wipe the session → writes
-// fall back to the anon key and die on RLS. Re-read storage first (a sibling
-// may already have a fresh token) and only clear if the dead token is still ours.
-let _refreshInFlight = null;
-function _refreshSession() {
-  if (_refreshInFlight) return _refreshInFlight;
-  _refreshInFlight = (async () => {
-    let x = _authSession();
-    if (x && x.access_token && !_sessionExpired(x)) return x;
-    if (!x || !x.refresh_token) return null;
-    try {
-      const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: x.refresh_token }) });
-      if (!r.ok) {
-        const cur = _authSession();
-        if (cur && cur.access_token && !_sessionExpired(cur)) return cur;
-        if (cur && cur.refresh_token === x.refresh_token) _setAuthSession(null);
-        return null;
-      }
-      const ns = await r.json(); _setAuthSession(ns); return ns;
-    } catch (e) { return null; }
-  })();
-  _refreshInFlight.finally(() => { _refreshInFlight = null; });
-  return _refreshInFlight;
-}
-async function authToken() { let x = _authSession(); if (!x || !x.access_token) return null; if (_sessionExpired(x)) x = await _refreshSession(); return (x && x.access_token) || null; }
-async function sbBearer() { return (await authToken()) || SB_KEY; }
-async function otpSend(email) {
-  const r = await fetch(`${SB_URL}/auth/v1/otp`, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, create_user: true }) });
-  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.msg || e.error_description || e.error || 'Could not send code'); }
-}
-async function otpVerify(email, token) {
-  const r = await fetch(`${SB_URL}/auth/v1/verify`, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, token, type: 'email' }) });
-  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.msg || e.error_description || e.error || 'Invalid or expired code'); }
-  const x = await r.json(); _setAuthSession(x); return x;
-}
-function signOut() { _setAuthSession(null); showOtpGate(); }
-function showOtpGate() {
-  const gate = document.getElementById('otp-gate');
-  const emailEl = document.getElementById('otp-email'), codeEl = document.getElementById('otp-code');
-  const sendBtn = document.getElementById('otp-send'), verBtn = document.getElementById('otp-verify');
-  const backBtn = document.getElementById('otp-back'), errEl = document.getElementById('otp-err'), msgEl = document.getElementById('otp-msg');
-  const showErr = (m) => { errEl.textContent = m || ''; errEl.style.display = m ? 'block' : 'none'; };
-  const toEmail = () => { codeEl.style.display = 'none'; verBtn.style.display = 'none'; backBtn.style.display = 'none'; emailEl.style.display = ''; sendBtn.style.display = ''; msgEl.textContent = "Sign in with your email. We'll send you an 8-digit code."; showErr(''); };
-  toEmail(); gate.style.display = 'flex';
-  sendBtn.onclick = async () => {
-    const email = emailEl.value.trim(); if (!email) { showErr('Enter your email.'); return; }
-    sendBtn.disabled = true; sendBtn.textContent = 'Sending…'; showErr('');
-    try { await otpSend(email); emailEl.style.display = 'none'; sendBtn.style.display = 'none'; codeEl.style.display = ''; verBtn.style.display = ''; backBtn.style.display = ''; msgEl.textContent = 'Enter the 8-digit code sent to ' + email + '.'; codeEl.value = ''; codeEl.focus(); }
-    catch (e) { showErr(e.message); }
-    sendBtn.disabled = false; sendBtn.textContent = 'Email me a code';
-  };
-  verBtn.onclick = async () => {
-    const email = emailEl.value.trim(), code = codeEl.value.trim();
-    if (code.length !== 8) { showErr('The code is 8 digits.'); return; }
-    verBtn.disabled = true; verBtn.textContent = 'Verifying…'; showErr('');
-    try { await otpVerify(email, code); gate.style.display = 'none'; boot(); }
-    catch (e) { showErr(e.message); verBtn.disabled = false; verBtn.textContent = 'Sign in'; }
-  };
-  backBtn.onclick = toEmail;
-  codeEl.oninput = () => { codeEl.value = codeEl.value.replace(/\D/g, '').slice(0, 8); };
-}
 const CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 // State
@@ -926,11 +831,14 @@ let state = {
   currentQuote: null,
   dismissedQuotes: [],
   settingPaceTimer: null,
-  tab: 'water',                // 'water' | 'food' | 'supplements' | 'drinks'
+  tab: 'water',                // 'water' | 'food' | 'supplements' | 'drinks' (drinks tab includes substances)
   todayIntake: [],             // today's tide_intake_logs rows
   supplements: [],             // legacy alias of stackItems
   stackItems: [],              // tide_stack_items rows (active)
   stackLogs: [],               // recent (last 60d) tide_stack_logs for streak compute
+  aliases: [],                 // user's substance aliases
+  todayOther: [],              // today's coded entries (kind=coded, session_id=null) from tide_indulge_entries
+  activeCoded: [],             // coded entries inside the active session
   sipSection: 'water',         // 'water' | 'caffeine' — Sip tab's active sub-section
   foodLibraryRows: [],         // last 90 days of food intake rows for the Fuel library
   libQuery: '',
@@ -1002,7 +910,6 @@ const WATER_DAY_END_HR = 22;     // hit full goal by 10pm
 const CAFFEINE_PRESETS = [
   { id: 'coffee',   label: 'Coffee',   mg: 95 },
   { id: 'espresso', label: 'Espresso', mg: 65 },
-  { id: 'itoen',    label: 'Ito En',   mg: 30 },
   { id: 'tea',      label: 'Tea',      mg: 40 },
 ];
 const CAFFEINE_SOFT_LIMIT_MG = 400; // FDA "safe" daily upper bound
@@ -1016,6 +923,7 @@ function waterPaceTarget(now = new Date()) {
 }
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
 const SUPP_TIMINGS = ['morning', 'afternoon', 'evening'];
+const ROUTES = ['oral', 'inhaled', 'other'];
 
 // The logical day starts at 5am LOCAL time, not midnight: anything logged
 // between midnight and 5am still counts toward the previous day (you're still
@@ -1151,7 +1059,7 @@ async function sbFetch(path, opts = {}) {
     ...opts,
     headers: {
       apikey: SB_KEY,
-      Authorization: `Bearer ${await sbBearer()}`,
+      Authorization: `Bearer ${SB_KEY}`,
       'Content-Type': 'application/json',
       Prefer: opts.method === 'POST' ? 'return=representation' : (opts.method === 'PATCH' ? 'return=representation' : ''),
       ...(opts.headers || {}),
@@ -1169,31 +1077,30 @@ async function sbFetch(path, opts = {}) {
 // ---------------------------------------------------------------------------
 // Claude
 // ---------------------------------------------------------------------------
-// Routed through the JWT-gated `claude` edge proxy — the Anthropic key lives
-// server-side, never in the browser. Requires a login.
 async function callClaude(userPrompt, { system = null, maxTokens = 400 } = {}) {
-  if (!hasSession()) throw new Error('Sign in to use Tide AI');
+  const key = getKey();
+  if (!key) throw new Error('No API key set');
   const body = {
     model: CLAUDE_MODEL,
     max_tokens: maxTokens,
     messages: [{ role: 'user', content: userPrompt }],
   };
   if (system) body.system = system;
-  const r = await fetch(`${SB_URL}/functions/v1/claude`, {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      apikey: SB_KEY,
-      Authorization: `Bearer ${await sbBearer()}`,
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
   });
   if (!r.ok) {
     const t = await r.text();
-    throw new Error(`Claude proxy ${r.status}: ${t.slice(0, 200)}`);
+    throw new Error(`Claude ${r.status}: ${t.slice(0, 200)}`);
   }
   const data = await r.json();
-  if (typeof data.text === 'string') return data.text.trim();
   return (data.content || []).map(c => c.text || '').join('').trim();
 }
 
@@ -1700,9 +1607,9 @@ function computeBAC(drinks, profile) {
 // Render — root
 // ---------------------------------------------------------------------------
 function render() {
-  if (!hasSession()) {
+  if (!getKey()) {
     document.querySelector('.bottom-nav')?.remove();
-    return showOtpGate();
+    return renderKeyForm();
   }
   const screen = state.screen || 'home';
   if (screen === 'home') renderHome();
@@ -2108,7 +2015,7 @@ function wireReflectPrompt(pending) {
 }
 
 // ---------------------------------------------------------------------------
-// Indulge tab (v2 chunk 2) — alcohol session ritual
+// Indulge tab (v2 chunk 2) — unified alcohol + coded session ritual
 // ---------------------------------------------------------------------------
 const INDULGE_SETTINGS = ['Out', 'Home', 'Event', 'Travel'];
 
@@ -2278,10 +2185,11 @@ function renderIndulgeActive() {
     s.who_with ? `with ${s.who_with}` : (s.setting || ''),
   ].filter(Boolean).join(' · ');
 
-  // Entries: alcohol logs by entry_at asc
-  const merged = state.drinks
-    .map(d => ({ ...d, _kind: 'alcohol' }))
-    .sort((a, b) => new Date(a.entry_at || a.drink_at).getTime() - new Date(b.entry_at || b.drink_at).getTime());
+  // Entries: merge alcohol + coded by entry_at desc
+  const merged = [
+    ...state.drinks.map(d => ({ ...d, _kind: 'alcohol' })),
+    ...(state.activeCoded || []).map(c => ({ ...c, _kind: 'coded' })),
+  ].sort((a, b) => new Date(a.entry_at || a.drink_at).getTime() - new Date(b.entry_at || b.drink_at).getTime());
 
   // BAC card column shows only if profile has weight + sex
   const showBac = !!(profile && profile.weight_lb && profile.gender);
@@ -2338,7 +2246,7 @@ function renderIndulgeActive() {
       <div class="ind-chip" data-units="1.5">1½<span class="ind-chip-label">unit</span></div>
       <div class="ind-chip" data-units="2">2<span class="ind-chip-label">unit</span></div>
     </div>
-    <button class="more-btn" id="ind-more">+ Type</button>
+    <button class="more-btn" id="ind-more">+ Type or coded entry</button>
 
     <button class="primary-btn" id="ind-end">
       End session
@@ -2365,7 +2273,7 @@ function renderIndulgeActive() {
     }
   });
 
-  $('#ind-more').onclick = openLogDrink;
+  $('#ind-more').onclick = openIndulgeMore;
 
   $$('.ind-entry').forEach(row => row.onclick = () => {
     const id = row.dataset.entryId;
@@ -2375,25 +2283,48 @@ function renderIndulgeActive() {
   attachSwipeToDelete($$('.swipe-row.swipe-indulge'), async (id) => {
     await sbFetch(`/tide_indulge_entries?id=eq.${id}`, { method: 'DELETE' });
     state.drinks = state.drinks.filter(d => d.id !== id);
+    state.activeCoded = (state.activeCoded || []).filter(c => c.id !== id);
     render();
   });
 }
 
 function renderIndulgeEntry(e) {
   const time = fmtTime(e.entry_at || e.drink_at || e.logged_at);
-  const label = DRINK_LABELS[e.drink_type] || e.drink_type;
-  const initial = (label || '?').charAt(0).toUpperCase();
-  const units = Number(e.standard_units) || 1;
-  const unitsLabel = units === 1 ? '1 standard' : `${units} standard`;
+  if (e._kind === 'alcohol') {
+    const label = DRINK_LABELS[e.drink_type] || e.drink_type;
+    const initial = (label || '?').charAt(0).toUpperCase();
+    const units = Number(e.standard_units) || 1;
+    const unitsLabel = units === 1 ? '1 standard' : `${units} standard`;
+    return `
+      <div class="swipe-row swipe-indulge" data-id="${e.id}" data-kind="alcohol">
+        <div class="swipe-content">
+          <div class="ind-entry" data-entry-id="${e.id}" data-entry-kind="alcohol">
+            <div class="ind-entry-left">
+              <div class="ind-entry-icon">${escapeHtml(initial)}</div>
+              <div class="ind-entry-body">
+                <div class="ind-entry-title">${escapeHtml(label)}</div>
+                <div class="ind-entry-meta">${escapeHtml(unitsLabel)}</div>
+              </div>
+            </div>
+            <div class="ind-entry-time">${time}</div>
+          </div>
+        </div>
+        <div class="swipe-action">Delete</div>
+      </div>
+    `;
+  }
+  // coded
+  const aliasText = e.alias_text || e.alias || '?';
+  const initial = String(aliasText).charAt(0).toUpperCase();
   return `
-    <div class="swipe-row swipe-indulge" data-id="${e.id}" data-kind="alcohol">
+    <div class="swipe-row swipe-indulge" data-id="${e.id}" data-kind="coded">
       <div class="swipe-content">
-        <div class="ind-entry" data-entry-id="${e.id}" data-entry-kind="alcohol">
+        <div class="ind-entry" data-entry-id="${e.id}" data-entry-kind="coded">
           <div class="ind-entry-left">
-            <div class="ind-entry-icon">${escapeHtml(initial)}</div>
+            <div class="ind-entry-icon coded">${escapeHtml(initial)}</div>
             <div class="ind-entry-body">
-              <div class="ind-entry-title">${escapeHtml(label)}</div>
-              <div class="ind-entry-meta">${escapeHtml(unitsLabel)}</div>
+              <div class="ind-entry-title">${escapeHtml(aliasText)}</div>
+              <div class="ind-entry-meta">${escapeHtml(e.amount || '1 entry')}</div>
             </div>
           </div>
           <div class="ind-entry-time">${time}</div>
@@ -2404,23 +2335,58 @@ function renderIndulgeEntry(e) {
   `;
 }
 
-function openIndulgeEntryDetail(id, kind) {
-  const e = state.drinks.find(d => d.id === id);
-  if (!e) return;
-  const label = DRINK_LABELS[e.drink_type] || e.drink_type;
+// "+ Type or coded entry" — picks between full alcohol-type sheet and coded-entry sheet.
+function openIndulgeMore() {
   showModal(`
-    <h2>${escapeHtml(label)}</h2>
-    <p class="small muted">${e.standard_units} standard · ${fmtTime(e.entry_at || e.drink_at)}</p>
-    <div class="btn-row">
-      <button class="btn btn-soft" data-close>Close</button>
-      <button class="btn btn-warm" id="entry-delete">Delete</button>
+    <h2>Add another</h2>
+    <div class="btn-row" style="gap: 10px">
+      <button class="btn btn-soft" id="more-alcohol" style="flex: 1">Alcohol type</button>
+      <button class="btn btn-soft" id="more-coded" style="flex: 1">Coded entry</button>
     </div>
   `, () => {
-    $('#entry-delete').onclick = async () => {
-      await undoDrink(id);
-      closeModal();
-    };
+    $('#more-alcohol').onclick = () => { closeModal(); setTimeout(openLogDrink, 60); };
+    $('#more-coded').onclick = () => { closeModal(); setTimeout(() => openLogOther(), 60); };
   });
+}
+
+function openIndulgeEntryDetail(id, kind) {
+  if (kind === 'alcohol') {
+    const e = state.drinks.find(d => d.id === id);
+    if (!e) return;
+    const label = DRINK_LABELS[e.drink_type] || e.drink_type;
+    showModal(`
+      <h2>${escapeHtml(label)}</h2>
+      <p class="small muted">${e.standard_units} standard · ${fmtTime(e.entry_at || e.drink_at)}</p>
+      <div class="btn-row">
+        <button class="btn btn-soft" data-close>Close</button>
+        <button class="btn btn-warm" id="entry-delete">Delete</button>
+      </div>
+    `, () => {
+      $('#entry-delete').onclick = async () => {
+        await undoDrink(id);
+        closeModal();
+      };
+    });
+  } else {
+    const e = (state.activeCoded || []).find(c => c.id === id);
+    if (!e) return;
+    const alias = e.alias_text || '(coded)';
+    showModal(`
+      <h2>${escapeHtml(alias)}</h2>
+      <p class="small muted">${escapeHtml(e.amount || '1 entry')} · ${fmtTime(e.entry_at)}</p>
+      <div class="btn-row">
+        <button class="btn btn-soft" data-close>Close</button>
+        <button class="btn btn-warm" id="entry-delete">Delete</button>
+      </div>
+    `, () => {
+      $('#entry-delete').onclick = async () => {
+        await sbFetch(`/tide_indulge_entries?id=eq.${id}`, { method: 'DELETE' });
+        state.activeCoded = (state.activeCoded || []).filter(x => x.id !== id);
+        closeModal();
+        render();
+      };
+    });
+  }
 }
 
 // BAC trend: compare current BAC to what we'd compute 15 minutes ago.
@@ -4149,7 +4115,7 @@ async function getSignedUrl(path) {
     method: 'POST',
     headers: {
       apikey: SB_KEY,
-      Authorization: `Bearer ${await sbBearer()}`,
+      Authorization: `Bearer ${SB_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ expiresIn: SIGNED_URL_TTL_SEC }),
@@ -4173,7 +4139,7 @@ async function uploadBodyPhoto(file, dateISO) {
     method: 'POST',
     headers: {
       apikey: SB_KEY,
-      Authorization: `Bearer ${await sbBearer()}`,
+      Authorization: `Bearer ${SB_KEY}`,
       'x-upsert': 'true',
       'Content-Type': file.type || 'application/octet-stream',
     },
@@ -4190,7 +4156,7 @@ async function uploadBodyPhoto(file, dateISO) {
 async function deletePhotoFromStorage(path) {
   await fetch(`${SB_URL}/storage/v1/object/${BODY_PHOTO_BUCKET}/${encodeURIComponent(path)}`, {
     method: 'DELETE',
-    headers: { apikey: SB_KEY, Authorization: `Bearer ${await sbBearer()}` },
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
   });
   delete signedUrlCache[path];
 }
@@ -5916,7 +5882,7 @@ function renderLibEntry(e) {
 async function fetchRecipeFromUrl(url) {
   const proxyUrl = `${SB_URL}/functions/v1/recipe-proxy?url=${encodeURIComponent(url)}`;
   const r = await fetch(proxyUrl, {
-    headers: { apikey: SB_KEY, Authorization: `Bearer ${await sbBearer()}` },
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
   });
   if (!r.ok) {
     let detail = '';
@@ -6502,6 +6468,7 @@ function renderTabContent(tab) {
       ${hasSession ? renderActiveSessionCard(pace, elapsed) : renderIdleCard()}
       ${hasSession ? renderDrinkList() : renderWeekSummary()}
       ${renderCaffeineSection()}
+      ${renderOtherSection()}
     `;
   }
   if (tab === 'water') return renderWaterTab();
@@ -6537,6 +6504,50 @@ function renderCaffeineSection() {
   `;
 }
 
+function renderOtherSection() {
+  const today = todayISO();
+  const todayOther = state.todayOther.filter(r => r.log_date === today);
+  const aliases = state.aliases.filter(a => a.active !== false);
+
+  if (aliases.length === 0) {
+    return `
+      <div class="card">
+        <div class="row" style="margin-bottom: 6px">
+          <h3 style="margin: 0">◦</h3>
+        </div>
+        <p class="small muted" style="margin-bottom: 12px">Track anything else here. You name it — the actual name is never stored.</p>
+        <button class="btn btn-soft" id="other-aliases">Add a label</button>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="card">
+      <div class="row" style="margin-bottom: 10px">
+        <div class="stack">
+          <h3 style="margin: 0">◦</h3>
+          <div class="muted small">${todayOther.length} today</div>
+        </div>
+        <div style="display: flex; gap: 8px">
+          <button class="nav-btn" id="other-aliases">Labels</button>
+          <button class="nav-btn" id="other-log">+ Log</button>
+        </div>
+      </div>
+      ${todayOther.length === 0
+        ? '<div class="muted small">Nothing logged today.</div>'
+        : `<div>${todayOther.slice().reverse().map(r => `
+            <div class="intake-item">
+              <div>
+                <div>${escapeHtml(r.alias)}${r.dose_amount ? ` · ${r.dose_amount}${r.dose_unit ? ' ' + escapeHtml(r.dose_unit) : ''}` : ''}</div>
+                <div class="muted small">${r.setting ? escapeHtml(r.setting) : ''}${r.who_with ? ' · ' + escapeHtml(r.who_with) : ''}${r.mood_before ? ' · ' + escapeHtml(r.mood_before) : ''}</div>
+              </div>
+              <div class="muted small">${fmtTime(r.logged_at)} <span class="x" data-undo-other="${r.id}" role="button" aria-label="Undo">×</span></div>
+            </div>`).join('')}</div>`
+      }
+    </div>
+  `;
+}
+
 function wireTabEvents(tab) {
   if (tab === 'drinks') {
     if (state.activeSession) {
@@ -6546,6 +6557,11 @@ function wireTabEvents(tab) {
       const start = $('#start-session');
       if (start) start.onclick = openStartSession;
     }
+    // Substances section (always present on this tab)
+    const otherLog = $('#other-log');
+    if (otherLog) otherLog.onclick = openLogOther;
+    const otherAliases = $('#other-aliases');
+    if (otherAliases) otherAliases.onclick = openManageAliases;
     // Caffeine section
     $$('[data-caff]').forEach(c => c.onclick = () => logCaffeine(c.dataset.caff, parseInt(c.dataset.caffMg, 10)));
     const caffCustom = document.querySelector('[data-caff-custom]');
@@ -7192,6 +7208,7 @@ async function startSession(sel) {
   const result = await sbFetch('/tide_indulge_sessions', { method: 'POST', body: JSON.stringify(row) });
   state.activeSession = result[0];
   state.drinks = [];
+  state.activeCoded = [];
   saveLocal();
   loadQuote(true);
   render();
@@ -7207,6 +7224,8 @@ function openLogDrink() {
   const atLimit = intentionHasLimit(intention) && count + 1 > intention;
   const label = intentionLabel(intention);
 
+  const aliases = state.aliases.filter(a => a.active !== false);
+
   showModal(`
     <h2>Log a drink</h2>
     ${atLimit ? `<div class="card" style="background: rgba(181, 117, 74, 0.12); margin-bottom: 14px"><div class="small">You said ${label} tonight. This would be ${count + 1}. Just noticing.</div></div>` : ''}
@@ -7216,6 +7235,11 @@ function openLogDrink() {
       <div class="grid-4">
         ${Object.keys(DRINK_LABELS).map(t => `<div class="chip" data-type="${t}">${DRINK_LABELS[t]}</div>`).join('')}
       </div>
+      ${aliases.length ? `
+        <div class="grid-4" style="margin-top: 8px">
+          ${aliases.map(a => `<div class="chip chip-soft" data-alias-pick="${escapeHtml(a.alias)}">◦ ${escapeHtml(a.alias)}</div>`).join('')}
+        </div>
+      ` : ''}
     </div>
 
     <div class="modal-section">
@@ -7242,6 +7266,11 @@ function openLogDrink() {
         sel.standard_units = 1.5;
       }
       updateBtn();
+    });
+    m.querySelectorAll('[data-alias-pick]').forEach(c => c.onclick = () => {
+      const alias = c.dataset.aliasPick;
+      closeModal();
+      openLogOther(alias);
     });
     m.querySelectorAll('[data-units]').forEach(c => c.onclick = () => {
       m.querySelectorAll('[data-units]').forEach(x => x.classList.remove('selected'));
@@ -7324,6 +7353,7 @@ function openLogAny() {
       <div class="chip" data-add="meal" style="padding: 18px 8px">Meal</div>
       <div class="chip" data-add="drink" style="padding: 18px 8px">${drinkLabel}</div>
       <div class="chip" data-add="supp" style="padding: 18px 8px">Supplement</div>
+      <div class="chip" data-add="substance" style="padding: 18px 8px">◦ Substance</div>
     </div>
   `, (m) => {
     m.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
@@ -7352,6 +7382,8 @@ async function handleAddChoice(choice) {
     if (state.supplements.filter(s => s.active !== false).length === 0) {
       openManageSupplements();
     }
+  } else if (choice === 'substance') {
+    openLogOther();
   }
 }
 
@@ -7445,12 +7477,24 @@ async function undoIntake(id) {
   }
 }
 
+async function undoOther(id) {
+  try {
+    await sbFetch(`/tide_indulge_entries?id=eq.${id}`, { method: 'DELETE' });
+    state.todayOther = state.todayOther.filter(r => r.id !== id);
+    render();
+  } catch (e) {
+    toast('Could not undo: ' + e.message);
+  }
+}
+
 // Wire dynamic undo buttons after every render
 document.addEventListener('click', (e) => {
   const undo = e.target.closest('[data-undo]');
   if (undo) undoDrink(undo.dataset.undo);
   const undoIntakeEl = e.target.closest('[data-undo-intake]');
   if (undoIntakeEl) undoIntake(undoIntakeEl.dataset.undoIntake);
+  const undoOtherEl = e.target.closest('[data-undo-other]');
+  if (undoOtherEl) undoOther(undoOtherEl.dataset.undoOther);
 });
 
 // ---------------------------------------------------------------------------
@@ -7789,6 +7833,200 @@ async function toggleSupplement(supplementId, _name) {
 }
 
 // ---------------------------------------------------------------------------
+// Other (discreet)
+// ---------------------------------------------------------------------------
+function openManageAliases() {
+  const renderRows = () => state.aliases.map(a => `
+    <div class="intake-item">
+      <div>${escapeHtml(a.alias)}</div>
+      <span class="x" data-alias-remove="${a.id}" role="button" aria-label="Remove">×</span>
+    </div>
+  `).join('');
+
+  showModal(`
+    <h2>Labels</h2>
+    <p class="small muted" style="margin-bottom: 14px">You define the label. The actual name is never stored or sent anywhere.</p>
+    <div id="alias-list">${state.aliases.length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">None yet.</div>'}</div>
+
+    <div class="modal-section">
+      <div class="label">Add a label</div>
+      <input id="alias-name" type="text" placeholder="anything — A, mellow, etc." autocomplete="off" maxlength="40">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Done</button>
+      <button class="btn" id="alias-add" disabled style="opacity: 0.5">Add</button>
+    </div>
+  `, (m) => {
+    const refresh = () => {
+      const ok = !!$('#alias-name').value.trim();
+      $('#alias-add').disabled = !ok; $('#alias-add').style.opacity = ok ? 1 : 0.5;
+    };
+    $('#alias-name').oninput = refresh;
+    const wireRemoves = () => m.querySelectorAll('[data-alias-remove]').forEach(b => b.onclick = async () => {
+      await removeAlias(b.dataset.aliasRemove);
+      $('#alias-list').innerHTML = state.aliases.length ? renderRows() : '<div class="muted small" style="margin-bottom: 14px">None yet.</div>';
+      wireRemoves();
+    });
+    wireRemoves();
+    $('#alias-add').onclick = async () => {
+      const a = $('#alias-name').value.trim();
+      if (!a) return;
+      try {
+        await addAlias(a);
+      } catch (e) {
+        toast('Already exists'); return;
+      }
+      $('#alias-name').value = '';
+      $('#alias-list').innerHTML = renderRows();
+      wireRemoves();
+      refresh();
+    };
+  });
+}
+
+async function addAlias(alias) {
+  const result = await sbFetch('/tide_other_aliases', { method: 'POST', body: JSON.stringify({ alias, active: true }) });
+  state.aliases.push(result[0]);
+}
+
+async function removeAlias(id) {
+  await sbFetch(`/tide_other_aliases?id=eq.${id}`, { method: 'DELETE' });
+  state.aliases = state.aliases.filter(a => a.id !== id);
+}
+
+function openLogOther(preselectedAlias = null) {
+  const aliases = state.aliases.filter(a => a.active !== false);
+  if (aliases.length === 0) { openManageAliases(); return; }
+
+  showModal(`
+    <h2>Log</h2>
+
+    <div class="modal-section">
+      <div class="label">Label</div>
+      <div class="grid-3">
+        ${aliases.map(a => `<div class="chip" data-alias="${escapeHtml(a.alias)}">${escapeHtml(a.alias)}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Dose</div>
+      <div class="grid-2">
+        <input id="dose-amount" type="number" inputmode="decimal" step="any" placeholder="amount">
+        <input id="dose-unit" type="text" placeholder="unit (tab / g / mg)" maxlength="12">
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Route</div>
+      <div class="grid-3">
+        ${ROUTES.map(r => `<div class="chip" data-route="${r}" style="text-transform: capitalize">${r}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Setting</div>
+      <div class="grid-3">
+        ${SETTINGS.map(s => `<div class="chip" data-setting="${s}" style="text-transform: capitalize">${s}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Who with</div>
+      <div class="grid-3">
+        ${COMPANY.map(c => `<div class="chip" data-who="${c}" style="text-transform: capitalize">${c}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="label">Mood going in</div>
+      <input id="mood-input" type="text" placeholder="one word — curious, calm, frayed" maxlength="40">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-soft" data-close>Cancel</button>
+      <button class="btn" id="other-go" disabled style="opacity: 0.5">Log</button>
+    </div>
+  `, (m) => {
+    const sel = { alias: null, route: null, setting: null, who_with: null };
+    const refresh = () => {
+      const ok = !!sel.alias;
+      $('#other-go').disabled = !ok; $('#other-go').style.opacity = ok ? 1 : 0.5;
+    };
+    const pick = (attr, key) => m.querySelectorAll(`[data-${attr}]`).forEach(c => c.onclick = () => {
+      m.querySelectorAll(`[data-${attr}]`).forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected'); sel[key] = c.dataset[attr.replace(/-./g, x => x[1].toUpperCase())];
+      refresh();
+    });
+    pick('alias', 'alias');
+    pick('route', 'route');
+    pick('setting', 'setting');
+    pick('who', 'who_with');
+
+    if (preselectedAlias) {
+      const chip = m.querySelector(`[data-alias="${CSS.escape(preselectedAlias)}"]`);
+      if (chip) chip.click();
+    }
+
+    $('#other-go').onclick = async () => {
+      $('#other-go').disabled = true; $('#other-go').textContent = 'Logging…';
+      try {
+        await logOther({
+          alias: sel.alias,
+          dose_amount: parseFloat($('#dose-amount').value) || null,
+          dose_unit: $('#dose-unit').value.trim() || null,
+          route: sel.route,
+          setting: sel.setting,
+          who_with: sel.who_with,
+          mood_before: $('#mood-input').value.trim() || null,
+        });
+        closeModal();
+      } catch (e) {
+        toast('Could not log: ' + e.message);
+        $('#other-go').disabled = false; $('#other-go').textContent = 'Log';
+      }
+    };
+  });
+}
+
+async function logOther(row) {
+  // v1 row shape: { alias, dose_amount, dose_unit, route, setting, who_with, mood_before, notes }
+  // Map to v2 tide_indulge_entries (kind=coded, session_id=current if any).
+  const aliasObj = (state.aliases || []).find(a => a.alias === row.alias);
+  const amount = (row.dose_amount != null)
+    ? `${row.dose_amount}${row.dose_unit ? ' ' + row.dose_unit : ''}`
+    : null;
+  const notesParts = [row.setting, row.who_with, row.mood_before, row.notes].filter(Boolean);
+  const v2 = {
+    session_id: state.activeSession ? state.activeSession.id : null,
+    kind: 'coded',
+    alias_id: aliasObj ? aliasObj.id : null,
+    amount,
+    notes: notesParts.length ? notesParts.join(' · ') : null,
+    entry_at: new Date().toISOString(),
+    log_date: todayISO(),
+  };
+  const result = await sbFetch('/tide_indulge_entries', { method: 'POST', body: JSON.stringify(v2) });
+  // Keep v1-shaped fields on the row so existing renderers work.
+  const r = {
+    ...result[0],
+    alias: row.alias,
+    dose_amount: row.dose_amount,
+    dose_unit: row.dose_unit,
+    setting: row.setting,
+    who_with: row.who_with,
+    mood_before: row.mood_before,
+    logged_at: result[0].entry_at,
+  };
+  if (state.activeSession) {
+    state.activeCoded = (state.activeCoded || []).concat([r]);
+  } else {
+    state.todayOther.push(r);
+  }
+  render();
+}
+
+// ---------------------------------------------------------------------------
 // End session
 // ---------------------------------------------------------------------------
 function openEndSession() {
@@ -7856,6 +8094,7 @@ async function endSession(feeling, note, endedAtIso) {
   });
   state.activeSession = null;
   state.drinks = [];
+  state.activeCoded = [];
   saveLocal();
   await loadHistory();
   render();
@@ -8253,14 +8492,19 @@ async function loadActiveSession() {
     if (sessions && sessions.length) {
       state.activeSession = sessions[0];
       const entries = await sbFetch(
-        `/tide_indulge_entries?session_id=eq.${sessions[0].id}&kind=eq.alcohol&order=entry_at.asc`
+        `/tide_indulge_entries?session_id=eq.${sessions[0].id}&order=entry_at.asc&select=*,alias:tide_other_aliases(alias)`
       );
+      const alc = (entries || []).filter(e => e.kind === 'alcohol');
+      const coded = (entries || []).filter(e => e.kind === 'coded');
       // Preserve drink_at alias on alcohol rows so computePace/computeBAC and the v1
       // renderers keep working without per-call mapping.
-      state.drinks = (entries || []).map(d => ({ ...d, drink_at: d.entry_at }));
+      state.drinks = alc.map(d => ({ ...d, drink_at: d.entry_at }));
+      // Surface alias text on coded rows for the renderer.
+      state.activeCoded = coded.map(c => ({ ...c, alias_text: c.alias ? c.alias.alias : null }));
     } else {
       state.activeSession = null;
       state.drinks = [];
+      state.activeCoded = [];
     }
     saveLocal();
   } catch (e) {
@@ -8327,6 +8571,36 @@ async function logAsNeeded(itemId) {
   if (result && result[0]) state.stackLogs.unshift(result[0]);
   toast('Logged');
   render();
+}
+
+async function loadAliases() {
+  try {
+    const rows = await sbFetch('/tide_other_aliases?active=eq.true&order=created_at.asc');
+    state.aliases = rows || [];
+  } catch (e) {
+    console.warn('loadAliases failed:', e.message);
+    state.aliases = [];
+  }
+}
+
+async function loadTodayOther() {
+  // v2: today's coded entries that aren't attached to a session.
+  try {
+    const rows = await sbFetch(
+      `/tide_indulge_entries?kind=eq.coded&session_id=is.null&log_date=eq.${todayISO()}&order=entry_at.asc&select=*,alias:tide_other_aliases(alias)`
+    );
+    // Map to the v1 row shape the existing renderOtherSection consumes.
+    state.todayOther = (rows || []).map(r => ({
+      ...r,
+      alias: r.alias ? r.alias.alias : '(unknown)',
+      logged_at: r.entry_at,
+      dose_amount: r.amount,
+      dose_unit: null,
+    }));
+  } catch (e) {
+    console.warn('loadTodayOther failed:', e.message);
+    state.todayOther = [];
+  }
 }
 
 // Today's alcohol entries (any session, ended or not) for the Fuel energy ring.
@@ -8452,7 +8726,7 @@ async function loadHistory() {
 async function loadDayData() {
   await loadActiveSession();
   await loadHistory();
-  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadTodayAlcohol(), loadCaffeinePresets(), loadFoodLibrary(), loadTodayActivities(), loadWorkoutTemplates(), loadRecentTemplateUses(), loadLatestDigest()]);
+  await Promise.all([loadTodayIntake(), loadSupplements(), loadStackLogs(), loadAliases(), loadTodayOther(), loadTodayAlcohol(), loadCaffeinePresets(), loadFoodLibrary(), loadTodayActivities(), loadWorkoutTemplates(), loadRecentTemplateUses(), loadLatestDigest()]);
   state.loadedDay = todayISO();
 }
 
@@ -8461,7 +8735,7 @@ async function loadDayData() {
 // the active tabs reset. Guarded against concurrent runs.
 let _rolloverInFlight = false;
 async function maybeRollover() {
-  if (_rolloverInFlight || !hasSession()) return;
+  if (_rolloverInFlight || !getKey()) return;
   if (todayISO() === state.loadedDay) return;
   _rolloverInFlight = true;
   try {
@@ -8482,8 +8756,7 @@ window.addEventListener('focus', maybeRollover);
 setInterval(maybeRollover, 60000);
 
 async function boot() {
-  if (!hasSession()) { showOtpGate(); return; }
-  document.getElementById('otp-gate').style.display = 'none';
+  if (!getKey()) { renderKeyForm(); return; }
   loadLocal();
   // v2: home opens on the Pulse, not on a tab. Clear any v1 default.
   state.tab = null;

@@ -286,6 +286,16 @@ create table tide_activities (
   created_at timestamptz not null default now()
 );
 
+-- 19. Caffeine presets — user-defined quick tiles (in addition to the fixed
+--     Coffee/Espresso/Tea defaults hardcoded in the app).
+create table tide_caffeine_presets (
+  id uuid primary key default gen_random_uuid(),
+  label text not null,
+  mg int not null,
+  position int not null default 0,
+  created_at timestamptz not null default now()
+);
+
 -- RLS on everything
 alter table tide_sessions enable row level security;
 alter table tide_drinks enable row level security;
@@ -307,6 +317,7 @@ alter table tide_strength_sessions enable row level security;
 alter table tide_body_metrics enable row level security;
 alter table tide_digests enable row level security;
 alter table tide_profile enable row level security;
+alter table tide_caffeine_presets enable row level security;
 
 create policy "anon all" on tide_sessions for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_drinks for all to anon, authenticated using (true) with check (true);
@@ -328,6 +339,7 @@ create policy "anon all" on tide_strength_sessions for all to anon, authenticate
 create policy "anon all" on tide_body_metrics for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_digests for all to anon, authenticated using (true) with check (true);
 create policy "anon all" on tide_profile for all to anon, authenticated using (true) with check (true);
+create policy "anon all" on tide_caffeine_presets for all to anon, authenticated using (true) with check (true);
 
 grant all on
   tide_sessions,
@@ -349,7 +361,8 @@ grant all on
   tide_strength_sessions,
   tide_body_metrics,
   tide_digests,
-  tide_profile
+  tide_profile,
+  tide_caffeine_presets
   to anon, authenticated, service_role;
 
 -- Seed the singleton row
@@ -382,5 +395,6 @@ create index tide_strength_sessions_exercise_idx on tide_strength_sessions(exerc
 create index tide_strength_sessions_weight_idx   on tide_strength_sessions(exercise, weight_lb desc);
 create index tide_body_metrics_date_idx          on tide_body_metrics(date desc);
 create index tide_digests_week_idx               on tide_digests(week_start desc);
+create index tide_caffeine_presets_position_idx  on tide_caffeine_presets(position, created_at);
 
 notify pgrst, 'reload schema';

@@ -277,6 +277,22 @@ Quick-start row appears at top when no session is active: template chips with la
 - Confirm → logs to `tide_intake_logs` with metadata
 - Adjust → user can edit any field before confirming
 
+#### Alcohol energy (cross-tab — added v2.x)
+
+**Problem:** Drinks are logged in Indulge (`tide_indulge_entries`, `kind='alcohol'`) but carry no calorie value and never reach the Fuel ring. A 6-drink night (~900+ kcal) leaves the ring reading well under goal.
+
+**Fix — derived, not double-logged.** Alcohol calories are *computed* from existing indulge entries; no new table, no second log. The drink stays authored in Indulge; Fuel only reflects it (same philosophy as the derived meal Library).
+
+- Per-standard-unit kcal by type (awareness-grade estimates, consistent with how the app already abstracts pours into standard units):
+  - beer 150 · wine 125 · spirits 100 · cocktail 150 — multiplied by the entry's `standard_units` (cocktails log at 1.4–1.5 units → ~210–225 kcal)
+  - unknown / alias type → 100 per unit (≈ pure-ethanol floor: 14 g × 7 kcal)
+- `todayAlcoholKcal()` sums today's `kind='alcohol'` entries by `log_date = today`, merging the active session's `state.drinks` with `state.todayAlcohol` (earlier ended-session drinks loaded at boot), deduped by id — independent of whether a session is active or started yesterday.
+- **Ring total = food kcal + alcohol kcal.** "X left", the ring arc, and the Claude remaining-hint all use the combined energy figure.
+- **Macros stay food-only.** Alcohol is the "fourth macro" — fuzzy carb/sugar content is *not* added to the P/C/F bars, keeping food macro tracking honest. A future refinement could attribute beer/wine/cocktail carbs explicitly.
+- **Transparency:** a muted "incl. ~N kcal alcohol" sub-line under the ring total when alcohol kcal > 0; in the Today section, one distinct warn-toned "Alcohol · N drinks" row (not a meal card) showing the kcal, tap → Indulge tab (drinks are edited there, not in Fuel — satisfies the "Today rows are tappable to edit/delete" convention).
+
+**Schema:** none. Pure read-side derivation over `tide_indulge_entries`. New boot loader `loadTodayAlcohol()` mirrors `loadTodayOther()`.
+
 ---
 
 ### Sip
@@ -540,6 +556,46 @@ Bump `CACHE_NAME` in `sw.js` on every deploy. New PNG assets need to be added to
 - **Coded substance frequency analysis.** Patterns currently buckets alcohol drinks per night. Coded substance frequency stays unaggregated for v2.0. Revisit if requested.
 - **Tag-as-recipe.** "Recipe" tag on Library entries (multi-ingredient prep) — Claude infers during estimation. Doesn't change behavior in v2.0 but enables future recipe filter.
 - **Edit a logged entry.** All entries (water, caffeine, food, alcohol, coded, strength sets) support tap-to-edit. Time editable always; type/units editable until parent session ends (where applicable).
+
+---
+
+## Post-v2 Fixes (v2.x)
+
+Field-reported fixes, batched. Each is additive and ships with the alcohol-energy work.
+
+### Oura sleep duration not loading
+
+**Problem:** the Sleep stat cell always showed "—". `normalizeOuraRow()` read `total_sleep_duration` / `rem_sleep_duration` / `deep_sleep_duration` off the **`daily_sleep`** endpoint, which only carries `score` + `contributors` — no durations. HRV had the same class of bug (the 0–100 `hrv_balance` contributor was rendered as "ms").
+
+**Fix:** also fetch the **`sleep`** endpoint (already whitelisted in the shared `smooth-processor` proxy — no proxy redeploy). Per `day`, pick the main period (`type === 'long_sleep'`, else the record with the largest `total_sleep_duration`). Derive `total_sleep_min` / `rem_sleep_min` / `deep_sleep_min` / `sleep_efficiency` from it, plus **real** `hrv_avg` from `average_hrv` (ms) and `resting_hr` from `lowest_heart_rate`, each falling back to the readiness contributor when the sleep period is absent. `daily_sleep.score` still feeds `sleep_score`. A one-time forced re-sync (gated on `localStorage['tide_oura_schema_v']`) backfills existing `tide_oura_daily` rows. No schema change — columns already exist.
+
+### Swipe-right to reschedule (Fuel)
+
+`attachSwipeToDelete()` → generalized `attachSwipeActions(rows, { onDelete, onReschedule })`. Existing callers (Indulge / Activity / Sip) keep delete-only behavior unchanged. On Fuel meal rows, **swipe-right reveals "→ Yesterday"** which moves the row's `logged_at`/`log_date` back one logical day (common after-midnight case). Arbitrary-date moves remain available via tap → editor's datetime field.
+
+### Logical day starts at 5am local
+
+**Problem:** `todayISO()` used `toISOString()` (**UTC**) so the day flipped mid-evening in US timezones; and there was no grace for logging after midnight.
+
+**Fix:** one logical-day function — local date of *(now − `DAY_ROLLOVER_HOUR`)*, `DAY_ROLLOVER_HOUR = 5`. Before 5am local → still counts as the previous day. `addDays()` reworked to be timezone-pure (UTC-component math on the Y-M-D string, never shifts by local offset). Because Postgres's `current_date` default is UTC and now diverges from the client's logical day, **every client insert sets `log_date` explicitly** (`logMealRow` / `logWater` / `logCaffeine` / `logDrink` / coded entry / `startSession`). `logged_at`/`entry_at` keep the true wall-clock timestamp; only the day *bucket* uses the 5am rule. All 38 `todayISO()` callers route through the one function, so day-scoped queries, streaks, and "Today" filters all follow automatically.
+
+### Custom caffeine saved as a deletable tile
+
+New table **`tide_caffeine_presets`** (`id`, `label`, `mg`, `position`, `created_at`) — mirrors the `tide_stack_items` pattern, syncs across devices via the shared project. Logging a custom caffeine amount upserts a preset (deduped case-insensitively by `label`+`mg`); custom presets render as tiles in the Sip → Caffeine "Add" grid after the fixed Coffee / Espresso / Tea defaults. **Long-press a custom tile → confirm → delete.** Defaults are not deletable. Loader `loadCaffeinePresets()` added to boot; migration `migrations/2026-05-15_caffeine_presets.sql` + `schema.sql`.
+
+### Oura sleep stat: score + delta polish
+
+The home Sleep stat cell now shows the **sleep score** next to the label (`SLEEP 72`, accent-toned via `.stat-label-score`) in addition to the duration value. `sleepDeltaSpan()` rounded to whole minutes and switched to `h:mm` (the raw average was a float, producing `−56.857…m vs avg` → now `−0:57 vs avg`). The carried-forward last-complete-night logic (see Oura sleep fix) also carries `sleep_score`, so the score stays consistent with the duration shown.
+
+### Active tabs reset on the 5am logical-day boundary
+
+**Problem:** the 5am `todayISO()` change fixed *new* logging, but a PWA left open / backgrounded across the boundary never re-fetched — e.g., the Train tab kept showing yesterday's logged workout.
+
+**Fix:** per-day loading is factored into `loadDayData()` (tags `state.loadedDay = todayISO()`), reused by boot. `maybeRollover()` fires on `visibilitychange`→visible, `window` `focus`, and a 60s interval; when `todayISO() !== state.loadedDay` it reloads all per-day data + Oura and re-renders, so every "Today" surface (Train/Fuel/Sip/Indulge/Stack) resets at 5am without a manual reload. Concurrency-guarded. The active **Indulge session is intentionally not cleared** at rollover (it's server-truth until ended — see next item).
+
+### End an Indulge session with a retroactive time
+
+The end-session sheet gains an **"Ended at"** `datetime-local` field defaulting to now ("Forgot to end it last night? Set when it actually wrapped."). `endSession(feeling, note, endedAtIso)` writes the chosen `ended_at` and computes `duration_min` from `started_at → chosen end` (floored at 0). Validation: end can't precede `started_at`. `log_date` is unchanged (still the night the session began).
 
 ---
 

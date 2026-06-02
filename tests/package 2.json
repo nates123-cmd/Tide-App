@@ -1,0 +1,13 @@
+{
+  "name": "tide-qa-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright QA harness for the Tide PWA. Tests REAL window globals via page.evaluate — no re-implementation.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
