@@ -6077,10 +6077,12 @@ function wireSearchRows(saved, lib) {
 async function offSearch(term) {
   const box = $('#off-remote') || $('#off-results'); if (!box) return;
   try {
-    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(term)}&search_simple=1&action=process&json=1&page_size=20&fields=product_name,brands,nutriments,serving_size,code`;
-    const r = await fetch(url);
+    // Via the off-search edge proxy (search-a-licious has no CORS; legacy search.pl 503s).
+    const r = await fetch(`${SB_URL}/functions/v1/off-search?q=${encodeURIComponent(term)}`, {
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${await sbBearer()}` },
+    });
     const data = await r.json();
-    const hits = (data.products || []).map(offToFood).filter(Boolean);
+    const hits = (data.hits || data.products || []).map(offToFood).filter(Boolean);
     if (!hits.length) { box.innerHTML = `<p class="muted small" style="padding:12px 0">No web matches. Try Quick add or Describe.</p>`; return; }
     box.innerHTML = hits.map((h, i) => `
       <div class="off-row" data-hit="${i}">
@@ -6098,9 +6100,10 @@ function offToFood(p) {
   const kcal100 = Math.round(n['energy-kcal_100g'] ?? (n['energy_100g'] ? n['energy_100g'] / 4.184 : NaN));
   if (!Number.isFinite(kcal100)) return null;
   const basis = (p.serving_size && /ml/i.test(p.serving_size)) ? 'per_100ml' : 'per_100g';
+  const brand = Array.isArray(p.brands) ? (p.brands[0] || '') : (p.brand || (p.brands ? String(p.brands).split(',')[0] : ''));
   return {
     name: (p.product_name || 'Unknown').slice(0, 80),
-    brand: p.brand || (p.brands ? p.brands.split(',')[0] : ''),
+    brand,
     basis, kcal100,
     protein100: Math.round(n.proteins_100g || 0),
     carb100: Math.round(n.carbohydrates_100g || 0),
@@ -6179,7 +6182,36 @@ function wireDictation(btnId, targetId, noteId) {
 // these is a later add — for a single-user device localStorage is enough.
 const LS_CUSTOM = 'trim_custom_foods', LS_RECIPES = 'trim_recipes', LS_MEALS = 'trim_saved_meals';
 function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }
-function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} if (REUSE_KEYS[k]) scheduleReuseSave(); }
+// Cloud sync of reuse data (custom foods / recipes / saved meals / OFF cache)
+// to the per-user tide_food_reuse table, so it follows the user across devices.
+const REUSE_KEYS = { [LS_CUSTOM]: 'custom_foods', [LS_RECIPES]: 'recipes', [LS_MEALS]: 'saved_meals', [LS_OFFCACHE]: 'off_cache' };
+let _reuseSaveTimer = null;
+function scheduleReuseSave() { if (_reuseSaveTimer) clearTimeout(_reuseSaveTimer); _reuseSaveTimer = setTimeout(() => saveReuseToCloud(), 800); }
+async function saveReuseToCloud() {
+  if (!hasSession()) return;
+  try {
+    await sbFetch('/tide_food_reuse?on_conflict=user_id', {
+      method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ custom_foods: getCustomFoods(), recipes: getRecipes(), saved_meals: getSavedMeals(), off_cache: getOffCache(), updated_at: new Date().toISOString() }),
+    });
+  } catch (e) { console.warn('reuse cloud save failed:', e.message); }
+}
+async function syncReuseOnBoot() {
+  if (!hasSession()) return;
+  try {
+    const rows = await sbFetch('/tide_food_reuse?limit=1');
+    const c = rows && rows[0];
+    if (c) {
+      if (Array.isArray(c.custom_foods)) localStorage.setItem(LS_CUSTOM, JSON.stringify(c.custom_foods));
+      if (Array.isArray(c.recipes)) localStorage.setItem(LS_RECIPES, JSON.stringify(c.recipes));
+      if (Array.isArray(c.saved_meals)) localStorage.setItem(LS_MEALS, JSON.stringify(c.saved_meals));
+      if (Array.isArray(c.off_cache)) localStorage.setItem(LS_OFFCACHE, JSON.stringify(c.off_cache));
+    } else if (getCustomFoods().length || getRecipes().length || getSavedMeals().length || getOffCache().length) {
+      await saveReuseToCloud();
+    }
+  } catch (e) { console.warn('syncReuseOnBoot failed:', e.message); }
+}
 function getCustomFoods() { return lsGet(LS_CUSTOM); }
 function getRecipes() { return lsGet(LS_RECIPES); }
 function getSavedMeals() { return lsGet(LS_MEALS); }
@@ -9344,6 +9376,7 @@ async function boot() {
   // Profile + PAT sync — non-blocking, but kicked off early so the rest of
   // boot can grab the latest values from localStorage after it lands.
   await syncProfileOnBoot().catch(() => {});
+  syncReuseOnBoot().catch(() => {});
   // Then refresh from server (per-day data, tagged with the logical day)
   await loadDayData();
   flushOutbox().catch(() => {});
