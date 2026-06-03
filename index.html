@@ -1092,12 +1092,13 @@ function setProfile(p) {
 }
 
 async function saveProfileToCloud(p) {
-  const patch = { id: PROFILE_ID, updated_at: new Date().toISOString() };
+  // Keyed per-user (user_id defaults to auth.uid()); on_conflict=user_id so each
+  // user gets exactly one row — NOT a shared fixed id (which collided across users).
+  const patch = { updated_at: new Date().toISOString() };
   PROFILE_FIELDS.forEach(k => { if (p[k] != null) patch[k] = p[k]; });
-  // Include the current PAT so we don't blow it away by patching the row.
   const pat = getOuraPat();
   if (pat) patch.oura_pat = pat;
-  await sbFetch('/tide_profile?on_conflict=id', {
+  await sbFetch('/tide_profile?on_conflict=user_id', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify(patch),
@@ -1106,7 +1107,7 @@ async function saveProfileToCloud(p) {
 
 async function loadProfileFromCloud() {
   try {
-    const rows = await sbFetch(`/tide_profile?id=eq.${PROFILE_ID}&limit=1`);
+    const rows = await sbFetch(`/tide_profile?limit=1`);
     return (rows && rows[0]) || null;
   } catch (e) {
     console.warn('loadProfileFromCloud failed:', e.message);
@@ -1135,10 +1136,10 @@ async function syncProfileOnBoot() {
     const local = getProfile();
     if (local) await saveProfileToCloud(local).catch(() => {});
     const pat = getOuraPat();
-    if (pat) await sbFetch('/tide_profile?on_conflict=id', {
+    if (pat) await sbFetch('/tide_profile?on_conflict=user_id', {
       method: 'POST',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({ id: PROFILE_ID, oura_pat: pat, updated_at: new Date().toISOString() }),
+      body: JSON.stringify({ oura_pat: pat, updated_at: new Date().toISOString() }),
     }).catch(() => {});
   }
 }
@@ -5464,7 +5465,7 @@ function renderMealRow(r) {
           <div class="meal-left">
             <div class="meal-top-row">
               <div class="meal-title">${escapeHtml(r.item_type || 'Meal')}</div>
-              <div class="meal-time">${escapeHtml(t)}</div>
+              <div class="meal-time">${r.metadata?.meal_slot ? escapeHtml(slotLabel(r.metadata.meal_slot)) + ' · ' : ''}${escapeHtml(t)}</div>
             </div>
             ${(m.protein_g || m.carbs_g || m.fat_g) ? `<div class="meal-macros">${Math.round(m.protein_g)} P · ${Math.round(m.carbs_g)} C · ${Math.round(m.fat_g)} F</div>` : ''}
           </div>
@@ -5696,6 +5697,9 @@ const FOOD_METHODS_ADD = [
   { id: 'photo',    label: 'Meal photo', icon: '<rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="13" r="3.5"/>' },
   { id: 'label',    label: 'Label scan', icon: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/>' },
 ];
+const MEAL_SLOTS = [{ id: '', label: 'Auto' }, { id: 'breakfast', label: 'Breakfast' }, { id: 'lunch', label: 'Lunch' }, { id: 'dinner', label: 'Dinner' }, { id: 'snack', label: 'Snack' }];
+function slotForNow() { const h = new Date().getHours(); return h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 21 ? 'dinner' : 'snack'; }
+function slotLabel(id) { return ({ breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' })[id] || ''; }
 const FOOD_METHODS_REUSE = [
   { id: 'custom',  label: 'Custom',  icon: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>' },
   { id: 'recipe',  label: 'Recipe',  icon: '<path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/>' },
@@ -5748,6 +5752,7 @@ async function commitTray() {
   if (!state.tray.length) return;
   const drafts = state.tray.slice();
   const nowIso = new Date().toISOString();
+  const slot = state.traySlot || slotForNow();
   const rows = drafts.map(d => ({
     category: 'food',
     item_type: d.display_name,
@@ -5758,11 +5763,11 @@ async function commitTray() {
     metadata: {
       kcal: d.kcal, protein_g: d.protein_g, carbs_g: d.carbs_g, fat_g: d.fat_g, fiber_g: d.fiber_g,
       source: d.input_method, input_method: d.input_method,
-      serving_qty: d.quantity, serving_unit: d.serving_unit,
+      serving_qty: d.quantity, serving_unit: d.serving_unit, meal_slot: slot,
       source_payload: d.source_payload || undefined,
     },
   }));
-  const leave = (msg) => { trayClear(); toast(msg); state.screen = state.trayReturn || 'home'; if (state.screen === 'home') state.tab = 'food'; render(); };
+  const leave = (msg) => { trayClear(); state.traySlot = null; toast(msg); state.screen = state.trayReturn || 'home'; if (state.screen === 'home') state.tab = 'food'; render(); };
   try {
     const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(rows) });
     if (Array.isArray(result)) {
@@ -5848,6 +5853,7 @@ function renderTrayScreen() {
     ${drafts.length ? `
       <div class="section-label" style="margin-top: 18px">Staged · review &amp; log together</div>
       ${drafts.map(renderDraftRow).join('')}
+      <div class="slot-row">${MEAL_SLOTS.map(s => `<span class="slot-chip ${(state.traySlot || '') === s.id ? 'active' : ''}" data-slot="${s.id}">${s.label}</span>`).join('')}</div>
       <div class="tray-totals">
         <div class="tray-totals-main"><strong>${t.kcal}</strong> kcal <span class="muted">· ${t.protein_g} P · ${t.carbs_g} C · ${t.fat_g} F</span></div>
         <div class="muted small">Goal ${goal.kcal} kcal/day</div>
@@ -5866,6 +5872,7 @@ function renderTrayScreen() {
   const c = $('#tray-commit'); if (c) c.onclick = commitTray;
   const cl = $('#tray-clear'); if (cl) cl.onclick = () => { trayClear(); renderTrayScreen(); };
   const sm = $('#tray-save-meal'); if (sm) sm.onclick = saveTrayAsMeal;
+  $$('[data-slot]').forEach(c => c.onclick = () => { state.traySlot = c.dataset.slot || null; renderTrayScreen(); });
 }
 function methodChipHtml(m) {
   return `<button class="method-chip" data-method="${m.id}">
@@ -5956,12 +5963,27 @@ function openDraftEdit(tid) {
       </div>
     </div>
     <div class="btn-row"><button class="btn btn-warm" id="de-del">Remove</button><button class="btn" id="de-save">Save</button></div>
+    <button class="btn btn-soft" id="de-custom" style="width:100%;margin-top:8px">Save as custom food</button>
   `, () => {
     $('#mf-derive').onchange = () => { $('#mf-kcal').disabled = $('#mf-derive').checked; };
     $('#de-save').onclick = () => {
       const v = macroFieldsRead(d.display_name);
       Object.assign(d, v, { quantity: parseFloat($('#mf-qty').value) || d.quantity, serving_unit: $('#mf-unit').value.trim() || d.serving_unit, needs_review: false });
       trayPersist(); closeModal(); renderTrayScreen();
+    };
+    $('#de-custom').onclick = () => {
+      const v = macroFieldsRead(d.display_name);
+      const qty = parseFloat($('#mf-qty').value) || d.quantity || 1;
+      const unit = ($('#mf-unit').value.trim() || d.serving_unit || 'serving');
+      let f;
+      if ((unit === 'g' || unit === 'ml') && qty > 0) {
+        const k = 100 / qty;
+        f = { name: v.display_name, brand: '', basis: 'per_100g', kcal100: Math.round(v.kcal * k), protein100: Math.round(v.protein_g * k), carb100: Math.round(v.carbs_g * k), fat100: Math.round(v.fat_g * k), fiber100: null, serving_grams: qty };
+      } else {
+        f = { name: v.display_name, brand: '', basis: 'per_serving', kcal_serv: v.kcal, protein_serv: v.protein_g, carb_serv: v.carbs_g, fat_serv: v.fat_g, serving_label: unit };
+      }
+      const all = getCustomFoods(); all.unshift(f); lsSet(LS_CUSTOM, all);
+      toast('Saved as custom food');
     };
     $('#de-del').onclick = () => { trayRemove(tid); closeModal(); renderTrayScreen(); };
   });
@@ -6045,7 +6067,7 @@ function recentFoodRow(e) { return `<div class="off-row" data-recent="${escapeHt
 function renderSearchRecents() {
   const box = $('#off-results'); if (!box) return;
   const saved = [
-    ...getCustomFoods().slice(0, 4).map(f => ({ label: f.name, sub: 'custom · ' + f.kcal100 + ' kcal/100g', hit: customToHit(f) })),
+    ...getCustomFoods().slice(0, 4).map(f => ({ label: f.name, sub: customSub(f), hit: customToHit(f) })),
     ...getOffCache().slice(0, 4).map(o => ({ label: o.name, sub: (o.brand || 'saved') + ' · ' + o.kcal100 + ' kcal/100g', hit: offCacheToHit(o) })),
   ];
   const lib = buildFoodLibrary(state.foodLibraryRows || []).slice(0, 8);
@@ -6115,7 +6137,23 @@ function offToFood(p) {
 }
 function parseServingGrams(s) { if (!s) return null; const m = String(s).match(/([\d.]+)\s*(g|ml)/i); return m ? Number(m[1]) : null; }
 
+function openServingPickerServings(h) {
+  const label = h.serving_label || 'serving';
+  showModal(`
+    <h2>${escapeHtml(h.name)}</h2>
+    <p class="small muted">${escapeHtml(h.brand || 'custom')} · ${h.kcal_serv} kcal / ${escapeHtml(label)}</p>
+    <div class="modal-section"><div class="label">Servings</div>
+      <input id="sp-n" type="number" inputmode="decimal" value="1" step="0.5" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card-bg);color:var(--text);font-size:15px"></div>
+    <div id="sp-preview" class="sp-preview"></div>
+    <div class="btn-row"><button class="btn btn-soft" data-close>Cancel</button><button class="btn" id="sp-add">Add to tray</button></div>
+  `, () => {
+    const calc = () => { const n = parseFloat($('#sp-n').value) || 0; $('#sp-preview').innerHTML = `<strong>${Math.round(h.kcal_serv * n)}</strong> kcal · ${Math.round(h.protein_serv * n)} P · ${Math.round(h.carb_serv * n)} C · ${Math.round(h.fat_serv * n)} F`; };
+    calc(); $('#sp-n').addEventListener('input', calc);
+    $('#sp-add').onclick = () => { const n = parseFloat($('#sp-n').value) || 1; trayAdd({ input_method: 'custom', display_name: h.name, quantity: n, serving_unit: label, kcal: h.kcal_serv * n, protein_g: h.protein_serv * n, carbs_g: h.carb_serv * n, fat_g: h.fat_serv * n }); closeModal(); renderTrayScreen(); };
+  });
+}
 function openServingPicker(h) {
+  if (h.basis === 'per_serving') return openServingPickerServings(h);
   const unit = h.basis === 'per_100ml' ? 'ml' : 'g';
   const def = h.serving_grams || 100;
   showModal(`
@@ -6314,8 +6352,17 @@ async function barcodeResolve(code) {
   try {
     const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,nutriments,serving_size,code`);
     const data = await r.json();
-    if (data.status === 1 && data.product) { const h = offToFood(data.product); if (h) { closeModal(); openServingPicker(h); return; } }
-    closeModal(); toast('Not in Open Food Facts — try Label scan'); openLabelScan();
+    if (data.status === 1 && data.product) { const h = offToFood(data.product); if (h) { cacheOffFood(h); closeModal(); openServingPicker(h); return; } }
+    closeModal();
+    showModal(`
+      <h2>Not found</h2>
+      <p class="small muted">${escapeHtml(code)} isn't in Open Food Facts.</p>
+      <div class="btn-row" style="flex-direction:column;gap:8px;align-items:stretch">
+        <button class="btn" id="bm-label">Scan the label instead</button>
+        <button class="btn btn-soft" id="bm-custom">Add as custom food</button>
+        <button class="btn btn-soft" data-close>Cancel</button>
+      </div>
+    `, () => { $('#bm-label').onclick = () => { closeModal(); openLabelScan(); }; $('#bm-custom').onclick = () => { closeModal(); openCustomFoodForm(); }; });
   } catch (e) { closeModal(); toast('Lookup failed'); }
 }
 
@@ -6327,7 +6374,7 @@ function openCustomFoods() {
     <p class="small muted">Your own reusable items.</p>
     <div style="max-height:46vh;overflow:auto;margin:8px 0">
       ${foods.length ? foods.map((f, i) => `
-        <div class="off-row" data-cf="${i}"><div><div class="off-name">${escapeHtml(f.name)}</div><div class="off-sub">${escapeHtml(f.brand || 'custom')} · ${f.kcal100} kcal/100g</div></div><div class="off-kcal">›</div></div>`).join('') : '<p class="muted small" style="padding:10px 0">None yet — create one below.</p>'}
+        <div class="off-row" data-cf="${i}"><div><div class="off-name">${escapeHtml(f.name)}</div><div class="off-sub">${escapeHtml(f.brand || 'custom')} · ${escapeHtml(customSub(f))}</div></div><div class="off-kcal">›</div></div>`).join('') : '<p class="muted small" style="padding:10px 0">None yet — create one below.</p>'}
     </div>
     <div class="btn-row"><button class="btn btn-soft" data-close>Close</button><button class="btn" id="cf-new">New custom food</button></div>
   `, () => {
@@ -6335,7 +6382,11 @@ function openCustomFoods() {
     $$('[data-cf]').forEach(el => el.onclick = () => { const f = foods[+el.dataset.cf]; closeModal(); openServingPicker(customToHit(f)); });
   });
 }
-function customToHit(f) { return { name: f.name, brand: f.brand || 'custom', basis: 'per_100g', kcal100: f.kcal100, protein100: f.protein100, carb100: f.carb100, fat100: f.fat100, fiber100: f.fiber100 ?? null, serving_grams: f.serving_grams || null, code: null, custom: true }; }
+function customToHit(f) {
+  if (f.basis === 'per_serving') return { name: f.name, brand: f.brand || 'custom', basis: 'per_serving', kcal_serv: f.kcal_serv, protein_serv: f.protein_serv, carb_serv: f.carb_serv, fat_serv: f.fat_serv, serving_label: f.serving_label || 'serving', custom: true };
+  return { name: f.name, brand: f.brand || 'custom', basis: 'per_100g', kcal100: f.kcal100, protein100: f.protein100, carb100: f.carb100, fat100: f.fat100, fiber100: f.fiber100 ?? null, serving_grams: f.serving_grams || null, code: null, custom: true };
+}
+function customSub(f) { return f.basis === 'per_serving' ? `custom · ${f.kcal_serv} kcal/${f.serving_label || 'serving'}` : `custom · ${f.kcal100} kcal/100g`; }
 function openCustomFoodForm() {
   showModal(`
     <h2>New custom food</h2>
@@ -6488,7 +6539,7 @@ function offCacheToHit(o) { return { name: o.name, brand: o.brand || '', basis: 
 function searchLocalFoods(term) {
   const q = term.toLowerCase();
   const saved = [
-    ...getCustomFoods().filter(f => f.name.toLowerCase().includes(q)).map(f => ({ label: f.name, sub: 'custom · ' + f.kcal100 + ' kcal/100g', hit: customToHit(f) })),
+    ...getCustomFoods().filter(f => f.name.toLowerCase().includes(q)).map(f => ({ label: f.name, sub: customSub(f), hit: customToHit(f) })),
     ...getOffCache().filter(o => (o.name || '').toLowerCase().includes(q)).slice(0, 6).map(o => ({ label: o.name, sub: (o.brand || 'saved') + ' · ' + o.kcal100 + ' kcal/100g', hit: offCacheToHit(o) })),
   ].slice(0, 8);
   const lib = buildFoodLibrary(state.foodLibraryRows || []).filter(e => e.name.toLowerCase().includes(q)).slice(0, 6);
