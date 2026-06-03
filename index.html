@@ -819,6 +819,40 @@
   .pat-row-val.dim { color: var(--muted); font-weight: 400; }
   .pat-narrative { font-size: 14px; line-height: 1.55; color: var(--text); white-space: pre-wrap; }
   .pat-empty { font-size: 14px; color: var(--muted); padding: 8px 0; }
+  /* ---- Food logging v2: Tray + methods ---- */
+  .log-more-btn { width: 100%; margin-top: 12px; padding: 13px; border: 1px dashed var(--border); border-radius: var(--radius); background: none; color: var(--muted); font-family: var(--font-body); font-size: 13px; cursor: pointer; }
+  .log-more-btn:active { color: var(--text); }
+  .tray-banner { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding: 12px 14px; border-radius: var(--radius); background: var(--text); color: var(--bg); cursor: pointer; font-family: var(--font-body); font-size: 13px; }
+  .tray-banner-go { font-weight: 600; }
+  .meal-input-icon.loading { opacity: 0.4; pointer-events: none; }
+  .method-sec-lbl { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-soft); margin: 0 0 8px; }
+  .method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .method-grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .method-grid-4 .method-chip { padding: 13px 4px; font-size: 11px; }
+  .method-grid-4 .method-ic { width: 22px; height: 22px; }
+  .method-chip { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); font-family: var(--font-body); font-size: 12px; font-weight: 500; cursor: pointer; }
+  .method-chip:active { background: var(--card-bg-warm); }
+  .method-chip.soon { opacity: 0.5; }
+  .method-ic { width: 26px; height: 26px; }
+  .method-ic svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .soon-tag { position: absolute; top: 6px; right: 7px; font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 1px 4px; }
+  .draft-row { position: relative; padding-right: 34px; }
+  .draft-x { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 24px; height: 24px; border: none; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
+  .draft-flag { margin-left: 7px; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--warn); border: 1px solid var(--warn); border-radius: 5px; padding: 1px 4px; vertical-align: middle; }
+  .tray-totals { display: flex; align-items: baseline; justify-content: space-between; margin: 14px 0; padding: 12px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .tray-totals-main { font-family: var(--font-display); font-size: 16px; }
+  .mf-lbl { margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mf-derive { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .off-sec-lbl { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-soft); margin-bottom: 6px; }
+  .off-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 4px; border-bottom: 1px solid var(--border-soft); cursor: pointer; }
+  .off-row:active { background: var(--card-bg); }
+  .off-name { font-size: 14px; color: var(--text); }
+  .off-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .off-kcal { font-family: var(--font-display); font-size: 14px; color: var(--muted); flex-shrink: 0; }
+  .sp-chips { display: flex; gap: 8px; margin-top: 10px; }
+  .sp-chip { padding: 7px 11px; border: 1px solid var(--border); border-radius: 20px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .sp-chip:active { color: var(--text); border-color: var(--text); }
+  .sp-preview { margin-top: 14px; padding: 12px; border-radius: var(--radius); background: var(--card-bg-warm); font-family: var(--font-display); font-size: 15px; text-align: center; }
 </style>
 </head>
 <body>
@@ -945,6 +979,8 @@ let state = {
   bodyRange: '3M',
   latestDigest: null,          // most recent tide_digests row
   digestLens: 'drinks_sleep',
+  tray: [],                    // FOOD LOGGING v2 — staged draft entries (see Tray module)
+  trayReturn: 'home',          // screen to return to after committing/leaving the Tray
 };
 
 const MEAL_DEFAULTS = { breakfast: 400, lunch: 600, dinner: 700, snack: 200 };
@@ -1715,6 +1751,7 @@ function render() {
   else if (screen === 'progress') renderProgressScreen();
   else if (screen === 'body') renderBodyScreen();
   else if (screen === 'digest') renderDigestScreen();
+  else if (screen === 'tray') renderTrayScreen();
   mountBottomNav(screen === 'home' ? (state.tab || null) : null);
 }
 
@@ -5307,7 +5344,14 @@ function renderFuelTab() {
         <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>
       </button>
     </div>
-    <div class="meal-input-hint">Describe what you ate — Claude estimates calories and macros.</div>
+    <div class="meal-input-hint">Describe what you ate — Claude itemizes it into the tray to review.</div>
+
+    ${(state.tray && state.tray.length) ? `
+      <div class="tray-banner" id="tray-banner">
+        <span><strong>${state.tray.length}</strong> staged · ${trayTotals().kcal} kcal</span>
+        <span class="tray-banner-go">Review &amp; log →</span>
+      </div>` : ''}
+    <button class="log-more-btn" id="log-more">＋ More ways to log — quick add · search · barcode · photo</button>
 
     ${(todayMeals.length || alcEntries.length) ? `
       <div class="section-label" style="margin-top: 16px">Today</div>
@@ -5340,6 +5384,8 @@ function renderFuelTab() {
   $('#any-fab').onclick = openLogAny;
   $('#fuel-library').onclick = () => { state.screen = 'library'; render(); };
   $('#fuel-goal').onclick = () => { state.screen = 'settings'; render(); };
+  $('#log-more')?.addEventListener('click', () => openTray());
+  $('#tray-banner')?.addEventListener('click', () => openTray());
 
   $('#meal-input-go').onclick = () => submitMealDescription($('#meal-input').value.trim());
   $('#meal-input').addEventListener('keydown', (e) => {
@@ -5434,8 +5480,24 @@ function renderMealRow(r) {
 }
 
 async function submitMealDescription(text) {
-  if (!text) return;
-  openMealEstimateSheet(text);
+  if (!text) { openTray(); return; }
+  const go = $('#meal-input-go');
+  if (go) go.classList.add('loading');
+  toast('Reading the plate…');
+  const items = await describeToItems(text);
+  if (go) go.classList.remove('loading');
+  if (!items.length) { toast('Could not parse — try Quick add'); openTray(); return; }
+  items.forEach(it => trayAdd({
+    input_method: 'describe',
+    display_name: it.display_name || it.name || text,
+    quantity: it.quantity ?? 1,
+    serving_unit: it.serving_unit || 'serving',
+    kcal: it.kcal, protein_g: it.protein_g, carbs_g: it.carbs_g ?? it.carb_g, fat_g: it.fat_g,
+    fiber_g: it.fiber_g, needs_review: true, confidence: it.confidence,
+    source_payload: { describe: text, item: it },
+  }));
+  const inp = $('#meal-input'); if (inp) inp.value = '';
+  openTray();
 }
 
 function openMealEstimateSheet(description) {
@@ -5616,6 +5678,731 @@ function openMealDetail(id) {
       }
     };
   });
+}
+
+// ============================================================================
+// FOOD LOGGING v2 — staging Tray + input methods
+// Spec: tide-food-logging-spec.md. Self-contained block — ports verbatim into
+// Tide. Every input method produces draft(s) in state.tray; commit writes one
+// tide_intake_logs row per draft (no new tables; macros live in metadata).
+// ============================================================================
+
+const FOOD_METHODS_ADD = [
+  { id: 'quick',    label: 'Quick add',  icon: '<path d="M12 5v14M5 12h14"/>' },
+  { id: 'search',   label: 'Search',     icon: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>' },
+  { id: 'describe', label: 'Describe',   icon: '<path d="M4 6h16M4 12h11M4 18h7"/>' },
+  { id: 'barcode',  label: 'Barcode',    icon: '<path d="M4 5v14M8 5v14M12 5v14M16 5v14M20 5v14"/>' },
+  { id: 'photo',    label: 'Meal photo', icon: '<rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="13" r="3.5"/>' },
+  { id: 'label',    label: 'Label scan', icon: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/>' },
+];
+const FOOD_METHODS_REUSE = [
+  { id: 'custom',  label: 'Custom',  icon: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>' },
+  { id: 'recipe',  label: 'Recipe',  icon: '<path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/>' },
+  { id: 'saved',   label: 'Meals',   icon: '<path d="M4 11h16M4 11a8 8 0 0116 0M7 15h10"/>' },
+  { id: 'copyday', label: 'Copy day',icon: '<rect x="4" y="5" width="14" height="14" rx="2"/><path d="M8 3v4M14 3v4M4 9h14"/>' },
+];
+
+// --- Tray state ---
+function trayAdd(draft) {
+  const num = (v) => Math.max(0, Math.round(Number(v) || 0));
+  const d = {
+    tid: 't' + (state._traySeq = (state._traySeq || 0) + 1),
+    input_method: draft.input_method || 'quick_add',
+    display_name: (draft.display_name || 'Food').toString().slice(0, 80),
+    quantity: draft.quantity != null ? Number(draft.quantity) : 1,
+    serving_unit: draft.serving_unit || 'serving',
+    kcal: num(draft.kcal),
+    protein_g: num(draft.protein_g),
+    carbs_g: num(draft.carbs_g),
+    fat_g: num(draft.fat_g),
+    fiber_g: draft.fiber_g != null ? num(draft.fiber_g) : null,
+    needs_review: !!draft.needs_review,
+    confidence: draft.confidence ?? null,
+    source_payload: draft.source_payload ?? null,
+  };
+  state.tray.push(d);
+  return d;
+}
+function trayRemove(tid) { state.tray = (state.tray || []).filter(d => d.tid !== tid); }
+function trayClear() { state.tray = []; }
+function trayTotals() {
+  return (state.tray || []).reduce((a, d) => ({
+    kcal: a.kcal + d.kcal, protein_g: a.protein_g + d.protein_g,
+    carbs_g: a.carbs_g + d.carbs_g, fat_g: a.fat_g + d.fat_g,
+  }), { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 });
+}
+function openTray(returnScreen) {
+  state.trayReturn = returnScreen || (state.screen === 'tray' ? state.trayReturn : state.screen) || 'home';
+  state.screen = 'tray';
+  render();
+}
+
+// --- Commit: one tide_intake_logs row per draft ---
+async function commitTray() {
+  if (!state.tray.length) return;
+  const drafts = state.tray.slice();
+  const nowIso = new Date().toISOString();
+  const rows = drafts.map(d => ({
+    category: 'food',
+    item_type: d.display_name,
+    quantity: d.kcal,
+    unit: 'kcal',
+    logged_at: nowIso,
+    log_date: todayISO(),
+    metadata: {
+      kcal: d.kcal, protein_g: d.protein_g, carbs_g: d.carbs_g, fat_g: d.fat_g, fiber_g: d.fiber_g,
+      source: d.input_method, input_method: d.input_method,
+      serving_qty: d.quantity, serving_unit: d.serving_unit,
+      source_payload: d.source_payload || undefined,
+    },
+  }));
+  try {
+    const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(rows) });
+    if (Array.isArray(result)) {
+      state.todayIntake = (state.todayIntake || []).concat(result);
+      state.foodLibraryRows = result.concat(state.foodLibraryRows || []);
+    }
+    trayClear();
+    toast(`Logged ${drafts.length} item${drafts.length === 1 ? '' : 's'}`);
+    state.screen = state.trayReturn || 'home';
+    if (state.screen === 'home') state.tab = 'food';
+    render();
+  } catch (e) { toast('Could not log: ' + e.message); }
+}
+
+// --- Tray screen ---
+function renderTrayScreen() {
+  const t = trayTotals();
+  const goal = computeMacroGoals(getProfile());
+  const drafts = state.tray || [];
+  $('#app').innerHTML = `
+    <header class="tab-head">
+      <div>
+        <div class="tab-title">Add food</div>
+        <div class="tab-sub">${drafts.length ? `${drafts.length} staged` : 'pick a method'}</div>
+      </div>
+      <div class="head-link" id="tray-back">Done</div>
+    </header>
+
+    <div class="method-sec-lbl">Add</div>
+    <div class="method-grid">
+      ${FOOD_METHODS_ADD.map(methodChipHtml).join('')}
+    </div>
+    <div class="method-sec-lbl" style="margin-top: 16px">Reuse / repeat</div>
+    <div class="method-grid method-grid-4">
+      ${FOOD_METHODS_REUSE.map(methodChipHtml).join('')}
+    </div>
+
+    ${drafts.length ? `
+      <div class="section-label" style="margin-top: 18px">Staged · review &amp; log together</div>
+      ${drafts.map(renderDraftRow).join('')}
+      <div class="tray-totals">
+        <div class="tray-totals-main"><strong>${t.kcal}</strong> kcal <span class="muted">· ${t.protein_g} P · ${t.carbs_g} C · ${t.fat_g} F</span></div>
+        <div class="muted small">Goal ${goal.kcal} kcal/day</div>
+      </div>
+      <button class="btn" id="tray-commit">Log ${drafts.length} item${drafts.length === 1 ? '' : 's'}</button>
+      <div class="btn-row" style="margin-top: 10px">
+        <button class="btn btn-soft" id="tray-save-meal">Save as meal</button>
+        <button class="btn btn-soft" id="tray-clear">Clear</button>
+      </div>
+    ` : `<p class="muted small" style="text-align: center; padding: 28px 8px; line-height: 1.5">Nothing staged yet.<br>Quick-add numbers, scan a barcode, snap the plate, or describe a meal — each lands here as a draft you review before logging.</p>`}
+  `;
+  $('#tray-back').onclick = () => { state.screen = state.trayReturn || 'home'; if (state.screen === 'home') state.tab = 'food'; render(); };
+  $$('[data-method]').forEach(b => b.onclick = () => openFoodMethod(b.dataset.method));
+  $$('[data-draft]').forEach(r => r.onclick = () => openDraftEdit(r.dataset.draft));
+  $$('[data-draft-x]').forEach(b => b.onclick = (e) => { e.stopPropagation(); trayRemove(b.dataset.draftX); renderTrayScreen(); });
+  const c = $('#tray-commit'); if (c) c.onclick = commitTray;
+  const cl = $('#tray-clear'); if (cl) cl.onclick = () => { trayClear(); renderTrayScreen(); };
+  const sm = $('#tray-save-meal'); if (sm) sm.onclick = saveTrayAsMeal;
+}
+function methodChipHtml(m) {
+  return `<button class="method-chip" data-method="${m.id}">
+    <span class="method-ic"><svg viewBox="0 0 24 24">${m.icon}</svg></span>
+    <span class="method-lbl">${m.label}</span></button>`;
+}
+
+function renderDraftRow(d) {
+  const flag = d.needs_review ? `<span class="draft-flag">review</span>` : '';
+  const servLabel = `${trimNum(d.quantity)} ${escapeHtml(d.serving_unit)}`;
+  return `
+    <div class="meal draft-row" data-draft="${d.tid}" role="button" tabindex="0">
+      <div class="meal-left">
+        <div class="meal-top-row">
+          <div class="meal-title">${escapeHtml(d.display_name)}${flag}</div>
+          <div class="meal-time">${servLabel}</div>
+        </div>
+        <div class="meal-macros">${d.protein_g} P · ${d.carbs_g} C · ${d.fat_g} F</div>
+      </div>
+      <div class="meal-kcal"><div class="meal-kcal-num">${d.kcal}</div><div class="meal-kcal-label">kcal</div></div>
+      <button class="draft-x" data-draft-x="${d.tid}" aria-label="Remove">×</button>
+    </div>`;
+}
+function trimNum(n) { const v = Number(n); return Number.isInteger(v) ? v : v.toFixed(1); }
+
+function openFoodMethod(id) {
+  ({
+    quick: openQuickAdd, search: openFoodSearch, describe: openDescribe,
+    barcode: openBarcodeScan, photo: openMealPhoto, label: openLabelScan,
+    custom: openCustomFoods, recipe: openRecipes, saved: openSavedMeals, copyday: openCopyDay,
+  }[id] || (() => {}))();
+}
+
+// --- Shared macro-fields form (used by Quick Add + draft edit) ---
+function macroFieldsHtml(v = {}) {
+  return `
+    <div class="modal-section">
+      <div class="label">Name</div>
+      <input id="mf-name" type="text" value="${escapeHtml(v.display_name || '')}" placeholder="e.g., Greek yogurt">
+    </div>
+    <div class="grid-2">
+      <div><div class="mf-lbl">kcal</div><input id="mf-kcal" type="number" inputmode="numeric" value="${v.kcal ?? ''}" placeholder="kcal"></div>
+      <div><div class="mf-lbl">Protein (g)</div><input id="mf-p" type="number" inputmode="numeric" value="${v.protein_g ?? ''}" placeholder="g"></div>
+      <div><div class="mf-lbl">Carbs (g)</div><input id="mf-c" type="number" inputmode="numeric" value="${v.carbs_g ?? ''}" placeholder="g"></div>
+      <div><div class="mf-lbl">Fat (g)</div><input id="mf-f" type="number" inputmode="numeric" value="${v.fat_g ?? ''}" placeholder="g"></div>
+    </div>
+    <label class="mf-derive"><input type="checkbox" id="mf-derive"> Derive kcal from macros (4·4·9)</label>`;
+}
+function macroFieldsRead(fallbackName) {
+  const derive = $('#mf-derive') && $('#mf-derive').checked;
+  const p = parseFloat($('#mf-p').value) || 0;
+  const c = parseFloat($('#mf-c').value) || 0;
+  const f = parseFloat($('#mf-f').value) || 0;
+  let kcal = parseFloat($('#mf-kcal').value) || 0;
+  if (derive) kcal = Math.round(p * 4 + c * 4 + f * 9);
+  return { display_name: $('#mf-name').value.trim() || fallbackName || 'Food', kcal, protein_g: p, carbs_g: c, fat_g: f };
+}
+
+// 4.1 Quick Add — manual numbers, no DB
+function openQuickAdd() {
+  showModal(`
+    <h2>Quick add</h2>
+    <p class="small muted">Enter the numbers directly — no lookup.</p>
+    ${macroFieldsHtml()}
+    <div class="btn-row"><button class="btn btn-soft" data-close>Cancel</button><button class="btn" id="qa-add">Add to tray</button></div>
+  `, () => {
+    $('#mf-derive').onchange = () => { $('#mf-kcal').disabled = $('#mf-derive').checked; $('#mf-kcal').style.opacity = $('#mf-derive').checked ? 0.5 : 1; };
+    $('#qa-add').onclick = () => {
+      const v = macroFieldsRead('Quick add');
+      if (!v.kcal && !v.protein_g && !v.carbs_g && !v.fat_g) { toast('Enter some numbers'); return; }
+      trayAdd({ ...v, input_method: 'quick_add', serving_unit: 'serving', quantity: 1 });
+      closeModal(); renderTrayScreen();
+    };
+  });
+}
+
+// Edit a staged draft in place
+function openDraftEdit(tid) {
+  const d = (state.tray || []).find(x => x.tid === tid);
+  if (!d) return;
+  showModal(`
+    <h2>Edit item</h2>
+    ${macroFieldsHtml(d)}
+    <div class="modal-section"><div class="label">Serving (label only)</div>
+      <div class="grid-2">
+        <input id="mf-qty" type="number" inputmode="decimal" value="${trimNum(d.quantity)}" placeholder="qty">
+        <input id="mf-unit" type="text" value="${escapeHtml(d.serving_unit)}" placeholder="unit">
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn btn-warm" id="de-del">Remove</button><button class="btn" id="de-save">Save</button></div>
+  `, () => {
+    $('#mf-derive').onchange = () => { $('#mf-kcal').disabled = $('#mf-derive').checked; };
+    $('#de-save').onclick = () => {
+      const v = macroFieldsRead(d.display_name);
+      Object.assign(d, v, { quantity: parseFloat($('#mf-qty').value) || d.quantity, serving_unit: $('#mf-unit').value.trim() || d.serving_unit, needs_review: false });
+      closeModal(); renderTrayScreen();
+    };
+    $('#de-del').onclick = () => { trayRemove(tid); closeModal(); renderTrayScreen(); };
+  });
+}
+
+// 4.5 AI Describe (text + voice) — returns an ARRAY of items into the tray
+function openDescribe() {
+  const voiceOk = ('webkitSpeechRecognition' in window) || ('SpeechRecognition' in window);
+  showModal(`
+    <h2>Describe a meal</h2>
+    <p class="small muted">Plain language — Claude itemizes it into calories + macros for you to review.</p>
+    <textarea id="desc-text" rows="3" placeholder="two eggs, toast with butter, a flat white" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card-bg);color:var(--text);font-family:inherit;font-size:14px;resize:vertical"></textarea>
+    ${voiceOk ? `<button class="btn btn-soft" id="desc-mic" style="margin-top:10px">🎙 Hold-free dictate</button><p class="small muted" id="desc-mic-note" style="margin-top:6px"></p>` : ''}
+    <div class="btn-row"><button class="btn btn-soft" data-close>Cancel</button><button class="btn" id="desc-go">Estimate →</button></div>
+  `, () => {
+    if (voiceOk) wireDictation('desc-mic', 'desc-text', 'desc-mic-note');
+    $('#desc-go').onclick = () => runDescribe($('#desc-text').value.trim());
+  });
+}
+
+async function runDescribe(text) {
+  if (!text) { toast('Describe what you ate'); return; }
+  const goBtn = $('#desc-go'); if (goBtn) { goBtn.disabled = true; goBtn.textContent = 'Reading the plate…'; }
+  const items = await describeToItems(text);
+  closeModal();
+  if (!items.length) { toast('Could not parse — try Quick add'); return; }
+  items.forEach(it => trayAdd({
+    input_method: 'describe',
+    display_name: it.display_name || it.name || text,
+    quantity: it.quantity ?? 1,
+    serving_unit: it.serving_unit || 'serving',
+    kcal: it.kcal, protein_g: it.protein_g, carbs_g: it.carbs_g ?? it.carb_g, fat_g: it.fat_g,
+    fiber_g: it.fiber_g, needs_review: true, confidence: it.confidence,
+    source_payload: { describe: text, item: it },
+  }));
+  if (state.screen !== 'tray') openTray();
+  else renderTrayScreen();
+}
+
+// Returns array of parsed items via the JWT-gated claude proxy. Falls back to [].
+async function describeToItems(text) {
+  const prompt = `Itemize this meal into individual foods with calorie + macro estimates. Be honest about uncertainty; default to conservative central portions rather than confident-but-high guesses. Return ONLY JSON (no fences): {"items":[{"display_name":"short label 2-5 words","quantity":number,"serving_unit":"g|ml|item label","kcal":int,"protein_g":int,"carbs_g":int,"fat_g":int,"confidence":0..1}]}. One object per distinct food. Meal: "${text}"`;
+  try {
+    const raw = await callClaude(prompt, {
+      system: 'You output ONLY valid JSON, no preamble or code fences. Be terse and grounded.',
+      maxTokens: 900,
+    });
+    const cleaned = raw.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+    const pj = JSON.parse(cleaned);
+    const arr = Array.isArray(pj) ? pj : (pj && Array.isArray(pj.items) ? pj.items : []);
+    return arr.filter(x => x && (x.kcal != null || x.display_name));
+  } catch (e) { console.warn('describeToItems failed:', e.message); return []; }
+}
+
+// 4.2 Search — Open Food Facts (free, no key, CORS-open). USDA = later phase.
+let _offTimer = null;
+function openFoodSearch() {
+  showModal(`
+    <h2>Search food</h2>
+    <input id="off-q" type="text" placeholder="Search a product or food…" autocomplete="off" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card-bg);color:var(--text);font-family:inherit;font-size:15px">
+    <div id="off-results" style="margin-top:12px;min-height:80px"></div>
+    <p class="small muted" style="margin-top:6px">Source: Open Food Facts. Tap a result to pick a serving.</p>
+    <div class="btn-row"><button class="btn btn-soft" data-close>Close</button></div>
+  `, () => {
+    const q = $('#off-q'); q.focus();
+    // Seed with recents from the local library (instant, offline)
+    renderSearchRecents();
+    q.addEventListener('input', () => {
+      clearTimeout(_offTimer);
+      const term = q.value.trim();
+      if (term.length < 2) { renderSearchRecents(); return; }
+      renderSearchLocal(term);
+      _offTimer = setTimeout(() => offSearch(term), 280);
+    });
+  });
+}
+
+function renderSearchRecents() {
+  const lib = buildFoodLibrary(state.foodLibraryRows || []).slice(0, 8);
+  const custom = getCustomFoods().slice(0, 6);
+  const box = $('#off-results'); if (!box) return;
+  if (!lib.length && !custom.length) { box.innerHTML = `<p class="muted small" style="padding:10px 0">Type to search products.</p>`; return; }
+  box.innerHTML =
+    (custom.length ? `<div class="off-sec-lbl">Your custom foods</div>` + custom.map((f, i) => `
+      <div class="off-row" data-cfsearch="${i}"><div><div class="off-name">${escapeHtml(f.name)}</div><div class="off-sub">custom · ${f.kcal100} kcal/100g</div></div><div class="off-kcal">›</div></div>`).join('') : '') +
+    (lib.length ? `<div class="off-sec-lbl" style="margin-top:8px">Recents</div>` + lib.map(e => `
+      <div class="off-row" data-recent="${escapeHtml(e.key)}"><div><div class="off-name">${escapeHtml(e.name)}</div><div class="off-sub">${e.count}× logged</div></div><div class="off-kcal">${e.kcal || '—'}</div></div>`).join('') : '');
+  wireLocalSearchRows(lib, custom);
+}
+
+// Instant local matches (custom + recents) while the OFF network call debounces.
+function renderSearchLocal(term) {
+  const box = $('#off-results'); if (!box) return;
+  const { custom, lib } = searchLocalFoods(term);
+  const cf = custom.map(x => x.food), recents = lib.map(x => x.entry);
+  box.innerHTML =
+    (cf.length ? `<div class="off-sec-lbl">Your custom foods</div>` + cf.map((f, i) => `
+      <div class="off-row" data-cfsearch="${i}"><div><div class="off-name">${escapeHtml(f.name)}</div><div class="off-sub">custom · ${f.kcal100} kcal/100g</div></div><div class="off-kcal">›</div></div>`).join('') : '') +
+    (recents.length ? `<div class="off-sec-lbl" ${cf.length ? 'style="margin-top:8px"' : ''}>Recents</div>` + recents.map(e => `
+      <div class="off-row" data-recent="${escapeHtml(e.key)}"><div><div class="off-name">${escapeHtml(e.name)}</div><div class="off-sub">${e.count}× logged</div></div><div class="off-kcal">${e.kcal || '—'}</div></div>`).join('') : '') +
+    `<div class="off-sec-lbl" style="margin-top:8px">Open Food Facts</div><div id="off-remote"><p class="muted small" style="padding:10px 0;text-align:center">Searching…</p></div>`;
+  wireLocalSearchRows(recents, cf);
+}
+function wireLocalSearchRows(lib, custom) {
+  $$('[data-recent]').forEach(r => r.onclick = () => {
+    const e = (lib || []).find(x => x.key === r.dataset.recent);
+    if (e) { trayAdd({ input_method: 'history', display_name: e.name, quantity: 1, serving_unit: 'serving', kcal: e.kcal, protein_g: e.protein_g, carbs_g: e.carbs_g, fat_g: e.fat_g }); closeModal(); renderTrayScreen(); }
+  });
+  $$('[data-cfsearch]').forEach(r => r.onclick = () => { const f = (custom || [])[+r.dataset.cfsearch]; if (f) { closeModal(); openServingPicker(customToHit(f)); } });
+}
+
+async function offSearch(term) {
+  const box = $('#off-remote') || $('#off-results'); if (!box) return;
+  try {
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(term)}&search_simple=1&action=process&json=1&page_size=20&fields=product_name,brands,nutriments,serving_size,code`;
+    const r = await fetch(url);
+    const data = await r.json();
+    const hits = (data.products || []).map(offToFood).filter(Boolean);
+    if (!hits.length) { box.innerHTML = `<p class="muted small" style="padding:12px 0">No web matches. Try Quick add or Describe.</p>`; return; }
+    box.innerHTML = hits.map((h, i) => `
+      <div class="off-row" data-hit="${i}">
+        <div><div class="off-name">${escapeHtml(h.name)}</div><div class="off-sub">${escapeHtml(h.brand || 'generic')} · ${h.kcal100} kcal/100${h.basis === 'per_100ml' ? 'ml' : 'g'}</div></div>
+        <div class="off-kcal">›</div>
+      </div>`).join('');
+    $$('[data-hit]').forEach(el => el.onclick = () => openServingPicker(hits[Number(el.dataset.hit)]));
+  } catch (e) {
+    box.innerHTML = `<p class="muted small" style="padding:12px 0">Search needs a connection. Try Quick add.</p>`;
+  }
+}
+
+function offToFood(p) {
+  const n = p.nutriments || {};
+  const kcal100 = Math.round(n['energy-kcal_100g'] ?? (n['energy_100g'] ? n['energy_100g'] / 4.184 : NaN));
+  if (!Number.isFinite(kcal100)) return null;
+  const basis = (p.serving_size && /ml/i.test(p.serving_size)) ? 'per_100ml' : 'per_100g';
+  return {
+    name: (p.product_name || 'Unknown').slice(0, 80),
+    brand: p.brand || (p.brands ? p.brands.split(',')[0] : ''),
+    basis, kcal100,
+    protein100: Math.round(n.proteins_100g || 0),
+    carb100: Math.round(n.carbohydrates_100g || 0),
+    fat100: Math.round(n.fat_100g || 0),
+    fiber100: n.fiber_100g != null ? Math.round(n.fiber_100g) : null,
+    serving_grams: parseServingGrams(p.serving_size),
+    code: p.code,
+  };
+}
+function parseServingGrams(s) { if (!s) return null; const m = String(s).match(/([\d.]+)\s*(g|ml)/i); return m ? Number(m[1]) : null; }
+
+function openServingPicker(h) {
+  const unit = h.basis === 'per_100ml' ? 'ml' : 'g';
+  const def = h.serving_grams || 100;
+  showModal(`
+    <h2>${escapeHtml(h.name)}</h2>
+    <p class="small muted">${escapeHtml(h.brand || 'generic')} · ${h.kcal100} kcal / 100${unit}</p>
+    <div class="modal-section">
+      <div class="label">Amount (${unit})</div>
+      <input id="sp-amt" type="number" inputmode="decimal" value="${def}" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card-bg);color:var(--text);font-size:15px">
+      ${h.serving_grams ? `<div class="sp-chips"><span class="sp-chip" data-amt="${h.serving_grams}">1 serving (${h.serving_grams}${unit})</span><span class="sp-chip" data-amt="100">100${unit}</span></div>` : ''}
+    </div>
+    <div id="sp-preview" class="sp-preview"></div>
+    <div class="btn-row"><button class="btn btn-soft" data-close>Cancel</button><button class="btn" id="sp-add">Add to tray</button></div>
+  `, () => {
+    const calc = () => {
+      const g = parseFloat($('#sp-amt').value) || 0; const f = g / 100;
+      const v = { kcal: Math.round(h.kcal100 * f), p: Math.round(h.protein100 * f), c: Math.round(h.carb100 * f), ft: Math.round(h.fat100 * f) };
+      $('#sp-preview').innerHTML = `<strong>${v.kcal}</strong> kcal · ${v.p} P · ${v.c} C · ${v.ft} F`;
+      return v;
+    };
+    calc();
+    $('#sp-amt').addEventListener('input', calc);
+    $$('[data-amt]').forEach(ch => ch.onclick = () => { $('#sp-amt').value = ch.dataset.amt; calc(); });
+    $('#sp-add').onclick = () => {
+      const g = parseFloat($('#sp-amt').value) || 0; const f = g / 100;
+      trayAdd({
+        input_method: 'search', display_name: h.name, quantity: g, serving_unit: unit,
+        kcal: h.kcal100 * f, protein_g: h.protein100 * f, carbs_g: h.carb100 * f, fat_g: h.fat100 * f,
+        fiber_g: h.fiber100 != null ? h.fiber100 * f : null,
+        source_payload: { off_code: h.code },
+      });
+      closeModal(); renderTrayScreen();
+    };
+  });
+}
+
+// Voice dictation helper (progressive enhancement; flaky on iOS PWAs by design)
+function wireDictation(btnId, targetId, noteId) {
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Rec) return;
+  let rec = null, on = false;
+  const btn = document.getElementById(btnId), note = noteId ? document.getElementById(noteId) : null;
+  if (!btn) return;
+  btn.onclick = () => {
+    if (on && rec) { rec.stop(); return; }
+    try {
+      rec = new Rec(); rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = false;
+      let base = (document.getElementById(targetId).value || '').trim();
+      rec.onstart = () => { on = true; btn.textContent = '● Listening — tap to stop'; if (note) note.textContent = ''; };
+      rec.onerror = (e) => { if (note) note.textContent = 'Dictation unavailable here — type instead.'; };
+      rec.onend = () => { on = false; btn.textContent = '🎙 Dictate'; };
+      rec.onresult = (ev) => {
+        let txt = '';
+        for (let i = 0; i < ev.results.length; i++) txt += ev.results[i][0].transcript;
+        document.getElementById(targetId).value = (base ? base + ' ' : '') + txt;
+      };
+      rec.start();
+    } catch (e) { if (note) note.textContent = 'Dictation unavailable here — type instead.'; }
+  };
+}
+
+// ===== Food logging v2 — phase 2+: capture (barcode/photo/label), reuse =====
+// Local persistence (no new tables; per the data-model decision). Cloud sync of
+// these is a later add — for a single-user device localStorage is enough.
+const LS_CUSTOM = 'trim_custom_foods', LS_RECIPES = 'trim_recipes', LS_MEALS = 'trim_saved_meals';
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+function getCustomFoods() { return lsGet(LS_CUSTOM); }
+function getRecipes() { return lsGet(LS_RECIPES); }
+function getSavedMeals() { return lsGet(LS_MEALS); }
+
+// --- Vision via the JWT-gated claude proxy (image content block) ---
+async function callClaudeVision(base64, mediaType, prompt, maxTokens = 1000) {
+  if (!hasSession()) throw new Error('Sign in to use AI');
+  const mt = /^image\/(jpeg|png|gif|webp)$/.test(mediaType || '') ? mediaType : 'image/jpeg';
+  const body = {
+    model: CLAUDE_MODEL, max_tokens: maxTokens,
+    system: 'You output ONLY valid JSON, no preamble or code fences.',
+    messages: [{ role: 'user', content: [
+      { type: 'image', source: { type: 'base64', media_type: mt, data: base64 } },
+      { type: 'text', text: prompt },
+    ] }],
+  };
+  const r = await fetch(`${SB_URL}/functions/v1/claude`, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${await sbBearer()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error('vision ' + r.status + ': ' + (await r.text()).slice(0, 150));
+  const data = await r.json();
+  const text = typeof data.text === 'string' ? data.text : (data.content || []).map(c => c.text || '').join('');
+  return JSON.parse(text.replace(/^```json\s*/i, '').replace(/```$/i, '').trim());
+}
+function pickImage(cb) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+  inp.onchange = () => { const f = inp.files && inp.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => cb(rd.result.split(',')[1], f.type); rd.readAsDataURL(f); };
+  inp.click();
+}
+
+// 4.6 Meal photo (vision) — array of items, conservative portions
+function openMealPhoto() {
+  pickImage(async (b64, mt) => {
+    showModal(`<h2>Reading the plate…</h2><p class="small muted" style="text-align:center;padding:24px 0">Identifying items &amp; portions</p>`);
+    try {
+      const pj = await callClaudeVision(b64, mt, 'Identify each distinct food on this plate; estimate a conservative portion and its calories + macros. Return ONLY JSON {"items":[{"display_name":"2-5 words","quantity":number,"serving_unit":"g|item label","kcal":int,"protein_g":int,"carbs_g":int,"fat_g":int,"confidence":0..1}]}.');
+      const items = Array.isArray(pj.items) ? pj.items : [];
+      closeModal();
+      if (!items.length) { toast('Could not read the plate — try Describe'); return; }
+      items.forEach(it => trayAdd({ input_method: 'photo', display_name: it.display_name || 'Food', quantity: it.quantity ?? 1, serving_unit: it.serving_unit || 'serving', kcal: it.kcal, protein_g: it.protein_g, carbs_g: it.carbs_g ?? it.carb_g, fat_g: it.fat_g, needs_review: true, confidence: it.confidence }));
+      openTray();
+    } catch (e) { closeModal(); toast('Photo failed: ' + e.message); }
+  });
+}
+
+// 4.4 Label scan (OCR via vision) — one ResolvedFood, needs review
+function openLabelScan() {
+  pickImage(async (b64, mt) => {
+    showModal(`<h2>Reading label…</h2><p class="small muted" style="text-align:center;padding:24px 0">Extracting the nutrition panel</p>`);
+    try {
+      const pj = await callClaudeVision(b64, mt, 'Read this nutrition facts panel for ONE serving as printed. Return ONLY JSON {"display_name":"product name or short label","serving_label":"e.g. 1 cup (240ml)","kcal":int,"protein_g":number,"carbs_g":number,"fat_g":number,"fiber_g":number|null}.');
+      closeModal();
+      trayAdd({ input_method: 'label', display_name: pj.display_name || 'Packaged food', quantity: 1, serving_unit: pj.serving_label || 'serving', kcal: pj.kcal, protein_g: pj.protein_g, carbs_g: pj.carbs_g, fat_g: pj.fat_g, fiber_g: pj.fiber_g, needs_review: true, source_payload: { label: pj } });
+      openTray(); toast('Added — verify the numbers');
+    } catch (e) { closeModal(); toast('Label read failed: ' + e.message); }
+  });
+}
+
+// 4.3 Barcode scan — BarcodeDetector → zxing fallback (iOS) → manual entry → OFF
+function openBarcodeScan() {
+  const native = 'BarcodeDetector' in window;
+  showModal(`
+    <h2>Scan barcode</h2>
+    <video id="bc-video" playsinline muted style="width:100%;max-height:230px;border-radius:var(--radius);background:#000;object-fit:cover"></video>
+    <p class="small muted" id="bc-note" style="margin-top:8px">Point the camera at the barcode.</p>
+    <div class="modal-section"><div class="label">Or type the barcode digits</div>
+      <input id="bc-manual" inputmode="numeric" placeholder="e.g., 0123456789012" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card-bg);color:var(--text);font-size:15px"></div>
+    <div class="btn-row"><button class="btn btn-soft" id="bc-cancel">Cancel</button><button class="btn" id="bc-lookup">Look up</button></div>
+  `, async () => {
+    let stream = null, raf = null, zreader = null, done = false;
+    const stop = () => { done = true; if (raf) cancelAnimationFrame(raf); try { zreader && zreader.reset && zreader.reset(); } catch {} if (stream) stream.getTracks().forEach(t => t.stop()); };
+    const hit = (code) => { if (done) return; stop(); barcodeResolve(code); };
+    $('#bc-cancel').onclick = () => { stop(); closeModal(); };
+    $('#bc-lookup').onclick = () => { const c = $('#bc-manual').value.trim(); if (c) hit(c); };
+    const v = $('#bc-video');
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      v.srcObject = stream; await v.play();
+    } catch (e) { $('#bc-note').textContent = 'Camera unavailable — type the digits or use Label scan.'; return; }
+    if (native) {
+      try {
+        const det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
+        const tick = async () => { if (done) return; try { const codes = await det.detect(v); if (codes && codes.length) return hit(codes[0].rawValue); } catch {} raf = requestAnimationFrame(tick); };
+        raf = requestAnimationFrame(tick); return;
+      } catch (e) { /* fall through to zxing */ }
+    }
+    // zxing fallback (iOS / no BarcodeDetector). Lazy-load; if it fails, manual entry remains.
+    try {
+      const z = await import('https://esm.sh/@zxing/browser@0.1.5');
+      zreader = new z.BrowserMultiFormatReader();
+      zreader.decodeFromVideoElement(v, (result) => { if (result) hit(result.getText()); });
+    } catch (e) { $('#bc-note').textContent = 'Live scan not supported — type the digits or use Label scan.'; }
+  });
+}
+async function barcodeResolve(code) {
+  toast('Looking up…');
+  try {
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,nutriments,serving_size,code`);
+    const data = await r.json();
+    if (data.status === 1 && data.product) { const h = offToFood(data.product); if (h) { closeModal(); openServingPicker(h); return; } }
+    closeModal(); toast('Not in Open Food Facts — try Label scan'); openLabelScan();
+  } catch (e) { closeModal(); toast('Lookup failed'); }
+}
+
+// 4.7 Custom foods (reusable, normalized to per-100g) ---------------------------
+function openCustomFoods() {
+  const foods = getCustomFoods();
+  showModal(`
+    <h2>Custom foods</h2>
+    <p class="small muted">Your own reusable items.</p>
+    <div style="max-height:46vh;overflow:auto;margin:8px 0">
+      ${foods.length ? foods.map((f, i) => `
+        <div class="off-row" data-cf="${i}"><div><div class="off-name">${escapeHtml(f.name)}</div><div class="off-sub">${escapeHtml(f.brand || 'custom')} · ${f.kcal100} kcal/100g</div></div><div class="off-kcal">›</div></div>`).join('') : '<p class="muted small" style="padding:10px 0">None yet — create one below.</p>'}
+    </div>
+    <div class="btn-row"><button class="btn btn-soft" data-close>Close</button><button class="btn" id="cf-new">New custom food</button></div>
+  `, () => {
+    $('#cf-new').onclick = () => openCustomFoodForm();
+    $$('[data-cf]').forEach(el => el.onclick = () => { const f = foods[+el.dataset.cf]; closeModal(); openServingPicker(customToHit(f)); });
+  });
+}
+function customToHit(f) { return { name: f.name, brand: f.brand || 'custom', basis: 'per_100g', kcal100: f.kcal100, protein100: f.protein100, carb100: f.carb100, fat100: f.fat100, fiber100: f.fiber100 ?? null, serving_grams: f.serving_grams || null, code: null, custom: true }; }
+function openCustomFoodForm() {
+  showModal(`
+    <h2>New custom food</h2>
+    <p class="small muted">Enter nutrition per 100 g.</p>
+    <div class="modal-section"><div class="label">Name</div><input id="cff-name" type="text" placeholder="e.g., My protein shake"></div>
+    <div class="modal-section"><div class="label">Brand (optional)</div><input id="cff-brand" type="text"></div>
+    <div class="grid-2">
+      <div><div class="mf-lbl">kcal /100g</div><input id="cff-kcal" type="number" inputmode="numeric"></div>
+      <div><div class="mf-lbl">Protein /100g</div><input id="cff-p" type="number" inputmode="numeric"></div>
+      <div><div class="mf-lbl">Carbs /100g</div><input id="cff-c" type="number" inputmode="numeric"></div>
+      <div><div class="mf-lbl">Fat /100g</div><input id="cff-f" type="number" inputmode="numeric"></div>
+    </div>
+    <div class="modal-section"><div class="label">Default serving grams (optional)</div><input id="cff-serv" type="number" inputmode="numeric" placeholder="e.g., 30"></div>
+    <div class="btn-row"><button class="btn btn-soft" data-close>Cancel</button><button class="btn" id="cff-save">Save</button></div>
+  `, () => {
+    $('#cff-save').onclick = () => {
+      const name = $('#cff-name').value.trim();
+      if (!name) { toast('Name it'); return; }
+      const f = { name, brand: $('#cff-brand').value.trim(), kcal100: Math.round(+$('#cff-kcal').value || 0), protein100: Math.round(+$('#cff-p').value || 0), carb100: Math.round(+$('#cff-c').value || 0), fat100: Math.round(+$('#cff-f').value || 0), fiber100: null, serving_grams: +$('#cff-serv').value || null };
+      const all = getCustomFoods(); all.unshift(f); lsSet(LS_CUSTOM, all);
+      toast('Custom food saved'); closeModal(); openServingPicker(customToHit(f));
+    };
+  });
+}
+
+// 4.8 Recipes (multi-ingredient, scaled by servings) ---------------------------
+function recipeTotals(r) { return (r.ingredients || []).reduce((a, i) => ({ kcal: a.kcal + (+i.kcal || 0), protein_g: a.protein_g + (+i.protein_g || 0), carbs_g: a.carbs_g + (+i.carbs_g || 0), fat_g: a.fat_g + (+i.fat_g || 0) }), { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }); }
+function openRecipes() {
+  const recipes = getRecipes();
+  showModal(`
+    <h2>Recipes</h2>
+    <div style="max-height:46vh;overflow:auto;margin:8px 0">
+      ${recipes.length ? recipes.map((r, i) => { const t = recipeTotals(r); const per = Math.round(t.kcal / (r.servings || 1)); return `<div class="off-row" data-rc="${i}"><div><div class="off-name">${escapeHtml(r.name)}</div><div class="off-sub">${r.ingredients.length} ingr · ${r.servings} servings · ${per} kcal/serving</div></div><div class="off-kcal">›</div></div>`; }).join('') : '<p class="muted small" style="padding:10px 0">None yet.</p>'}
+    </div>
+    <div class="btn-row"><button class="btn btn-soft" data-close>Close</button><button class="btn" id="rc-new">New recipe</button></div>
+  `, () => {
+    $('#rc-new').onclick = () => openRecipeBuilder();
+    $$('[data-rc]').forEach(el => el.onclick = () => { closeModal(); openLogRecipe(recipes[+el.dataset.rc], +el.dataset.rc); });
+  });
+}
+function openRecipeBuilder() {
+  const draft = { name: '', servings: 1, ingredients: [] };
+  const render = () => {
+    const t = recipeTotals(draft);
+    showModal(`
+      <h2>Build recipe</h2>
+      <div class="modal-section"><div class="label">Name</div><input id="rb-name" type="text" value="${escapeHtml(draft.name)}" placeholder="e.g., Chili"></div>
+      <div class="modal-section"><div class="label">Total servings</div><input id="rb-serv" type="number" inputmode="numeric" value="${draft.servings}"></div>
+      <div class="section-label">Ingredients · ${t.kcal} kcal total</div>
+      ${draft.ingredients.map((i, idx) => `<div class="off-row"><div><div class="off-name">${escapeHtml(i.display_name)}</div><div class="off-sub">${i.kcal} kcal · ${i.protein_g}P ${i.carbs_g}C ${i.fat_g}F</div></div><button class="draft-x" data-ri="${idx}">×</button></div>`).join('') || '<p class="muted small" style="padding:8px 0">Add ingredients below.</p>'}
+      <button class="log-more-btn" id="rb-add" style="margin-top:8px">＋ Add ingredient</button>
+      <div class="btn-row"><button class="btn btn-soft" data-close>Cancel</button><button class="btn" id="rb-save">Save recipe</button></div>
+    `, () => {
+      $('#rb-add').onclick = () => { draft.name = $('#rb-name').value; draft.servings = +$('#rb-serv').value || 1; openIngredientForm(draft, render); };
+      $$('[data-ri]').forEach(b => b.onclick = () => { draft.name = $('#rb-name').value; draft.servings = +$('#rb-serv').value || 1; draft.ingredients.splice(+b.dataset.ri, 1); render(); });
+      $('#rb-save').onclick = () => {
+        draft.name = $('#rb-name').value.trim(); draft.servings = +$('#rb-serv').value || 1;
+        if (!draft.name) { toast('Name it'); return; }
+        if (!draft.ingredients.length) { toast('Add an ingredient'); return; }
+        const all = getRecipes(); all.unshift(draft); lsSet(LS_RECIPES, all);
+        toast('Recipe saved'); closeModal();
+      };
+    });
+  };
+  render();
+}
+function openIngredientForm(draft, back) {
+  showModal(`
+    <h2>Add ingredient</h2>
+    ${macroFieldsHtml()}
+    <div class="btn-row"><button class="btn btn-soft" id="if-cancel">Back</button><button class="btn" id="if-add">Add</button></div>
+  `, () => {
+    $('#mf-derive').onchange = () => { $('#mf-kcal').disabled = $('#mf-derive').checked; };
+    $('#if-cancel').onclick = () => back();
+    $('#if-add').onclick = () => { const v = macroFieldsRead('Ingredient'); draft.ingredients.push(v); back(); };
+  });
+}
+function openLogRecipe(r, idx) {
+  const t = recipeTotals(r);
+  showModal(`
+    <h2>${escapeHtml(r.name)}</h2>
+    <p class="small muted">${Math.round(t.kcal / (r.servings || 1))} kcal per serving · recipe makes ${r.servings}.</p>
+    <div class="modal-section"><div class="label">Servings to log</div><input id="lr-n" type="number" inputmode="decimal" value="1" step="0.5"></div>
+    <div id="lr-prev" class="sp-preview"></div>
+    <div class="btn-row"><button class="btn btn-warm" id="lr-del">Delete recipe</button><button class="btn" id="lr-add">Add to tray</button></div>
+  `, () => {
+    const per = { kcal: t.kcal / (r.servings || 1), p: t.protein_g / (r.servings || 1), c: t.carbs_g / (r.servings || 1), f: t.fat_g / (r.servings || 1) };
+    const calc = () => { const n = +$('#lr-n').value || 0; $('#lr-prev').innerHTML = `<strong>${Math.round(per.kcal * n)}</strong> kcal · ${Math.round(per.p * n)} P · ${Math.round(per.c * n)} C · ${Math.round(per.f * n)} F`; return n; };
+    calc(); $('#lr-n').addEventListener('input', calc);
+    $('#lr-add').onclick = () => { const n = +$('#lr-n').value || 1; trayAdd({ input_method: 'recipe', display_name: `${r.name}${n !== 1 ? ` ×${trimNum(n)}` : ''}`, quantity: n, serving_unit: 'serving', kcal: per.kcal * n, protein_g: per.p * n, carbs_g: per.c * n, fat_g: per.f * n }); closeModal(); renderTrayScreen(); };
+    $('#lr-del').onclick = () => { const all = getRecipes(); all.splice(idx, 1); lsSet(LS_RECIPES, all); toast('Recipe deleted'); closeModal(); };
+  });
+}
+
+// 4.9 Saved meals (named group logged together) -------------------------------
+function saveTrayAsMeal() {
+  if (!state.tray.length) { toast('Stage some items first'); return; }
+  showModal(`
+    <h2>Save as meal</h2>
+    <p class="small muted">${state.tray.length} items · ${trayTotals().kcal} kcal</p>
+    <div class="modal-section"><div class="label">Name</div><input id="sm-name" type="text" placeholder="e.g., Usual breakfast"></div>
+    <div class="btn-row"><button class="btn btn-soft" data-close>Cancel</button><button class="btn" id="sm-save">Save</button></div>
+  `, () => {
+    $('#sm-save').onclick = () => {
+      const name = $('#sm-name').value.trim(); if (!name) { toast('Name it'); return; }
+      const items = state.tray.map(d => ({ display_name: d.display_name, quantity: d.quantity, serving_unit: d.serving_unit, kcal: d.kcal, protein_g: d.protein_g, carbs_g: d.carbs_g, fat_g: d.fat_g }));
+      const all = getSavedMeals(); all.unshift({ name, items }); lsSet(LS_MEALS, all);
+      toast('Meal saved'); closeModal();
+    };
+  });
+}
+function openSavedMeals() {
+  const meals = getSavedMeals();
+  showModal(`
+    <h2>Saved meals</h2>
+    <div style="max-height:50vh;overflow:auto;margin:8px 0">
+      ${meals.length ? meals.map((m, i) => { const k = m.items.reduce((a, x) => a + (+x.kcal || 0), 0); return `<div class="off-row" data-sm="${i}"><div><div class="off-name">${escapeHtml(m.name)}</div><div class="off-sub">${m.items.length} items · ${k} kcal</div></div><button class="draft-x" data-smx="${i}">×</button></div>`; }).join('') : '<p class="muted small" style="padding:10px 0">None yet. Stage a tray, then "Save as meal".</p>'}
+    </div>
+    <div class="btn-row"><button class="btn btn-soft" data-close>Close</button></div>
+  `, () => {
+    $$('[data-sm]').forEach(el => el.onclick = (e) => { if (e.target.closest('[data-smx]')) return; const m = meals[+el.dataset.sm]; m.items.forEach(x => trayAdd({ input_method: 'saved_meal', display_name: x.display_name, quantity: x.quantity, serving_unit: x.serving_unit, kcal: x.kcal, protein_g: x.protein_g, carbs_g: x.carbs_g, fat_g: x.fat_g })); closeModal(); openTray(); });
+    $$('[data-smx]').forEach(b => b.onclick = (e) => { e.stopPropagation(); const all = getSavedMeals(); all.splice(+b.dataset.smx, 1); lsSet(LS_MEALS, all); openSavedMeals(); });
+  });
+}
+
+// 4.10 Copy day — pull a past day's logged foods into the tray as drafts -------
+function openCopyDay() {
+  const yest = addDays(todayISO(), -1);
+  showModal(`
+    <h2>Copy a day</h2>
+    <p class="small muted">Pull a past day's meals into the tray to re-log.</p>
+    <div class="modal-section"><div class="label">Day</div><input id="cd-date" type="date" value="${yest}" max="${todayISO()}"></div>
+    <div class="btn-row"><button class="btn btn-soft" data-close>Cancel</button><button class="btn" id="cd-go">Load day</button></div>
+  `, () => {
+    $('#cd-go').onclick = async () => {
+      const date = $('#cd-date').value; if (!date) return;
+      try {
+        const rows = await sbFetch(`/tide_intake_logs?category=eq.food&log_date=eq.${date}&order=logged_at.asc`) || [];
+        const meals = rows.filter(r => !r.metadata?.template);
+        if (!meals.length) { toast('No meals logged that day'); return; }
+        meals.forEach(r => { const m = mealMacros(r); trayAdd({ input_method: 'history', display_name: r.item_type || 'Meal', quantity: r.metadata?.serving_qty ?? 1, serving_unit: r.metadata?.serving_unit || 'serving', kcal: m.kcal, protein_g: m.protein_g, carbs_g: m.carbs_g, fat_g: m.fat_g }); });
+        closeModal(); openTray();
+      } catch (e) { toast('Could not load: ' + e.message); }
+    };
+  });
+}
+
+// Local food matches (custom foods + library recents) for instant search
+function searchLocalFoods(term) {
+  const q = term.toLowerCase();
+  const custom = getCustomFoods().filter(f => f.name.toLowerCase().includes(q)).map(f => ({ kind: 'custom', food: f }));
+  const lib = buildFoodLibrary(state.foodLibraryRows || []).filter(e => e.name.toLowerCase().includes(q)).slice(0, 6).map(e => ({ kind: 'recent', entry: e }));
+  return { custom, lib };
 }
 
 // Swipe-left-to-delete on a list. Each row must look like:
