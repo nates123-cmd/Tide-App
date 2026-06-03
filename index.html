@@ -5996,7 +5996,7 @@ function openDescribe() {
     <h2>Describe a meal</h2>
     <p class="small muted">Plain language — Claude itemizes it into calories + macros for you to review.</p>
     <textarea id="desc-text" rows="3" placeholder="two eggs, toast with butter, a flat white" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card-bg);color:var(--text);font-family:inherit;font-size:14px;resize:vertical"></textarea>
-    ${voiceOk ? `<button class="btn btn-soft" id="desc-mic" style="margin-top:10px">🎙 Hold-free dictate</button><p class="small muted" id="desc-mic-note" style="margin-top:6px"></p>` : ''}
+    ${voiceOk ? `<button class="btn btn-soft" id="desc-mic" style="margin-top:10px">Hold-free dictate</button><p class="small muted" id="desc-mic-note" style="margin-top:6px"></p>` : ''}
     <div class="btn-row"><button class="btn btn-soft" data-close>Cancel</button><button class="btn" id="desc-go">Estimate →</button></div>
   `, () => {
     if (voiceOk) wireDictation('desc-mic', 'desc-text', 'desc-mic-note');
@@ -6204,7 +6204,7 @@ function wireDictation(btnId, targetId, noteId) {
       let base = (document.getElementById(targetId).value || '').trim();
       rec.onstart = () => { on = true; btn.textContent = '● Listening — tap to stop'; if (note) note.textContent = ''; };
       rec.onerror = (e) => { if (note) note.textContent = 'Dictation unavailable here — type instead.'; };
-      rec.onend = () => { on = false; btn.textContent = '🎙 Dictate'; };
+      rec.onend = () => { on = false; btn.textContent = 'Hold-free dictate'; };
       rec.onresult = (ev) => {
         let txt = '';
         for (let i = 0; i < ev.results.length; i++) txt += ev.results[i][0].transcript;
