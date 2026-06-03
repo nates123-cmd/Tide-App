@@ -5604,6 +5604,7 @@ async function logMealFromLibrary(entry) {
 function openMealDetail(id) {
   const r = (state.todayIntake || []).find(x => x.id === id);
   if (!r) return;
+  if (r._pending) { toast('Still syncing — edit once it lands'); return; }
   const m = mealMacros(r);
   const timeVal = isoToLocalDatetimeInput(r.logged_at);
   showModal(`
@@ -5721,10 +5722,15 @@ function trayAdd(draft) {
     source_payload: draft.source_payload ?? null,
   };
   state.tray.push(d);
+  trayPersist();
   return d;
 }
-function trayRemove(tid) { state.tray = (state.tray || []).filter(d => d.tid !== tid); }
-function trayClear() { state.tray = []; }
+function trayRemove(tid) { state.tray = (state.tray || []).filter(d => d.tid !== tid); trayPersist(); }
+function trayClear() { state.tray = []; trayPersist(); }
+// Persist the tray so staged drafts survive a refresh / app switch.
+const LS_TRAY = 'trim_tray';
+function trayPersist() { try { localStorage.setItem(LS_TRAY, JSON.stringify(state.tray || [])); } catch {} }
+function trayLoad() { try { const a = JSON.parse(localStorage.getItem(LS_TRAY) || '[]'); if (Array.isArray(a)) state.tray = a; } catch {} }
 function trayTotals() {
   return (state.tray || []).reduce((a, d) => ({
     kcal: a.kcal + d.kcal, protein_g: a.protein_g + d.protein_g,
@@ -5756,19 +5762,65 @@ async function commitTray() {
       source_payload: d.source_payload || undefined,
     },
   }));
+  const leave = (msg) => { trayClear(); toast(msg); state.screen = state.trayReturn || 'home'; if (state.screen === 'home') state.tab = 'food'; render(); };
   try {
     const result = await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(rows) });
     if (Array.isArray(result)) {
       state.todayIntake = (state.todayIntake || []).concat(result);
       state.foodLibraryRows = result.concat(state.foodLibraryRows || []);
     }
-    trayClear();
-    toast(`Logged ${drafts.length} item${drafts.length === 1 ? '' : 's'}`);
-    state.screen = state.trayReturn || 'home';
-    if (state.screen === 'home') state.tab = 'food';
-    render();
-  } catch (e) { toast('Could not log: ' + e.message); }
+    leave(`Logged ${drafts.length} item${drafts.length === 1 ? '' : 's'}`);
+  } catch (e) {
+    // Offline / network failure → queue for later, optimistically show today.
+    const q = outboxGet(); q.push(rows); outboxSet(q);
+    const stamp = Date.now();
+    const optimistic = rows.map((row, i) => ({ id: `pending-${stamp}-${i}`, ...row, _pending: true }));
+    state.todayIntake = (state.todayIntake || []).concat(optimistic);
+    leave(`Saved offline — ${drafts.length} item${drafts.length === 1 ? '' : 's'} will sync`);
+  }
 }
+
+// --- Offline commit outbox (queues whole draft-batches; flush on reconnect) ---
+const LS_OUTBOX = 'trim_food_outbox';
+function outboxGet() { try { return JSON.parse(localStorage.getItem(LS_OUTBOX) || '[]'); } catch { return []; } }
+function outboxSet(a) { try { localStorage.setItem(LS_OUTBOX, JSON.stringify(a)); } catch {} }
+let _flushing = false;
+async function flushOutbox() {
+  if (_flushing || !hasSession()) return;
+  let q = outboxGet();
+  if (!q.length || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+  _flushing = true;
+  const remaining = [];
+  for (const rows of q) {
+    try { await sbFetch('/tide_intake_logs', { method: 'POST', body: JSON.stringify(rows) }); }
+    catch (e) { remaining.push(rows); }
+  }
+  outboxSet(remaining);
+  _flushing = false;
+  if (remaining.length !== q.length) {
+    // Replace optimistic rows with server truth.
+    state.todayIntake = (state.todayIntake || []).filter(r => !r._pending);
+    await loadTodayIntake().catch(() => {});
+    await loadFoodLibrary().catch(() => {});
+    toast('Offline meals synced');
+    if (state.screen) render();
+  }
+}
+if (typeof window !== 'undefined') window.addEventListener('online', () => flushOutbox());
+
+// --- Personal food DB: cache picked OFF products so they're instant next time ---
+const LS_OFFCACHE = 'trim_off_cache';
+function cacheOffFood(h) {
+  if (!h || h.custom) return;
+  try {
+    const c = lsGet(LS_OFFCACHE);
+    const key = (h.code || h.name || '').toString().toLowerCase();
+    if (!key || c.find(x => (x.code || x.name || '').toString().toLowerCase() === key)) return;
+    c.unshift({ name: h.name, brand: h.brand, kcal100: h.kcal100, protein100: h.protein100, carb100: h.carb100, fat100: h.fat100, fiber100: h.fiber100 ?? null, serving_grams: h.serving_grams || null, code: h.code || null });
+    lsSet(LS_OFFCACHE, c.slice(0, 250));
+  } catch {}
+}
+function getOffCache() { return lsGet(LS_OFFCACHE); }
 
 // --- Tray screen ---
 function renderTrayScreen() {
@@ -5909,7 +5961,7 @@ function openDraftEdit(tid) {
     $('#de-save').onclick = () => {
       const v = macroFieldsRead(d.display_name);
       Object.assign(d, v, { quantity: parseFloat($('#mf-qty').value) || d.quantity, serving_unit: $('#mf-unit').value.trim() || d.serving_unit, needs_review: false });
-      closeModal(); renderTrayScreen();
+      trayPersist(); closeModal(); renderTrayScreen();
     };
     $('#de-del').onclick = () => { trayRemove(tid); closeModal(); renderTrayScreen(); };
   });
@@ -5987,38 +6039,39 @@ function openFoodSearch() {
   });
 }
 
+function savedFoodRow(s, i) { return `<div class="off-row" data-saved="${i}"><div><div class="off-name">${escapeHtml(s.label)}</div><div class="off-sub">${escapeHtml(s.sub)}</div></div><div class="off-kcal">›</div></div>`; }
+function recentFoodRow(e) { return `<div class="off-row" data-recent="${escapeHtml(e.key)}"><div><div class="off-name">${escapeHtml(e.name)}</div><div class="off-sub">${e.count}× logged</div></div><div class="off-kcal">${e.kcal || '—'}</div></div>`; }
+
 function renderSearchRecents() {
-  const lib = buildFoodLibrary(state.foodLibraryRows || []).slice(0, 8);
-  const custom = getCustomFoods().slice(0, 6);
   const box = $('#off-results'); if (!box) return;
-  if (!lib.length && !custom.length) { box.innerHTML = `<p class="muted small" style="padding:10px 0">Type to search products.</p>`; return; }
+  const saved = [
+    ...getCustomFoods().slice(0, 4).map(f => ({ label: f.name, sub: 'custom · ' + f.kcal100 + ' kcal/100g', hit: customToHit(f) })),
+    ...getOffCache().slice(0, 4).map(o => ({ label: o.name, sub: (o.brand || 'saved') + ' · ' + o.kcal100 + ' kcal/100g', hit: offCacheToHit(o) })),
+  ];
+  const lib = buildFoodLibrary(state.foodLibraryRows || []).slice(0, 8);
+  if (!saved.length && !lib.length) { box.innerHTML = `<p class="muted small" style="padding:10px 0">Type to search products.</p>`; return; }
   box.innerHTML =
-    (custom.length ? `<div class="off-sec-lbl">Your custom foods</div>` + custom.map((f, i) => `
-      <div class="off-row" data-cfsearch="${i}"><div><div class="off-name">${escapeHtml(f.name)}</div><div class="off-sub">custom · ${f.kcal100} kcal/100g</div></div><div class="off-kcal">›</div></div>`).join('') : '') +
-    (lib.length ? `<div class="off-sec-lbl" style="margin-top:8px">Recents</div>` + lib.map(e => `
-      <div class="off-row" data-recent="${escapeHtml(e.key)}"><div><div class="off-name">${escapeHtml(e.name)}</div><div class="off-sub">${e.count}× logged</div></div><div class="off-kcal">${e.kcal || '—'}</div></div>`).join('') : '');
-  wireLocalSearchRows(lib, custom);
+    (saved.length ? `<div class="off-sec-lbl">Saved foods</div>` + saved.map(savedFoodRow).join('') : '') +
+    (lib.length ? `<div class="off-sec-lbl" ${saved.length ? 'style="margin-top:8px"' : ''}>Recents</div>` + lib.map(recentFoodRow).join('') : '');
+  wireSearchRows(saved, lib);
 }
 
-// Instant local matches (custom + recents) while the OFF network call debounces.
+// Instant local matches (saved foods + recents) while the OFF call debounces.
 function renderSearchLocal(term) {
   const box = $('#off-results'); if (!box) return;
-  const { custom, lib } = searchLocalFoods(term);
-  const cf = custom.map(x => x.food), recents = lib.map(x => x.entry);
+  const { saved, lib } = searchLocalFoods(term);
   box.innerHTML =
-    (cf.length ? `<div class="off-sec-lbl">Your custom foods</div>` + cf.map((f, i) => `
-      <div class="off-row" data-cfsearch="${i}"><div><div class="off-name">${escapeHtml(f.name)}</div><div class="off-sub">custom · ${f.kcal100} kcal/100g</div></div><div class="off-kcal">›</div></div>`).join('') : '') +
-    (recents.length ? `<div class="off-sec-lbl" ${cf.length ? 'style="margin-top:8px"' : ''}>Recents</div>` + recents.map(e => `
-      <div class="off-row" data-recent="${escapeHtml(e.key)}"><div><div class="off-name">${escapeHtml(e.name)}</div><div class="off-sub">${e.count}× logged</div></div><div class="off-kcal">${e.kcal || '—'}</div></div>`).join('') : '') +
+    (saved.length ? `<div class="off-sec-lbl">Saved foods</div>` + saved.map(savedFoodRow).join('') : '') +
+    (lib.length ? `<div class="off-sec-lbl" ${saved.length ? 'style="margin-top:8px"' : ''}>Recents</div>` + lib.map(recentFoodRow).join('') : '') +
     `<div class="off-sec-lbl" style="margin-top:8px">Open Food Facts</div><div id="off-remote"><p class="muted small" style="padding:10px 0;text-align:center">Searching…</p></div>`;
-  wireLocalSearchRows(recents, cf);
+  wireSearchRows(saved, lib);
 }
-function wireLocalSearchRows(lib, custom) {
+function wireSearchRows(saved, lib) {
+  $$('[data-saved]').forEach(r => r.onclick = () => { const s = (saved || [])[+r.dataset.saved]; if (s) { closeModal(); openServingPicker(s.hit); } });
   $$('[data-recent]').forEach(r => r.onclick = () => {
     const e = (lib || []).find(x => x.key === r.dataset.recent);
     if (e) { trayAdd({ input_method: 'history', display_name: e.name, quantity: 1, serving_unit: 'serving', kcal: e.kcal, protein_g: e.protein_g, carbs_g: e.carbs_g, fat_g: e.fat_g }); closeModal(); renderTrayScreen(); }
   });
-  $$('[data-cfsearch]').forEach(r => r.onclick = () => { const f = (custom || [])[+r.dataset.cfsearch]; if (f) { closeModal(); openServingPicker(customToHit(f)); } });
 }
 
 async function offSearch(term) {
@@ -6084,8 +6137,9 @@ function openServingPicker(h) {
     $$('[data-amt]').forEach(ch => ch.onclick = () => { $('#sp-amt').value = ch.dataset.amt; calc(); });
     $('#sp-add').onclick = () => {
       const g = parseFloat($('#sp-amt').value) || 0; const f = g / 100;
+      cacheOffFood(h);
       trayAdd({
-        input_method: 'search', display_name: h.name, quantity: g, serving_unit: unit,
+        input_method: h.custom ? 'custom' : 'search', display_name: h.name, quantity: g, serving_unit: unit,
         kcal: h.kcal100 * f, protein_g: h.protein100 * f, carbs_g: h.carb100 * f, fat_g: h.fat100 * f,
         fiber_g: h.fiber100 != null ? h.fiber100 * f : null,
         source_payload: { off_code: h.code },
@@ -6397,12 +6451,16 @@ function openCopyDay() {
   });
 }
 
-// Local food matches (custom foods + library recents) for instant search
+function offCacheToHit(o) { return { name: o.name, brand: o.brand || '', basis: 'per_100g', kcal100: o.kcal100, protein100: o.protein100, carb100: o.carb100, fat100: o.fat100, fiber100: o.fiber100 ?? null, serving_grams: o.serving_grams || null, code: o.code || null }; }
+// Local food matches (custom foods + cached OFF picks + library recents) for instant search
 function searchLocalFoods(term) {
   const q = term.toLowerCase();
-  const custom = getCustomFoods().filter(f => f.name.toLowerCase().includes(q)).map(f => ({ kind: 'custom', food: f }));
-  const lib = buildFoodLibrary(state.foodLibraryRows || []).filter(e => e.name.toLowerCase().includes(q)).slice(0, 6).map(e => ({ kind: 'recent', entry: e }));
-  return { custom, lib };
+  const saved = [
+    ...getCustomFoods().filter(f => f.name.toLowerCase().includes(q)).map(f => ({ label: f.name, sub: 'custom · ' + f.kcal100 + ' kcal/100g', hit: customToHit(f) })),
+    ...getOffCache().filter(o => (o.name || '').toLowerCase().includes(q)).slice(0, 6).map(o => ({ label: o.name, sub: (o.brand || 'saved') + ' · ' + o.kcal100 + ' kcal/100g', hit: offCacheToHit(o) })),
+  ].slice(0, 8);
+  const lib = buildFoodLibrary(state.foodLibraryRows || []).filter(e => e.name.toLowerCase().includes(q)).slice(0, 6);
+  return { saved, lib };
 }
 
 // Swipe-left-to-delete on a list. Each row must look like:
@@ -9272,6 +9330,7 @@ async function boot() {
   if (!hasSession()) { showOtpGate(); return; }
   document.getElementById('otp-gate').style.display = 'none';
   loadLocal();
+  trayLoad();
   // v2: home opens on the Pulse, not on a tab. Clear any v1 default.
   state.tab = null;
   state.screen = 'home';
@@ -9287,6 +9346,7 @@ async function boot() {
   await syncProfileOnBoot().catch(() => {});
   // Then refresh from server (per-day data, tagged with the logical day)
   await loadDayData();
+  flushOutbox().catch(() => {});
   // Pull cached Oura today + 7d for the stat grid hero, then sync in background
   await Promise.all([loadOuraToday(), loadOura7d()]);
   if (state.screen === 'home') render();
