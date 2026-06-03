@@ -4075,9 +4075,13 @@ function renderBodyScreen() {
   // Latest measurement values + deltas (vs oldest in range)
   const measDelta = (key) => {
     const latest = latestField(rows, key)?.[key] ?? null;
-    if (latest == null) return { latest: null, delta: null };
-    const earlier = inRange.find(r => r[key] != null && r[key] !== latest)?.[key] ?? null;
-    return { latest, delta: earlier != null ? (latest - earlier) : null };
+    if (latest == null) return { latest: null, delta: null, since: null };
+    // Baseline = earliest in-range entry that HAS this measurement, independent of
+    // whether a weight was logged that day — so measurement-only days still count.
+    const series = rows.filter(r => r[key] != null && r.date >= cutoff).slice().reverse(); // ascending
+    const base = series.length ? series[0] : null;
+    const delta = (base && base[key] != null && base[key] !== latest) ? (latest - base[key]) : null;
+    return { latest, delta, since: base ? base.date : null };
   };
 
   $('#app').innerHTML = `
@@ -4114,7 +4118,7 @@ function renderBodyScreen() {
     <div class="meas-grid">
       ${MEAS_KEYS.map(m => {
         const { latest, delta } = measDelta(m.key);
-        const deltaTxt = (delta == null) ? '—' : (Math.abs(delta) < 0.1 ? 'flat' : `${delta > 0 ? '+' : '−'}${Math.abs(delta).toFixed(1)}″`);
+        const deltaTxt = (delta == null) ? '—' : (Math.abs(delta) < 0.1 ? 'flat' : `${delta < 0 ? '↓' : '↑'} ${Math.abs(delta).toFixed(1)}″`);
         // For body measurements default-direction is "smaller = good" (recomp/cut)
         const deltaCls = (delta == null || Math.abs(delta) < 0.1) ? 'flat' : (delta < 0 ? 'good' : 'warn');
         return `
