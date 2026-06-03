@@ -4187,7 +4187,7 @@ function normalizePhotoEntries(raw) {
 async function getSignedUrl(path) {
   if (!path) return null;
   if (signedUrlCache[path]) return signedUrlCache[path];
-  const r = await fetch(`${SB_URL}/storage/v1/object/sign/${BODY_PHOTO_BUCKET}/${encodeURIComponent(path)}`, {
+  const r = await fetch(`${SB_URL}/storage/v1/object/sign/${BODY_PHOTO_BUCKET}/${path}`, {
     method: 'POST',
     headers: {
       apikey: SB_KEY,
@@ -4230,7 +4230,7 @@ async function uploadBodyPhoto(file, dateISO) {
 }
 
 async function deletePhotoFromStorage(path) {
-  await fetch(`${SB_URL}/storage/v1/object/${BODY_PHOTO_BUCKET}/${encodeURIComponent(path)}`, {
+  await fetch(`${SB_URL}/storage/v1/object/${BODY_PHOTO_BUCKET}/${path}`, {
     method: 'DELETE',
     headers: { apikey: SB_KEY, Authorization: `Bearer ${await sbBearer()}` },
   });
