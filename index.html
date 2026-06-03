@@ -825,6 +825,8 @@
   .tray-banner { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding: 12px 14px; border-radius: var(--radius); background: var(--text); color: var(--bg); cursor: pointer; font-family: var(--font-body); font-size: 13px; }
   .tray-banner-go { font-weight: 600; }
   .meal-input-icon.loading { opacity: 0.4; pointer-events: none; }
+  .pv-spinner { width: 28px; height: 28px; margin: 8px auto 0; border: 3px solid var(--border); border-top-color: var(--text); border-radius: 50%; animation: pv-spin 0.8s linear infinite; }
+  @keyframes pv-spin { to { transform: rotate(360deg); } }
   .method-sec-lbl { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-soft); margin: 0 0 8px; }
   .method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .method-grid-4 { grid-template-columns: repeat(4, 1fr); }
@@ -839,6 +841,9 @@
   .draft-row { position: relative; padding-right: 34px; }
   .draft-x { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 24px; height: 24px; border: none; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
   .draft-flag { margin-left: 7px; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--warn); border: 1px solid var(--warn); border-radius: 5px; padding: 1px 4px; vertical-align: middle; }
+  .slot-row { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0 4px; }
+  .slot-chip { padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .slot-chip.active { color: var(--bg); background: var(--text); border-color: var(--text); }
   .tray-totals { display: flex; align-items: baseline; justify-content: space-between; margin: 14px 0; padding: 12px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
   .tray-totals-main { font-family: var(--font-display); font-size: 16px; }
   .mf-lbl { margin-bottom: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
@@ -6280,39 +6285,86 @@ async function callClaudeVision(base64, mediaType, prompt, maxTokens = 1000) {
   const text = typeof data.text === 'string' ? data.text : (data.content || []).map(c => c.text || '').join('');
   return JSON.parse(text.replace(/^```json\s*/i, '').replace(/```$/i, '').trim());
 }
-function pickImage(cb) {
+function pickImageFile(cb) {
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
-  inp.onchange = () => { const f = inp.files && inp.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => cb(rd.result.split(',')[1], f.type); rd.readAsDataURL(f); };
+  inp.onchange = () => { const f = inp.files && inp.files[0]; if (f) cb(f); };
   inp.click();
 }
 
-// 4.6 Meal photo (vision) — array of items, conservative portions
-function openMealPhoto() {
-  pickImage(async (b64, mt) => {
-    showModal(`<h2>Reading the plate…</h2><p class="small muted" style="text-align:center;padding:24px 0">Identifying items &amp; portions</p>`);
-    try {
-      const pj = await callClaudeVision(b64, mt, 'Identify each distinct food on this plate; estimate a conservative portion and its calories + macros. Return ONLY JSON {"items":[{"display_name":"2-5 words","quantity":number,"serving_unit":"g|item label","kcal":int,"protein_g":int,"carbs_g":int,"fat_g":int,"confidence":0..1}]}.');
-      const items = Array.isArray(pj.items) ? pj.items : [];
-      closeModal();
-      if (!items.length) { toast('Could not read the plate — try Describe'); return; }
-      items.forEach(it => trayAdd({ input_method: 'photo', display_name: it.display_name || 'Food', quantity: it.quantity ?? 1, serving_unit: it.serving_unit || 'serving', kcal: it.kcal, protein_g: it.protein_g, carbs_g: it.carbs_g ?? it.carb_g, fat_g: it.fat_g, needs_review: true, confidence: it.confidence }));
-      openTray();
-    } catch (e) { closeModal(); toast('Photo failed: ' + e.message); }
+// Draw the photo to a canvas → JPEG. Normalizes HEIC (Safari decodes it, canvas
+// re-encodes) and shrinks multi-MB iPhone photos so the vision request stays well
+// under size limits — the main reason raw uploads failed. Returns base64 + preview.
+function fileToDownscaledJpeg(file, maxDim = 1280, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+      if (!w || !h) return reject(new Error('empty image'));
+      const scale = Math.min(1, maxDim / Math.max(w, h));
+      w = Math.round(w * scale); h = Math.round(h * scale);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = c.toDataURL('image/jpeg', quality);
+      resolve({ base64: dataUrl.split(',')[1], previewDataUrl: dataUrl });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('could not decode image')); };
+    img.src = url;
   });
 }
 
-// 4.4 Label scan (OCR via vision) — one ResolvedFood, needs review
-function openLabelScan() {
-  pickImage(async (b64, mt) => {
-    showModal(`<h2>Reading label…</h2><p class="small muted" style="text-align:center;padding:24px 0">Extracting the nutrition panel</p>`);
+// Shared photo → vision flow: a processing screen that shows the photo, then
+// hands the parsed JSON to onResult (which stages drafts into the Tray to review,
+// same as Describe). Errors render inline instead of a silent toast.
+function runPhotoVision({ file, title, prompt, onResult }) {
+  showModal(`
+    <h2>${escapeHtml(title)}</h2>
+    <div id="pv-stage" style="text-align:center;min-height:120px">
+      <div class="pv-spinner"></div>
+      <p class="small muted" style="margin-top:12px">Preparing the photo…</p>
+    </div>
+    <div class="btn-row" style="margin-top:12px"><button class="btn btn-soft" data-close>Cancel</button></div>
+  `, async () => {
+    const stage = () => document.getElementById('pv-stage');
     try {
-      const pj = await callClaudeVision(b64, mt, 'Read this nutrition facts panel for ONE serving as printed. Return ONLY JSON {"display_name":"product name or short label","serving_label":"e.g. 1 cup (240ml)","kcal":int,"protein_g":number,"carbs_g":number,"fat_g":number,"fiber_g":number|null}.');
+      const { base64, previewDataUrl } = await fileToDownscaledJpeg(file);
+      if (stage()) stage().innerHTML = `<img src="${previewDataUrl}" style="max-width:100%;max-height:200px;border-radius:var(--radius);object-fit:contain"><div class="pv-spinner" style="margin-top:14px"></div><p class="small muted" style="margin-top:10px">Reading the photo…</p>`;
+      const pj = await callClaudeVision(base64, 'image/jpeg', prompt, 1200);
       closeModal();
+      onResult(pj);
+    } catch (e) {
+      const s = stage();
+      if (s) s.innerHTML = `<p class="small" style="color:var(--warn);padding:18px 0;line-height:1.5">Couldn't read that photo.<br><span class="muted">${escapeHtml(e.message)}</span><br>Try again, or use Describe.</p>`;
+    }
+  });
+}
+
+// 4.6 Meal photo (vision) — array of items into the Tray to review
+function openMealPhoto() {
+  pickImageFile(file => runPhotoVision({
+    file, title: 'Reading the plate…',
+    prompt: 'Identify each distinct food on this plate; estimate a conservative portion and its calories + macros. Return ONLY JSON {"items":[{"display_name":"2-5 words","quantity":number,"serving_unit":"g|item label","kcal":int,"protein_g":int,"carbs_g":int,"fat_g":int,"confidence":0..1}]}.',
+    onResult: (pj) => {
+      const items = Array.isArray(pj.items) ? pj.items : [];
+      if (!items.length) { toast('Could not read the plate — try Describe'); return; }
+      items.forEach(it => trayAdd({ input_method: 'photo', display_name: it.display_name || 'Food', quantity: it.quantity ?? 1, serving_unit: it.serving_unit || 'serving', kcal: it.kcal, protein_g: it.protein_g, carbs_g: it.carbs_g ?? it.carb_g, fat_g: it.fat_g, needs_review: true, confidence: it.confidence }));
+      openTray();
+    },
+  }));
+}
+
+// 4.4 Label scan (OCR via vision) — one ResolvedFood into the Tray to review
+function openLabelScan() {
+  pickImageFile(file => runPhotoVision({
+    file, title: 'Reading label…',
+    prompt: 'Read this nutrition facts panel for ONE serving as printed. Return ONLY JSON {"display_name":"product name or short label","serving_label":"e.g. 1 cup (240ml)","kcal":int,"protein_g":number,"carbs_g":number,"fat_g":number,"fiber_g":number|null}.',
+    onResult: (pj) => {
       trayAdd({ input_method: 'label', display_name: pj.display_name || 'Packaged food', quantity: 1, serving_unit: pj.serving_label || 'serving', kcal: pj.kcal, protein_g: pj.protein_g, carbs_g: pj.carbs_g, fat_g: pj.fat_g, fiber_g: pj.fiber_g, needs_review: true, source_payload: { label: pj } });
       openTray(); toast('Added — verify the numbers');
-    } catch (e) { closeModal(); toast('Label read failed: ' + e.message); }
-  });
+    },
+  }));
 }
 
 // 4.3 Barcode scan — BarcodeDetector → zxing fallback (iOS) → manual entry → OFF
