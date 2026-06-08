@@ -6128,7 +6128,29 @@ async function offSearch(term) {
 
 function offToFood(p) {
   const n = p.nutriments || {};
-  const kcal100 = Math.round(n['energy-kcal_100g'] ?? (n['energy_100g'] ? n['energy_100g'] / 4.184 : NaN));
+  // Macros first (raw) — used both for display and to sanity-check the calorie figure.
+  const protein = Number(n.proteins_100g) || 0;
+  const carb = Number(n.carbohydrates_100g) || 0;
+  const fat = Number(n.fat_100g) || 0;
+  // Energy: prefer the explicit kcal field, then the explicit kJ field, then the
+  // ambiguous generic `energy_100g` (OFF stores this in kJ). Convert kJ → kcal at 4.184.
+  let kcal = Number(n['energy-kcal_100g']);
+  if (!Number.isFinite(kcal)) {
+    const kj = Number(n['energy-kj_100g'] ?? n.energy_100g);
+    if (Number.isFinite(kj)) kcal = kj / 4.184;
+  }
+  // Atwater cross-check: a clean entry's kcal ≈ 4·protein + 4·carb + 9·fat.
+  // OFF is crowd-sourced and frequently carries corrupt calorie values (e.g. a kJ
+  // figure mislabelled as kcal, or a per-serving number stored as per-100g). When
+  // macros are present and the stated kcal is wildly off (>30%, beyond what fibre /
+  // polyols explain), trust the macro-derived value instead. Generous threshold so
+  // normal entries pass untouched.
+  const atwater = 4 * protein + 4 * carb + 9 * fat;
+  if (atwater >= 20) {
+    if (!Number.isFinite(kcal) || kcal <= 0) kcal = atwater;
+    else if (Math.abs(kcal - atwater) / atwater > 0.30) kcal = atwater;
+  }
+  const kcal100 = Math.round(kcal);
   if (!Number.isFinite(kcal100)) return null;
   const basis = (p.serving_size && /ml/i.test(p.serving_size)) ? 'per_100ml' : 'per_100g';
   const brand = Array.isArray(p.brands) ? (p.brands[0] || '') : (p.brand || (p.brands ? String(p.brands).split(',')[0] : ''));
@@ -6136,9 +6158,9 @@ function offToFood(p) {
     name: (p.product_name || 'Unknown').slice(0, 80),
     brand,
     basis, kcal100,
-    protein100: Math.round(n.proteins_100g || 0),
-    carb100: Math.round(n.carbohydrates_100g || 0),
-    fat100: Math.round(n.fat_100g || 0),
+    protein100: Math.round(protein),
+    carb100: Math.round(carb),
+    fat100: Math.round(fat),
     fiber100: n.fiber_100g != null ? Math.round(n.fiber_100g) : null,
     serving_grams: parseServingGrams(p.serving_size),
     code: p.code,
