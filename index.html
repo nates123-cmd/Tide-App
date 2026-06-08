@@ -1200,6 +1200,10 @@ async function sbFetch(path, opts = {}) {
     },
   });
   if (!r.ok) {
+    // 401 = bearer rejected (expired/revoked user token, or anon-key fallback
+    // hitting RLS). Session is dead; clear it and reopen the OTP gate so writes
+    // don't silently fail forever instead of routing back to login.
+    if (r.status === 401) { _setAuthSession(null); showOtpGate(); throw new Error('Session expired — sign in again'); }
     const txt = await r.text();
     throw new Error(`Supabase ${r.status}: ${txt}`);
   }
