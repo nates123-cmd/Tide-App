@@ -6117,17 +6117,48 @@ async function offSearch(term) {
       headers: { apikey: SB_KEY, Authorization: `Bearer ${await sbBearer()}` },
     });
     const data = await r.json();
-    const hits = (data.hits || data.products || []).map(offToFood).filter(Boolean);
+    let hits = (data.hits || data.products || []).map(offToFood).filter(Boolean);
+    // Fallback: OFF returned nothing → search USDA FDC (clean, public-domain).
+    if (!hits.length) hits = await usdaSearch(term);
     if (!hits.length) { box.innerHTML = `<p class="muted small" style="padding:12px 0">No web matches. Try Quick add or Describe.</p>`; return; }
     box.innerHTML = hits.map((h, i) => `
       <div class="off-row" data-hit="${i}">
-        <div><div class="off-name">${escapeHtml(h.name)}</div><div class="off-sub">${escapeHtml(h.brand || 'generic')} · ${h.kcal100} kcal/100${h.basis === 'per_100ml' ? 'ml' : 'g'}</div></div>
+        <div><div class="off-name">${escapeHtml(h.name)}</div><div class="off-sub">${escapeHtml(h.brand || 'generic')} · ${h.kcal100} kcal/100${h.basis === 'per_100ml' ? 'ml' : 'g'}${h.source === 'usda' ? ' · USDA' : ''}</div></div>
         <div class="off-kcal">›</div>
       </div>`).join('');
     $$('[data-hit]').forEach(el => el.onclick = () => openServingPicker(hits[Number(el.dataset.hit)]));
   } catch (e) {
+    // Network/OFF proxy failure → try USDA before giving up.
+    try {
+      const hits = await usdaSearch(term);
+      if (hits.length) {
+        box.innerHTML = hits.map((h, i) => `
+          <div class="off-row" data-hit="${i}">
+            <div><div class="off-name">${escapeHtml(h.name)}</div><div class="off-sub">${escapeHtml(h.brand || 'generic')} · ${h.kcal100} kcal/100${h.basis === 'per_100ml' ? 'ml' : 'g'} · USDA</div></div>
+            <div class="off-kcal">›</div>
+          </div>`).join('');
+        $$('[data-hit]').forEach(el => el.onclick = () => openServingPicker(hits[Number(el.dataset.hit)]));
+        return;
+      }
+    } catch {}
     box.innerHTML = `<p class="muted small" style="padding:12px 0">Search needs a connection. Try Quick add.</p>`;
   }
+}
+
+// Atwater sanity guard — PERMANENT, applied over ANY nutrition source (OFF, USDA, …).
+// A clean entry's kcal ≈ 4·protein + 4·carb + 9·fat. Crowd-sourced / mislabelled data
+// frequently carries corrupt calorie values (a kJ figure mislabelled as kcal, or a
+// per-serving number stored as per-100g). When macros are present and the stated kcal
+// is wildly off (>30%, beyond what fibre / polyols explain), trust the macro-derived
+// value instead. Generous threshold so normal entries pass untouched. Returns the
+// repaired kcal (or NaN if there's nothing usable).
+function atwaterSanity(kcal, protein, carb, fat) {
+  const atwater = 4 * (protein || 0) + 4 * (carb || 0) + 9 * (fat || 0);
+  if (atwater >= 20) {
+    if (!Number.isFinite(kcal) || kcal <= 0) return atwater;
+    if (Math.abs(kcal - atwater) / atwater > 0.30) return atwater;
+  }
+  return kcal;
 }
 
 function offToFood(p) {
@@ -6143,17 +6174,7 @@ function offToFood(p) {
     const kj = Number(n['energy-kj_100g'] ?? n.energy_100g);
     if (Number.isFinite(kj)) kcal = kj / 4.184;
   }
-  // Atwater cross-check: a clean entry's kcal ≈ 4·protein + 4·carb + 9·fat.
-  // OFF is crowd-sourced and frequently carries corrupt calorie values (e.g. a kJ
-  // figure mislabelled as kcal, or a per-serving number stored as per-100g). When
-  // macros are present and the stated kcal is wildly off (>30%, beyond what fibre /
-  // polyols explain), trust the macro-derived value instead. Generous threshold so
-  // normal entries pass untouched.
-  const atwater = 4 * protein + 4 * carb + 9 * fat;
-  if (atwater >= 20) {
-    if (!Number.isFinite(kcal) || kcal <= 0) kcal = atwater;
-    else if (Math.abs(kcal - atwater) / atwater > 0.30) kcal = atwater;
-  }
+  kcal = atwaterSanity(kcal, protein, carb, fat);
   const kcal100 = Math.round(kcal);
   if (!Number.isFinite(kcal100)) return null;
   const basis = (p.serving_size && /ml/i.test(p.serving_size)) ? 'per_100ml' : 'per_100g';
@@ -6171,6 +6192,67 @@ function offToFood(p) {
   };
 }
 function parseServingGrams(s) { if (!s) return null; const m = String(s).match(/([\d.]+)\s*(g|ml)/i); return m ? Number(m[1]) : null; }
+
+// --- USDA FoodData Central (FDC) — TRUSTED nutrition source + fallback ---------
+// USDA data is public-domain and clean, so it fixes the corrupt-calorie class that
+// OFF's crowd-sourced entries suffer from. Identity/barcode stays on OFF; USDA only
+// supplies nutrition when OFF returns nothing or fails the Atwater sanity check.
+// Routed through the JWT-gated `usda-proxy` edge function (FDC key server-side).
+
+// FDC nutrient ids — energy can appear under either the Atwater (1008) or the
+// general-factors (2047/2048) numbers depending on dataType.
+const FDC_N = { kcal: [1008, 2047, 2048], protein: [1003], carb: [1005], fat: [1004], fiber: [1079] };
+function fdcNutrient(food, ids) {
+  const list = food.foodNutrients || [];
+  for (const id of ids) {
+    const hit = list.find(x => (x.nutrientId ?? x.nutrient?.id) === id && (x.value ?? x.amount) != null);
+    if (hit) return Number(hit.value ?? hit.amount);
+  }
+  return null;
+}
+// FDC values are per 100g for Foundation/SR; Branded foods report per-serving in
+// labelNutrients but foodNutrients are still normalised to per-100g. We always use
+// the per-100g foodNutrients and let the serving picker scale, mirroring offToFood.
+function usdaToFood(food) {
+  if (!food) return null;
+  const protein = fdcNutrient(food, FDC_N.protein) || 0;
+  const carb = fdcNutrient(food, FDC_N.carb) || 0;
+  const fat = fdcNutrient(food, FDC_N.fat) || 0;
+  let kcal = fdcNutrient(food, FDC_N.kcal);
+  if (!Number.isFinite(kcal)) kcal = NaN;
+  // PERMANENT Atwater guard over USDA too — even trusted data gets cross-checked.
+  kcal = atwaterSanity(kcal, protein, carb, fat);
+  const kcal100 = Math.round(kcal);
+  if (!Number.isFinite(kcal100)) return null;
+  const fiber = fdcNutrient(food, FDC_N.fiber);
+  // Branded foods carry an explicit serving (servingSize + servingSizeUnit).
+  const unit = String(food.servingSizeUnit || '').toLowerCase();
+  const basis = unit === 'ml' || unit === 'mlt' ? 'per_100ml' : 'per_100g';
+  const serving_grams = (food.servingSize && (unit === 'g' || unit === 'ml' || unit === 'mlt' || unit === 'grm'))
+    ? Number(food.servingSize) : null;
+  return {
+    name: (food.description || food.lowercaseDescription || 'Unknown').slice(0, 80),
+    brand: food.brandOwner || food.brandName || 'USDA',
+    basis, kcal100,
+    protein100: Math.round(protein),
+    carb100: Math.round(carb),
+    fat100: Math.round(fat),
+    fiber100: fiber != null ? Math.round(fiber) : null,
+    serving_grams,
+    code: food.fdcId != null ? ('fdc:' + food.fdcId) : null,
+    source: 'usda',
+  };
+}
+
+async function usdaSearch(term) {
+  // Via the usda-proxy edge function (FDC key server-side; CORS-free).
+  const r = await fetch(`${SB_URL}/functions/v1/usda-proxy?q=${encodeURIComponent(term)}`, {
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${await sbBearer()}` },
+  });
+  if (!r.ok) return [];
+  const data = await r.json();
+  return (data.foods || []).map(usdaToFood).filter(Boolean);
+}
 
 function openServingPickerServings(h) {
   const label = h.serving_label || 'serving';
@@ -6434,7 +6516,22 @@ async function barcodeResolve(code) {
   try {
     const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,nutriments,serving_size,code`);
     const data = await r.json();
-    if (data.status === 1 && data.product) { const h = offToFood(data.product); if (h) { cacheOffFood(h); closeModal(); openServingPicker(h); return; } }
+    // Keep OFF for barcode identity. Use its nutrition only if it passes offToFood
+    // (which now applies the shared Atwater guard); otherwise fall back to USDA FDC.
+    let offHit = null, offName = '';
+    if (data.status === 1 && data.product) {
+      offName = data.product.product_name || '';
+      offHit = offToFood(data.product);
+      if (offHit) { cacheOffFood(offHit); closeModal(); openServingPicker(offHit); return; }
+    }
+    // OFF had no usable nutrition (or no product). If OFF gave us a product name,
+    // search USDA by that name; the picker then uses USDA's validated values.
+    if (offName) {
+      try {
+        const us = await usdaSearch(offName);
+        if (us.length) { cacheOffFood(us[0]); closeModal(); openServingPicker(us[0]); return; }
+      } catch {}
+    }
     closeModal();
     showModal(`
       <h2>Not found</h2>
