@@ -52,12 +52,18 @@ const SESSION_GAP_H = Number(Deno.env.get("TIDE_SESSION_GAP_H") || 8);
 
 // Default standard units per drink type — mirrors the app's log-drink presets.
 const UNITS = { beer: 1, wine: 1, spirits: 1, cocktail: 1.4, shot: 1 };
+// Order matters: parsePhrase takes the FIRST alias it finds in a spoken phrase,
+// so the vague ones ("glass", "drink") sit last. Otherwise "a glass of whiskey"
+// matches `glass` and logs wine.
 const TYPE_ALIASES = {
   beer: "beer", ipa: "beer", lager: "beer", pint: "beer",
-  wine: "wine", red: "wine", white: "wine", glass: "wine",
-  spirits: "spirits", liquor: "spirits", whiskey: "spirits", vodka: "spirits",
-  gin: "spirits", tequila: "spirits", shot: "spirits", neat: "spirits",
-  cocktail: "cocktail", drink: "cocktail", mixed: "cocktail", martini: "cocktail",
+  wine: "wine", red: "wine", white: "wine",
+  spirits: "spirits", liquor: "spirits", whiskey: "spirits", whisky: "spirits",
+  vodka: "spirits", gin: "spirits", tequila: "spirits", shot: "spirits",
+  bourbon: "spirits", scotch: "spirits", rum: "spirits", neat: "spirits",
+  cocktail: "cocktail", martini: "cocktail", margarita: "cocktail", mixed: "cocktail",
+  // vague — last resort only
+  glass: "wine", drink: "cocktail",
 };
 
 const json = (body, status = 200) =>
@@ -65,8 +71,67 @@ const json = (body, status = 200) =>
     status,
     headers: { "content-type": "application/json", ...CORS },
   });
+// Always a short line, never blank — the string is rendered verbatim in a watch
+// notification, and a silent response reads as "did that work?". Same contract
+// as the `capture` function: the line names the outcome so a misparse gets
+// caught at the wrist instead of quietly landing a phantom drink.
 const text = (body, status = 200) =>
-  new Response(body, { status, headers: { "content-type": "text/plain; charset=utf-8", ...CORS } });
+  new Response(body + "\n", {
+    status,
+    headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", ...CORS },
+  });
+
+// ---------------------------------------------------------------------------
+// Dictation parsing
+// ---------------------------------------------------------------------------
+// The watch shortcut is a copy of the `capture` one: Dictate Text -> POST the
+// raw text as the body -> Show Notification with the response. So the body
+// arrives as a spoken phrase, not JSON. No LLM here — the vocabulary is four
+// drinks and four commands, and a round trip to a model would add a second of
+// latency and a failure mode to a button pressed in a bar.
+const NUM_WORDS = {
+  a: 1, an: 1, one: 1, two: 2, couple: 2, three: 3, four: 4, five: 5, six: 6,
+};
+
+function parsePhrase(input) {
+  const s = String(input).toLowerCase().replace(/[^a-z0-9\s']/g, " ").replace(/\s+/g, " ").trim();
+  if (!s) return null;
+
+  // Commands first, and deliberately phrase-level rather than keyword-level.
+  // A bare "done" or "check" is too easy to say in passing; mistaking one for a
+  // command is recoverable, but mistaking a command for a drink is not.
+  if (/\b(undo|scratch that|delete that|remove that|never ?mind|my mistake|didn't have|didnt have)\b/.test(s)) {
+    return { action: "undo" };
+  }
+  if (/\b(end (the )?(session|night)|done for the night|call(ing)? it|that's it|thats it|heading home|wrap(ping)? up|last call)\b/.test(s)) {
+    return { action: "end" };
+  }
+  if (/\b(status|where am i|how many|how am i|how'?s it going|hows it going|check in|read out|readout|update me)\b/.test(s)) {
+    return { action: "status" };
+  }
+
+  // Drink type: first alias that appears as a whole word or a plural of one.
+  // Resolved to the canonical type here so there is one layer of truth.
+  let type = null;
+  for (const [alias, canonical] of Object.entries(TYPE_ALIASES)) {
+    if (new RegExp(`\\b${alias}s?\\b`).test(s)) { type = canonical; break; }
+  }
+  if (!type) return { action: "unknown" };
+
+  // "two beers" -> two entries. Count is the headline number, so folding this
+  // into units would undercount the night.
+  let count = 1;
+  const numMatch = s.match(/\b(\d+|a|an|one|two|couple|three|four|five|six)\b(?=[^.]*\b\w*(?:beer|wine|spirit|liquor|whiskey|vodka|gin|tequila|shot|cocktail|drink|glass|pint|martini))/);
+  if (numMatch) count = Number(numMatch[1]) || NUM_WORDS[numMatch[1]] || 1;
+  count = Math.min(6, Math.max(1, count));
+
+  // Pour size modifiers.
+  let unitScale = 1;
+  if (/\b(double|stiff|heavy)\b/.test(s)) unitScale = 2;
+  else if (/\b(half|light|small|splash)\b/.test(s)) unitScale = 0.5;
+
+  return { action: "log", type, count, unitScale };
+}
 
 async function sbFetch(path, opts = {}) {
   const r = await fetch(`${SB}/rest/v1${path}`, {
@@ -184,13 +249,22 @@ function computePace(drinks, now = new Date()) {
   const nowMs = now.getTime();
   const firstMs = new Date(drinks[0].entry_at).getTime();
   const lastMs = new Date(drinks[drinks.length - 1].entry_at).getTime();
-  const elapsedHr = Math.max((nowMs - firstMs) / 3600000, 0.25);
+  const rawHr = (nowMs - firstMs) / 3600000;
+  const elapsedHr = Math.max(rawHr, 0.25);
   const total = drinks.reduce((s, d) => s + (Number(d.standard_units) || 1), 0);
   const perHour = total / elapsedHr;
+  // Three drinks in twenty minutes is a real thing to say; "9.0/hr" is not —
+  // it extrapolates an hour of behaviour from a window too short to contain
+  // one. Below 45 minutes the readout quotes the raw count instead.
+  const settled = rawHr >= 0.75;
   let status = "easy";
   if (perHour >= 2.5) status = "fast";
   else if (perHour >= 1.5) status = "moderate";
-  return { perHour, total, minSinceLast: Math.floor((nowMs - lastMs) / 60000), elapsedHr, status };
+  // `now` is captured before the insert, and a multi-drink batch spaces its
+  // rows by a millisecond each, so the last drink can sit fractionally in the
+  // future. Floor at zero rather than reporting "last -1min ago".
+  const minSinceLast = Math.max(0, Math.floor((nowMs - lastMs) / 60000));
+  return { perHour, total, minSinceLast, elapsedHr, rawHr, settled, status };
 }
 
 const bacStr = (n) => n.toFixed(3).replace(/^0/, "");
@@ -207,23 +281,35 @@ function buildReadout(drinks, profile, now = new Date()) {
   const bac = computeBac(drinks, profile, now);
   const n = drinks.length;
   const unitStr = Math.abs(pace.total - n) < 0.05 ? "" : ` · ${pace.total.toFixed(1)} units`;
-  const title = bac
-    ? `Drink ${n} · BAC ~${bacStr(bac.low)}-${bacStr(bac.high)}`
-    : `Drink ${n}${unitStr}`;
+
+  // Early in a session nothing has absorbed, so the current range is .000-.000
+  // and reads as a broken sensor. Lead with where the night is landing instead.
+  const stillLanding = !!bac && bac.high < 0.005 && bac.peakHigh >= 0.005;
+  let title;
+  if (!bac) title = `Drink ${n}${unitStr}`;
+  else if (stillLanding) title = `Drink ${n} · BAC ~${bacStr(bac.peakLow)}-${bacStr(bac.peakHigh)} soon`;
+  else title = `Drink ${n} · BAC ~${bacStr(bac.low)}-${bacStr(bac.high)}`;
 
   const bits = [];
-  // One drink in, "4.0/hr over 15min" is an artefact of the elapsed-time floor,
-  // not a pace. Rate only means something once there is a gap to measure.
-  if (n >= 2) bits.push(`${pace.perHour.toFixed(1)}/hr over ${fmtHrs(pace.elapsedHr)}`);
+  // One drink in, a rate is an artefact of the elapsed-time floor rather than a
+  // pace. Under 45 minutes, quote what actually happened.
+  if (n >= 2) {
+    bits.push(pace.settled
+      ? `${pace.perHour.toFixed(1)}/hr over ${fmtHrs(pace.elapsedHr)}`
+      : `${n} in ${fmtHrs(pace.elapsedHr)}`);
+  }
   bits.push(pace.minSinceLast === 0 ? "just now" : `last ${fmtMins(pace.minSinceLast)} ago`);
   if (unitStr) bits.push(`${pace.total.toFixed(1)} units`);
   let body = bits.join(" · ") + ".";
 
   if (bac) {
-    // The just-logged drink has not absorbed yet, so lead with where it lands.
-    if (bac.peakHigh > bac.high + 0.004) {
+    // The just-logged drink has not absorbed yet, so say where it lands —
+    // unless the title already carried the peak.
+    if (!stillLanding && bac.peakHigh > bac.high + 0.004) {
       body += ` Heading to ~${bacStr(bac.peakLow)}-${bacStr(bac.peakHigh)}`;
       body += bac.minsToPeak > 2 ? ` in ~${fmtMins(bac.minsToPeak)}.` : ".";
+    } else if (stillLanding && bac.minsToPeak > 2) {
+      body += ` Landing in ~${fmtMins(bac.minsToPeak)}.`;
     }
     const clearAt = new Date(now.getTime() + bac.clearHrs * 3600000);
     if (bac.status === "over") {
@@ -323,18 +409,36 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   let body = {};
+  let phrase = "";
   if (req.method === "POST") {
-    try { body = await req.json(); } catch { body = {}; }
+    // Shortcuts sends "Request Body: File" as raw bytes with no useful
+    // content-type, so sniff the payload rather than trusting the header.
+    const raw = (await req.text()).trim();
+    if (raw.startsWith("{")) {
+      try { body = JSON.parse(raw); } catch { phrase = raw; }
+    } else if (raw) {
+      phrase = raw;
+    }
   }
-  const param = (k) => (body[k] ?? url.searchParams.get(k) ?? null);
+  const spoken = phrase ? parsePhrase(phrase) : null;
+  const param = (k) => body[k] ?? url.searchParams.get(k) ?? (spoken ? spoken[k] : null) ?? null;
 
   const supplied = req.headers.get("x-tide-token") || param("t") || param("token") || "";
   if (!TOKEN || supplied !== TOKEN) return json({ error: "unauthorized" }, 401);
   if (!USER_ID) return json({ error: "TIDE_DRINK_USER_ID not configured" }, 503);
 
-  const wantsText = String(param("format") || "").toLowerCase() === "text";
-  const action = String(param("action") || "log").toLowerCase();
+  // A dictated or empty body means a Shortcut wired straight into Show
+  // Notification, so answer in prose unless JSON was explicitly asked for.
+  const fmt = String(param("format") || "").toLowerCase();
+  const wantsText = fmt === "text" || (fmt !== "json" && req.method === "POST" && !Object.keys(body).length);
   const now = new Date();
+
+  if (spoken && spoken.action === "unknown") {
+    const msg = `Didn't catch "${phrase.slice(0, 40)}" — say beer, wine, spirits, cocktail, status, or undo.`;
+    return wantsText ? text(msg, 400) : json({ error: msg, heard: phrase }, 400);
+  }
+
+  const action = String(param("action") || "log").toLowerCase();
 
   try {
     const profiles = await sbFetch(`/tide_profile?user_id=eq.${USER_ID}&limit=1`) || [];
@@ -383,23 +487,31 @@ Deno.serve(async (req) => {
     // --- log -----------------------------------------------------------------
     const rawType = String(param("type") || param("drink_type") || "beer").toLowerCase().trim();
     const drinkType = TYPE_ALIASES[rawType] || "beer";
-    const units = Number(param("units")) > 0 ? Number(param("units")) : (UNITS[rawType] ?? UNITS[drinkType] ?? 1);
+    const baseUnits = Number(param("units")) > 0
+      ? Number(param("units"))
+      : (UNITS[rawType] ?? UNITS[drinkType] ?? 1);
+    const units = Number((baseUnits * (Number(param("unitScale")) || 1)).toFixed(2));
+    const count = Math.min(6, Math.max(1, Number(param("count")) || 1));
     const at = param("at") ? new Date(param("at")) : now;
     const entryAt = isNaN(at.getTime()) ? now : at;
 
     const { session } = await resolveSession(now, { createIfMissing: true });
+    // "two beers" is two rows, not one double — count is the headline number.
+    const rows = Array.from({ length: count }, (_, i) => ({
+      user_id: USER_ID,
+      session_id: session.id,
+      kind: "alcohol",
+      drink_type: drinkType,
+      standard_units: units,
+      // Distinct timestamps keep entry ordering stable and stop a catch-up
+      // batch from reading as an instantaneous spike.
+      entry_at: new Date(entryAt.getTime() + i).toISOString(),
+      log_date: localDate(entryAt),
+      notes: "watch",
+    }));
     const inserted = await sbFetch("/tide_indulge_entries", {
       method: "POST",
-      body: JSON.stringify({
-        user_id: USER_ID,
-        session_id: session.id,
-        kind: "alcohol",
-        drink_type: drinkType,
-        standard_units: units,
-        entry_at: entryAt.toISOString(),
-        log_date: localDate(entryAt),
-        notes: "watch",
-      }),
+      body: JSON.stringify(rows),
     });
 
     const entries = await sbFetch(
@@ -416,12 +528,21 @@ Deno.serve(async (req) => {
     let telegramSent = false;
     if (notify) telegramSent = await telegram(r.line);
 
-    if (wantsText) return text(notify ? r.line : "");
+    if (wantsText) {
+      // Below the threshold this is a receipt, not an alert: confirm what
+      // landed and stop. The full readout is what the threshold is for.
+      if (notify) return text(r.line);
+      const what = count > 1 ? `${count} × ${drinkType}` : drinkType;
+      const unitNote = units !== (UNITS[drinkType] ?? 1) ? ` at ${units} units` : "";
+      return text(`Logged ${what}${unitNote} · drink ${r.count} tonight.`);
+    }
     return json({
       ok: true,
       notify,
       telegram_sent: telegramSent,
       alert_at: ALERT_AT,
+      logged: count,
+      heard: phrase || null,
       entry_id: inserted?.[0]?.id ?? null,
       drink_type: drinkType,
       session_id: session.id,

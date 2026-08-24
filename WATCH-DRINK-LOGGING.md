@@ -10,55 +10,56 @@ the pace and a BAC range, and pings you on Telegram once you hit the threshold
 
 ---
 
-## 1. Build the Shortcut
+## 1. Build the Shortcut — duplicate the capture one
 
-Shortcuts app on the **iPhone** → new shortcut → name it **Drink**. Anything you
-build on the phone shows up on the watch as long as "Show on Apple Watch" is on
-in the shortcut's settings (it is by default).
+The existing **capture** shortcut is already the exact shape this needs:
 
-**Action 1 — Choose from Menu** (skip this if you want a single generic drink)
+```
+Dictate Text  →  Get Contents of URL (POST, body = File: Dictated Text)  →  Show Notification
+```
 
-Prompt: `What?` — menu items: `Beer`, `Wine`, `Cocktail`, `Spirits`
+So: **duplicate it, change two fields.**
 
-**Action 2 (inside each menu branch) — Get Contents of URL**
-
-| Field | Value |
+| Field | Change to |
 | --- | --- |
 | URL | `https://xsmnfcmtbpeaccnyinkr.supabase.co/functions/v1/drink-log` |
-| Method | `POST` |
-| Headers | `x-tide-token` → *(paste from `~/.tide-drink-token`)* |
-| Request Body | `JSON` |
-| JSON field | `type` (Text) → `beer` / `wine` / `cocktail` / `spirits` |
+| Header name | `x-tide-token` (was `x-capture-key`) |
+| Header value | *(paste from `~/.tide-drink-token`)* |
 
-That is the whole thing. The tap logs the drink; Telegram handles the alert.
+Leave everything else alone — Dictate Text, `Request Body: File`, the
+`Dictated Text` variable, and Show Notification with `Contents of URL` all work
+as-is. The endpoint reads the raw dictated text and always answers with one
+short line, same contract as `capture`.
 
-Put the shortcut on a watch face complication or in the Shortcuts app on the
-watch. Double-check "Show on Apple Watch" and turn **off** "Show When Run" so it
-fires silently.
+Name it **Drink**, put it on a watch face complication, turn off "Show When Run".
 
-### Optional: notification on the watch itself
+### What you can say
 
-If you'd rather not depend on Telegram, add two more actions after the URL call:
+| Say | Does |
+| --- | --- |
+| "beer" / "IPA" / "glass of red" / "martini" / "bourbon" | logs one |
+| "two beers" / "couple of beers" / "3 beers" | logs that many |
+| "double whiskey" | logs at 2 units |
+| "half a beer" / "light pour of wine" | logs at half units |
+| "where am I at" / "how many have I had" / "status" | readout, logs nothing |
+| "undo" / "scratch that" / "never mind" | deletes the last drink |
+| "done for the night" / "calling it" / "heading home" | closes the session |
 
-1. **Get Dictionary Value** → key `notify`
-2. **If** *(Dictionary Value)* **is** `1` →
-   **Get Dictionary Value** key `text` → **Show Notification**
+Anything it doesn't recognise is **refused, not guessed** — it answers
+"Didn't catch that" rather than writing a phantom drink into a real record.
 
-The endpoint returns `notify: false` below the threshold, so nothing shows for
-the first three drinks. Both paths can run at once — belt and braces.
+Below the alert threshold the notification is a receipt (`Logged beer · drink 2
+tonight.`). At the threshold and above it's the full readout, and Telegram gets
+a copy.
 
-## 2. Two more shortcuts worth having
+### If you'd rather tap than talk
 
-Same URL and header, different body:
+Same shortcut, minus the Dictate step. Either delete it and send an empty body
+(logs a beer), or set `Request Body: JSON` with a `type` field. A
+**Choose from Menu** action in front — `Beer` / `Wine` / `Cocktail` / `Spirits`
+— gives you a four-way tap with no dictation.
 
-| Shortcut | Body | Does |
-| --- | --- | --- |
-| **Where am I at** | `{"action":"status"}` | Readout without logging anything |
-| **Undo drink** | `{"action":"undo"}` | Deletes the last drink |
-| **Done for the night** | `{"action":"end"}` | Closes the session |
-
-`end` is optional — a session closes itself after 8 hours with no drinks, and
-the next drink starts a fresh one.
+Both styles can coexist; separate shortcuts, same endpoint.
 
 ---
 
@@ -75,6 +76,8 @@ Full JSON response (useful if you want to build something else on it):
 | Field | Meaning |
 | --- | --- |
 | `notify` | whether this crossed the alert threshold |
+| `heard` | the dictated phrase, when there was one |
+| `logged` | how many entries this request wrote |
 | `count` / `units` | drinks logged this session / standard units |
 | `per_hour` | units per hour since the first drink |
 | `min_since_last` | minutes since the previous drink |
@@ -90,12 +93,19 @@ Full JSON response (useful if you want to build something else on it):
 | --- | --- | --- |
 | `type` | `beer` | `beer`, `wine`, `spirits`, `cocktail`, plus aliases (`ipa`, `whiskey`, `martini`…) |
 | `units` | per type | Override standard units (cocktail defaults to 1.4) |
+| `count` | `1` | Log several at once, capped at 6 |
 | `at` | now | ISO timestamp, for backfilling a drink you forgot |
 | `action` | `log` | `log` / `status` / `undo` / `end` |
 | `force` | off | `1` returns the readout even below the threshold |
-| `format` | JSON | `text` returns the bare sentence (empty when not notifying) |
+| `format` | see below | `text` for a bare sentence, `json` for the full object |
 
 Token can also go in the query string (`?t=...`) if a client can't set headers.
+
+**Body shapes.** A body starting with `{` is parsed as JSON; anything else is
+treated as a dictated phrase. An empty POST body logs a default drink. The
+response defaults to plain text for dictated and empty bodies (that's the Show
+Notification path) and to JSON when a JSON body was sent — `format` overrides
+either way.
 
 ## Config
 
@@ -144,10 +154,29 @@ alert that fires *because* of drink 4 would otherwise ignore drink 4 entirely.
 Awareness only. Not a fitness-to-drive test — nothing here knows what you ate,
 and the real spread between people is wider than any model.
 
+Early in a night nothing has absorbed yet, so the current range is genuinely
+`.000-.000`. That reads as a broken sensor, so the readout leads with the peak
+range and the word "soon" until something has actually landed.
+
+Pace is quoted as a rate only once 45 minutes have passed. Before that it says
+"3 in 20min" — the count is real, but "9.0/hr" extrapolates an hour of
+behaviour from a window too short to contain one.
+
 The same math lives twice: here and in `computeBAC` in `index.html`. **They must
 stay in step**, or the watch and the phone will report different numbers on the
-same night. `parity` check: extract both and compare (see the commit that added
-this file).
+same night.
+
+## Tests
+
+```
+node tests/bac-parity.mjs    # the two copies of the BAC math agree
+node tests/drink-phrase.mjs  # dictation parses, and commands never log a drink
+```
+
+The second one matters more than it looks. The stakes are asymmetric: a drink
+misheard as a command just makes you say it again, but a command misheard as a
+drink writes a phantom entry into a real drinking record. Every command phrase
+is asserted not to parse as a log.
 
 ## Sessions
 
