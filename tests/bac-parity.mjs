@@ -38,6 +38,7 @@ const cases = {
 };
 
 let bad = 0;
+const fail = () => { bad++; };
 for (const [name, drinks] of Object.entries(cases)) {
   const a = appMod.computeBAC(drinks, nate);
   const b = fnMod.computeBac(drinks, nate, new Date(now));
@@ -47,6 +48,10 @@ for (const [name, drinks] of Object.entries(cases)) {
     const [ak, bk] = k.split("|");
     return { k, app: a[ak], fn: b[bk], d: Math.abs(a[ak] - b[bk]) };
   });
+  // The threshold labels have to agree too — they drifted once when only the
+  // function's status rule was recalibrated, and numeric parity hid it.
+  if (a.status !== b.status) { fail(); console.log(`FAIL ${name}: status ${a.status} != ${b.status}`); }
+  if (a.over08Risk !== b.over08Risk) { fail(); console.log(`FAIL ${name}: over08Risk ${a.over08Risk} != ${b.over08Risk}`); }
   // The app reads Date.now() internally while the fn takes `now` as an
   // argument, so a few ms of clock drift between the two calls is expected.
   // 1e-5 %BAC is two orders of magnitude below the 3-decimal display.
