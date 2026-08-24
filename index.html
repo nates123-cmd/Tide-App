@@ -1634,6 +1634,7 @@ const DRINK_UNITS = {
 };
 
 const DRINK_LABELS = {
+  standard: 'Drink',
   beer:     'Beer',
   wine:     'Wine',
   spirits:  'Spirits',
@@ -1645,6 +1646,7 @@ const DRINK_LABELS = {
 // units. Multiplied by the entry's standard_units. Unknown/alias types fall
 // back to ~100 (pure-ethanol floor: 14g × 7 kcal/g).
 const DRINK_KCAL = {
+  standard: 130,  // untyped one-tap log from the watch — midpoint of the four below
   beer:     150,  // 12oz @ ~5% — ethanol + carbs
   wine:     125,  // 5oz @ ~12% — ethanol + residual sugar
   spirits:  100,  // 1.5oz @ ~40% neat / soda — ethanol only

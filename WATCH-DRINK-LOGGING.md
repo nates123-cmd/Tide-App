@@ -10,28 +10,60 @@ the pace and a BAC range, and pings you on Telegram once you hit the threshold
 
 ---
 
-## 1. Build the Shortcut — duplicate the capture one
+## 1. Build the Shortcut — two actions
 
-The existing **capture** shortcut is already the exact shape this needs:
+This is the whole thing. One tap on the watch = one drink. It does not ask what
+kind; you decide what counts as a drink.
+
+Duplicate the **capture** shortcut (it already has the URL action wired up),
+then **delete the Dictate Text action** and change these fields:
+
+**Action 1 — Get Contents of URL**
+
+| Field | Value |
+| --- | --- |
+| URL | `https://xsmnfcmtbpeaccnyinkr.supabase.co/functions/v1/drink-log` |
+| Method | `POST` |
+| Headers | `x-tide-token` → *(paste from `~/.tide-drink-token`)* |
+| Request Body | `JSON`, **no fields** |
+
+**Action 2 — Show Notification** → content `Contents of URL`
+
+Name it **Drink**. In the shortcut's settings turn **off** "Show When Run" so it
+fires without opening anything, and leave "Show on Apple Watch" on. Add it to a
+watch face complication, or the Shortcuts app on the watch.
+
+That's it. Tap it and you get back:
+
+```
+Drink 3 logged.
+```
+
+…until the fourth drink, where it switches to the full readout and Telegram
+gets a copy too.
+
+### Two things it does on its own
+
+**Untyped drinks.** A bare tap logs `standard` — one standard unit, type
+unknown. Nothing guesses "beer" on your behalf, so the calorie estimate and the
+by-type patterns stay honest about what they don't know. It shows as **Drink**
+in the app.
+
+**Double-tap protection.** A complication that seems not to respond gets
+pressed again. A repeat tap within 45 seconds answers
+`Already logged 3s ago — not double counting.` and writes nothing. An inflated
+count is worse than a missed one you can re-tap. Set `TIDE_DRINK_DEDUPE_SEC=0`
+to turn it off, or send `force=1` to log anyway.
+
+## 2. Optional: the talking version
+
+If you ever want to say what it was, the endpoint also accepts dictated text —
+so a *second* shortcut can be a straight copy of **capture** with only the URL
+and header changed, Dictate Text and all:
 
 ```
 Dictate Text  →  Get Contents of URL (POST, body = File: Dictated Text)  →  Show Notification
 ```
-
-So: **duplicate it, change two fields.**
-
-| Field | Change to |
-| --- | --- |
-| URL | `https://xsmnfcmtbpeaccnyinkr.supabase.co/functions/v1/drink-log` |
-| Header name | `x-tide-token` (was `x-capture-key`) |
-| Header value | *(paste from `~/.tide-drink-token`)* |
-
-Leave everything else alone — Dictate Text, `Request Body: File`, the
-`Dictated Text` variable, and Show Notification with `Contents of URL` all work
-as-is. The endpoint reads the raw dictated text and always answers with one
-short line, same contract as `capture`.
-
-Name it **Drink**, put it on a watch face complication, turn off "Show When Run".
 
 ### What you can say
 
@@ -48,18 +80,28 @@ Name it **Drink**, put it on a watch face complication, turn off "Show When Run"
 Anything it doesn't recognise is **refused, not guessed** — it answers
 "Didn't catch that" rather than writing a phantom drink into a real record.
 
-Below the alert threshold the notification is a receipt (`Logged beer · drink 2
-tonight.`). At the threshold and above it's the full readout, and Telegram gets
-a copy.
+The dictated path skips the double-tap guard when it names a different type,
+since saying "whiskey" right after "beer" is a real second drink.
 
-### If you'd rather tap than talk
+### Or a menu, if you want type without talking
 
-Same shortcut, minus the Dictate step. Either delete it and send an empty body
-(logs a beer), or set `Request Body: JSON` with a `type` field. A
-**Choose from Menu** action in front — `Beer` / `Wine` / `Cocktail` / `Spirits`
-— gives you a four-way tap with no dictation.
+A **Choose from Menu** action (`Beer` / `Wine` / `Cocktail` / `Spirits`) in
+front of the URL action, with `Request Body: JSON` and a `type` field per
+branch, gives a four-way tap and no dictation.
 
-Both styles can coexist; separate shortcuts, same endpoint.
+All three styles coexist — separate shortcuts, same endpoint.
+
+## 3. Two more worth having
+
+Same URL and header, `Request Body: JSON` with one field:
+
+| Shortcut | Field | Does |
+| --- | --- | --- |
+| **Where am I at** | `action` → `status` | Readout, logs nothing |
+| **Undo drink** | `action` → `undo` | Deletes the last one |
+
+`end` exists too, but a session closes itself after 8 quiet hours, so you never
+have to remember it.
 
 ---
 
@@ -91,12 +133,12 @@ Full JSON response (useful if you want to build something else on it):
 
 | Param | Default | Notes |
 | --- | --- | --- |
-| `type` | `beer` | `beer`, `wine`, `spirits`, `cocktail`, plus aliases (`ipa`, `whiskey`, `martini`…) |
+| `type` | `standard` | `beer`, `wine`, `spirits`, `cocktail`, plus aliases (`ipa`, `whiskey`, `martini`…) |
 | `units` | per type | Override standard units (cocktail defaults to 1.4) |
 | `count` | `1` | Log several at once, capped at 6 |
 | `at` | now | ISO timestamp, for backfilling a drink you forgot |
 | `action` | `log` | `log` / `status` / `undo` / `end` |
-| `force` | off | `1` returns the readout even below the threshold |
+| `force` | off | `1` logs through the double-tap guard and returns the readout below the threshold |
 | `format` | see below | `text` for a bare sentence, `json` for the full object |
 
 Token can also go in the query string (`?t=...`) if a client can't set headers.
@@ -118,6 +160,7 @@ Supabase function secrets, already set:
 | `TIDE_DRINK_ALERT_AT` | `4` — notify from this drink up |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | reused suite-wide, drives the alert |
 | `TIDE_SESSION_GAP_H` | `8` (default) — hours of quiet that end a night |
+| `TIDE_DRINK_DEDUPE_SEC` | `45` (default) — double-tap window; `0` disables |
 
 To change the threshold:
 

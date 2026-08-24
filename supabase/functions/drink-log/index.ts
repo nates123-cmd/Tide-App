@@ -50,12 +50,21 @@ const TZ = Deno.env.get("TIDE_TZ") || "America/New_York";
 // A session is "the same night" until this many hours pass with no drink.
 const SESSION_GAP_H = Number(Deno.env.get("TIDE_SESSION_GAP_H") || 8);
 
+// A bare tap that repeats within this many seconds is treated as a double-tap,
+// not a second drink. A watch complication that seems not to respond gets
+// pressed again; an inflated count is worse than a missed one you can retap.
+const DEDUPE_SEC = Number(Deno.env.get("TIDE_DRINK_DEDUPE_SEC") || 45);
+
 // Default standard units per drink type — mirrors the app's log-drink presets.
-const UNITS = { beer: 1, wine: 1, spirits: 1, cocktail: 1.4, shot: 1 };
+// `standard` is the one-tap default: Nate decides what counts as a drink, and
+// the button does not ask. Typing it `beer` would quietly corrupt both the
+// calorie estimate and the by-type patterns.
+const UNITS = { standard: 1, beer: 1, wine: 1, spirits: 1, cocktail: 1.4, shot: 1 };
 // Order matters: parsePhrase takes the FIRST alias it finds in a spoken phrase,
 // so the vague ones ("glass", "drink") sit last. Otherwise "a glass of whiskey"
 // matches `glass` and logs wine.
 const TYPE_ALIASES = {
+  standard: "standard",
   beer: "beer", ipa: "beer", lager: "beer", pint: "beer",
   wine: "wine", red: "wine", white: "wine",
   spirits: "spirits", liquor: "spirits", whiskey: "spirits", whisky: "spirits",
@@ -485,8 +494,10 @@ Deno.serve(async (req) => {
     }
 
     // --- log -----------------------------------------------------------------
-    const rawType = String(param("type") || param("drink_type") || "beer").toLowerCase().trim();
-    const drinkType = TYPE_ALIASES[rawType] || "beer";
+    // No type given means the one-tap button: log a standard drink rather than
+    // guessing one, so "what was I drinking" stays an honest unknown.
+    const rawType = String(param("type") || param("drink_type") || "standard").toLowerCase().trim();
+    const drinkType = TYPE_ALIASES[rawType] || "standard";
     const baseUnits = Number(param("units")) > 0
       ? Number(param("units"))
       : (UNITS[rawType] ?? UNITS[drinkType] ?? 1);
@@ -495,7 +506,23 @@ Deno.serve(async (req) => {
     const at = param("at") ? new Date(param("at")) : now;
     const entryAt = isNaN(at.getTime()) ? now : at;
 
-    const { session } = await resolveSession(now, { createIfMissing: true });
+    const { session, entries: existing } = await resolveSession(now, { createIfMissing: true });
+
+    // Double-tap guard. Only for a plain single log of the same type — an
+    // explicit count, a backdated `at`, or force=1 all mean "I meant it".
+    const forcedLog = ["1", "true", "yes"].includes(String(param("force") || "").toLowerCase());
+    const explicitCount = Number(param("count")) > 1;
+    if (!forcedLog && !explicitCount && !param("at") && DEDUPE_SEC > 0 && existing.length) {
+      const prev = existing[existing.length - 1];
+      const agoSec = (now.getTime() - new Date(prev.entry_at).getTime()) / 1000;
+      if (agoSec >= 0 && agoSec < DEDUPE_SEC && prev.drink_type === drinkType) {
+        const r0 = buildReadout(existing, profile, now);
+        const msg = `Already logged ${Math.round(agoSec)}s ago — not double counting. Still drink ${r0.count} tonight.`;
+        if (wantsText) return text(msg);
+        return json({ ok: true, duplicate: true, logged: 0, message: msg, notify: false, ...strip(r0) });
+      }
+    }
+
     // "two beers" is two rows, not one double — count is the headline number.
     const rows = Array.from({ length: count }, (_, i) => ({
       user_id: USER_ID,
@@ -522,8 +549,7 @@ Deno.serve(async (req) => {
     // Notify from the threshold up, every drink — the point of the alert is the
     // back half of the night, where the count and the pace stop being obvious.
     // `force=1` gets the readout on demand at any count.
-    const forced = ["1", "true", "yes"].includes(String(param("force") || "").toLowerCase());
-    const notify = forced || r.count >= ALERT_AT;
+    const notify = forcedLog || r.count >= ALERT_AT;
 
     let telegramSent = false;
     if (notify) telegramSent = await telegram(r.line);
@@ -532,8 +558,11 @@ Deno.serve(async (req) => {
       // Below the threshold this is a receipt, not an alert: confirm what
       // landed and stop. The full readout is what the threshold is for.
       if (notify) return text(r.line);
-      const what = count > 1 ? `${count} × ${drinkType}` : drinkType;
       const unitNote = units !== (UNITS[drinkType] ?? 1) ? ` at ${units} units` : "";
+      // The one-tap button did not ask what it was, so the receipt should not
+      // pretend to name it: "Drink 3 logged." is the whole story.
+      if (drinkType === "standard" && count === 1) return text(`Drink ${r.count} logged${unitNote}.`);
+      const what = count > 1 ? `${count} × ${drinkType}` : drinkType;
       return text(`Logged ${what}${unitNote} · drink ${r.count} tonight.`);
     }
     return json({

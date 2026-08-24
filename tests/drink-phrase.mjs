@@ -51,6 +51,7 @@ const cases = [
   ["a glass of whiskey", "log", "spirits", 1, 1],
   ["glass of red", "log", "wine", 1, 1],
   ["just a drink", "log", "cocktail", 1, 1],
+  ["standard", "log", "standard", 1, 1],
 
   // commands must never come back as a log
   ["undo", "undo"],
