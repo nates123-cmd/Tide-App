@@ -23,8 +23,13 @@ const appSrc = slice(html, "function widmarkR(profile)", "// BAC trend:");
 const appMod = await import("data:text/javascript," + encodeURIComponent(appSrc + "\nexport {computeBAC};"));
 
 const ts = fs.readFileSync(FN, "utf8");
-const fnSrc = slice(ts, "function widmarkR(profile)", "function computePace");
-const fnMod = await import("data:text/javascript," + encodeURIComponent(fnSrc + "\nexport {computeBac};"));
+// Start at the band-width constants, not at widmarkR — they are inputs to the
+// math and drifting them apart is exactly what this test exists to catch.
+// They read Deno.env, so stub it; an absent env means the documented defaults,
+// which is what the app's hardcoded copy has to match.
+const fnSrc = slice(ts, "// --- band width", "function computePace");
+const DENO_STUB = "const Deno = { env: { get: () => undefined } };\n";
+const fnMod = await import("data:text/javascript," + encodeURIComponent(DENO_STUB + fnSrc + "\nexport {computeBac};"));
 
 const nate = { age: 29, gender: "male", weight_lb: 214, height_in: 75 };
 const now = Date.now();
@@ -43,7 +48,7 @@ for (const [name, drinks] of Object.entries(cases)) {
   const a = appMod.computeBAC(drinks, nate);
   const b = fnMod.computeBac(drinks, nate, new Date(now));
   // appKey|fnKey — the two sides name a few fields differently.
-  const keys = ["bac|mid", "low|low", "high|high", "peakHigh|peakHigh", "soberInHours|clearHrs"];
+  const keys = ["bac|mid", "low|low", "high|high", "peakHigh|peakHigh", "peakSafe|peakSafe", "soberInHours|clearHrs"];
   const diffs = keys.map((k) => {
     const [ak, bk] = k.split("|");
     return { k, app: a[ak], fn: b[bk], d: Math.abs(a[ak] - b[bk]) };
