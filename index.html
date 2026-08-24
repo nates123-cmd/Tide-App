@@ -1741,6 +1741,28 @@ function widmarkR(profile) {
 
 const drinkAtMs = (d) => new Date(d.entry_at || d.drink_at).getTime();
 
+// --- band width -------------------------------------------------------------
+// Measured contribution to the old band on a 5-drink evening: r +/-7% gave
+// .0135, elimination .0135, absorption .0099 — combined +/-38% of the estimate,
+// too wide to act on.
+//
+// r is tightened because Watson's published SE predicts a RANDOM person.
+// Height, weight, age and sex are known here, so most of that variance is
+// already resolved; +/-4.5% covers what individualisation cannot.
+const R_SPREAD = 0.045;
+const ABSORB_FAST = 30; // minutes, empty stomach
+const ABSORB_SLOW = 50; // minutes, with food
+
+// Elimination is the one axis where "I run lower than most" has a real
+// mechanism rather than a merely felt one: regular drinkers upregulate ADH and
+// MEOS and clear ethanol at ~.018-.020 %/hr against ~.015 for infrequent
+// drinkers. Tolerance to the FEELING is a different thing and does not move the
+// number. This only ever moves the display band — the safety bound ignores it.
+const BAC_TOLERANCE = 'regular';
+const BETA = BAC_TOLERANCE === 'naive'
+  ? { slow: 0.0135, mid: 0.0155, fast: 0.018 }
+  : { slow: 0.016, mid: 0.0175, fast: 0.0195 };
+
 // Ethanol absorbed into blood by `nowMs`, on a linear ramp of `absorbMin` per
 // drink. A drink logged 2 minutes ago is still in the stomach and contributes
 // nothing yet — treating it as instant blood alcohol overstates the moment.
@@ -1765,39 +1787,45 @@ function computeBAC(drinks, profile) {
   if (!kg) return null;
   const bodyG = kg * 1000;
   const r = widmarkR(profile);
-  const rLow = r * 0.93;   // less body water -> higher BAC
-  const rHigh = r * 1.07;
+  const rLow = r * (1 - R_SPREAD);   // less body water -> higher BAC
+  const rHigh = r * (1 + R_SPREAD);
   const nowMs = Date.now();
   const firstMs = drinkAtMs(drinks[0]);
   const hrs = Math.max(0, (nowMs - firstMs) / 3600000);
 
-  const high = Math.max(0, (absorbedGrams(drinks, nowMs, 25) / (bodyG * rLow)) * 100 - 0.0135 * hrs);
-  const low  = Math.max(0, (absorbedGrams(drinks, nowMs, 60) / (bodyG * rHigh)) * 100 - 0.018 * hrs);
-  const bac  = Math.max(0, (absorbedGrams(drinks, nowMs, 40) / (bodyG * r)) * 100 - 0.0155 * hrs);
+  const high = Math.max(0, (absorbedGrams(drinks, nowMs, ABSORB_FAST) / (bodyG * rLow)) * 100 - BETA.slow * hrs);
+  const low  = Math.max(0, (absorbedGrams(drinks, nowMs, ABSORB_SLOW) / (bodyG * rHigh)) * 100 - BETA.fast * hrs);
+  const bac  = Math.max(0, (absorbedGrams(drinks, nowMs, 40) / (bodyG * r)) * 100 - BETA.mid * hrs);
 
   // Where the night lands once everything logged has absorbed.
   const totalG = drinks.reduce((s, d) => s + (Number(d.standard_units) || 1) * 14, 0);
   const peakMs = Math.max(nowMs, drinkAtMs(drinks[drinks.length - 1]) + 25 * 60000);
   const peakHrs = (peakMs - firstMs) / 3600000;
   const minsToPeak = Math.max(0, Math.round((peakMs - nowMs) / 60000));
-  const peak     = Math.max(0, (totalG / (bodyG * r))     * 100 - 0.0155 * peakHrs);
-  const peakHigh = Math.max(high, (totalG / (bodyG * rLow))  * 100 - 0.0135 * peakHrs);
-  const peakLow  = Math.max(low,  (totalG / (bodyG * rHigh)) * 100 - 0.018  * peakHrs);
+  const peak     = Math.max(0, (totalG / (bodyG * r))     * 100 - BETA.mid  * peakHrs);
+  const peakHigh = Math.max(high, (totalG / (bodyG * rLow))  * 100 - BETA.slow * peakHrs);
+  const peakLow  = Math.max(low,  (totalG / (bodyG * rHigh)) * 100 - BETA.fast * peakHrs);
 
-  // Sober-by counts from the peak and uses the pessimistic bound, so the
-  // number never flatters.
-  const soberInHours = minsToPeak / 60 + peakHigh / 0.0135;
+  // The safety bound is computed separately and is NEVER narrowed by the
+  // tolerance setting. Tolerance is a self-report; "when can I drive" is not
+  // the place to act on one.
+  const safeNow  = Math.max(0, (absorbedGrams(drinks, nowMs, 25) / (bodyG * r * 0.93)) * 100 - 0.0135 * hrs);
+  const peakSafe = Math.max(safeNow, (totalG / (bodyG * r * 0.93)) * 100 - 0.0135 * peakHrs);
+
+  // Sober-by counts from the peak and uses the safety bound, so the number
+  // never flatters.
+  const soberInHours = minsToPeak / 60 + peakSafe / 0.0135;
 
   // Two bounds for two jobs. `status` labels the likely case (the midpoint) —
   // calling a .027-.053 estimate "impairment" because its pessimistic edge
   // grazes .05 is overstatement, and a warning that overstates early gets
   // ignored later. `over08Risk` is the driving line, so it stays pessimistic.
-  const over08Risk = peakHigh >= 0.08;
+  const over08Risk = peakSafe >= 0.08;
   let status = 'safe';
   if (peak >= 0.08) status = 'over';
   else if (peak >= 0.05) status = 'high';
   else if (peak >= 0.02) status = 'moderate';
-  return { bac, low, high, peak, peakLow, peakHigh, minsToPeak, r, status, over08Risk, soberInHours };
+  return { bac, low, high, peak, peakLow, peakHigh, peakSafe, minsToPeak, r, status, over08Risk, soberInHours };
 }
 
 // ---------------------------------------------------------------------------

@@ -125,7 +125,8 @@ Full JSON response (useful if you want to build something else on it):
 | `min_since_last` | minutes since the previous drink |
 | `bac_low` / `bac_mid` / `bac_high` | estimated BAC range **right now** |
 | `bac_peak_low` / `bac_peak_high` | where it lands once everything absorbs |
-| `clear_in_hours` | hours until BAC reaches zero, from the pessimistic bound |
+| `bac_peak_safe` | conservative bound — what `clear_in_hours` and the .08 flag use |
+| `clear_in_hours` | hours until BAC reaches zero, from the safety bound |
 | `pace_status` | `easy` / `moderate` / `fast` |
 | `bac_status` | `safe` / `moderate` / `high` / `over` |
 
@@ -161,6 +162,8 @@ Supabase function secrets, already set:
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | reused suite-wide, drives the alert |
 | `TIDE_SESSION_GAP_H` | `8` (default) — hours of quiet that end a night |
 | `TIDE_DRINK_DEDUPE_SEC` | `45` (default) — double-tap window; `0` disables |
+| `TIDE_BAC_TOLERANCE` | `regular` (default) or `naive` — display band only, never the safety bound |
+| `TIDE_BAC_R_SPREAD` | `0.045` (default) — half-width of the `r` band |
 
 To change the threshold:
 
@@ -178,16 +181,44 @@ Widmark, with the `r` factor taken from Watson's total-body-water regression
 214 lb can hold very different amounts of water, and water is what dilutes the
 alcohol.
 
-The band comes from three things that genuinely vary:
+The band comes from three things that genuinely vary. Measured contribution on
+a 5-drink evening: `r` gave ±.0135, elimination ±.0135, absorption ±.0099 —
+combined, ±38% of the estimate, too wide to act on. So each is individualised
+as far as it honestly can be:
 
-- `r` — ±7%, roughly Watson's standard error
-- elimination — 0.0135 to 0.018 %/hr between people
-- absorption — 25 min fasted to 60 min with food
+- `r` — **±4.5%**. Watson's published standard error predicts a *random*
+  person; height, weight, age and sex are known here, so most of that variance
+  is already resolved.
+- elimination — **0.016 to 0.0195 %/hr**, the regular-drinker range. Set by
+  `TIDE_BAC_TOLERANCE`; `naive` restores 0.0135–0.018.
+- absorption — **30 min** fasted to **50 min** with food.
 
-Those are deliberately not all pushed to their extremes at once. Stacking three
-worst cases compounds into a band so wide it stops saying anything (an early
+Net effect is a band about a third narrower than the population default. They
+are still deliberately not all pushed to their extremes at once: stacking three
+worst cases compounds into something that stops saying anything (an early
 version produced `.000–.052`, which is not a reading). The midpoint is tuned to
 land on published BAC-chart values.
+
+### The tolerance setting, and what it does not mean
+
+Regular drinkers really do clear ethanol faster — ADH and MEOS are
+upregulated, so ~0.018–0.020 %/hr against ~0.015 for infrequent drinkers. Real
+mechanism, and it genuinely lowers the number.
+
+Tolerance to the *feeling* is a different thing and lowers nothing. Feeling
+fine at four drinks is not evidence of a lower BAC.
+
+So the setting only ever moves the **display band**. Every safety number —
+"clear by", and whether .08 is mentioned at all — comes from a separate bound
+at population-worst-case `r`, slowest elimination, fastest absorption, and
+ignores the tolerance setting entirely. Narrowing an estimate on the strength
+of a self-report is defensible; deciding whether someone can drive on the
+strength of one is not.
+
+**To narrow this properly:** a ~$30 breathalyzer, one night, readings logged
+against drink times. That yields a real personal elimination rate and the band
+collapses to something genuinely tight rather than merely plausible. Until
+then this is still a model of a population that happens to contain you.
 
 **A drink you just logged is still in your stomach**, so it adds nothing to the
 current number. That's why the readout separates "now" from "heading to" — the

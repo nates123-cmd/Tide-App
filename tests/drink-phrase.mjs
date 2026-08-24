@@ -19,10 +19,14 @@ function slice(startMarker, endMarker) {
   return src.slice(i, j);
 }
 
+// The second slice sweeps up config constants that read Deno.env; stub it so
+// they fall back to their documented defaults.
+const DENO_STUB = "const Deno = { env: { get: () => undefined } };\n";
 const mod = await import(
   "data:text/javascript," +
     encodeURIComponent(
-      slice("const TYPE_ALIASES", "const json =") +
+      DENO_STUB +
+        slice("const TYPE_ALIASES", "const json =") +
         slice("const NUM_WORDS", "Deno.serve") +
         "\nexport { parsePhrase };",
     )

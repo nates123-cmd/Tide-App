@@ -176,6 +176,29 @@ function localTime(d) {
 // the honest shape. Awareness only, never a fitness-to-drive test.
 // ---------------------------------------------------------------------------
 //
+// --- band width -------------------------------------------------------------
+// Measured contribution to the old band, for a 5-drink evening: r +/-7% gave
+// .0135, elimination .0135, absorption .0099 — combined +/-38% of the estimate,
+// which is too wide to act on.
+//
+// r is tightened because Watson's published SE is for predicting a RANDOM
+// person. Height, weight, age and sex are known here, so most of that variance
+// is already resolved; +/-4.5% covers what individualisation cannot.
+const R_SPREAD = Number(Deno.env.get("TIDE_BAC_R_SPREAD") || 0.045);
+const ABSORB_FAST = 30; // minutes, empty stomach
+const ABSORB_SLOW = 50; // minutes, with food
+
+// Elimination is the one axis where "I run lower than most" has a real
+// mechanism rather than just a felt one: regular drinkers upregulate ADH and
+// MEOS and clear ethanol at ~.018-.020 %/hr against ~.015 for infrequent
+// drinkers. Tolerance to the FEELING is not the same thing and does not move
+// the number — so this is an explicit, named setting, not a quiet default, and
+// it only ever moves the display band. The safety bound below ignores it.
+const TOLERANCE = (Deno.env.get("TIDE_BAC_TOLERANCE") || "regular").toLowerCase();
+const BETA = TOLERANCE === "naive"
+  ? { slow: 0.0135, mid: 0.0155, fast: 0.018 }
+  : { slow: 0.016, mid: 0.0175, fast: 0.0195 };
+
 // r (Widmark factor) = total body water / (0.806 L/kg * body mass). Watson's
 // TBW regression uses age + height + weight, so it beats the flat 0.68/0.55
 // male/female constants. The band is +/-7% on r (roughly Watson's reported SE),
@@ -217,17 +240,17 @@ function computeBac(drinks, profile, now = new Date()) {
   if (!kg) return null;
   const bodyG = kg * 1000;
   const r = widmarkR(profile);
-  const rLow = r * 0.93;   // less body water -> higher BAC
-  const rHigh = r * 1.07;
+  const rLow = r * (1 - R_SPREAD);   // less body water -> higher BAC
+  const rHigh = r * (1 + R_SPREAD);
   const firstMs = new Date(drinks[0].entry_at).getTime();
   const hrs = Math.max(0, (nowMs - firstMs) / 3600000);
 
   // High bound: fast absorption, small r, slow elimination.
-  const high = Math.max(0, (absorbedGrams(drinks, nowMs, 25) / (bodyG * rLow)) * 100 - 0.0135 * hrs);
+  const high = Math.max(0, (absorbedGrams(drinks, nowMs, ABSORB_FAST) / (bodyG * rLow)) * 100 - BETA.slow * hrs);
   // Low bound: slow absorption, large r, fast elimination.
-  const low = Math.max(0, (absorbedGrams(drinks, nowMs, 60) / (bodyG * rHigh)) * 100 - 0.018 * hrs);
+  const low = Math.max(0, (absorbedGrams(drinks, nowMs, ABSORB_SLOW) / (bodyG * rHigh)) * 100 - BETA.fast * hrs);
   // Central: the headline number.
-  const mid = Math.max(0, (absorbedGrams(drinks, nowMs, 40) / (bodyG * r)) * 100 - 0.0155 * hrs);
+  const mid = Math.max(0, (absorbedGrams(drinks, nowMs, 40) / (bodyG * r)) * 100 - BETA.mid * hrs);
 
   // Peak still to come. The drink you just logged contributes ~nothing to the
   // current number (it is still in your stomach), so a readout fired at the
@@ -238,14 +261,22 @@ function computeBac(drinks, profile, now = new Date()) {
   const peakMs = Math.max(nowMs, lastMs + 25 * 60000);
   const peakHrs = (peakMs - firstMs) / 3600000;
   const minsToPeak = Math.max(0, Math.round((peakMs - nowMs) / 60000));
-  const peak = Math.max(0, (totalG / (bodyG * r)) * 100 - 0.0155 * peakHrs);
-  const peakHigh = Math.max(high, (totalG / (bodyG * rLow)) * 100 - 0.0135 * peakHrs);
-  const peakLow = Math.max(low, (totalG / (bodyG * rHigh)) * 100 - 0.018 * peakHrs);
+  const peak = Math.max(0, (totalG / (bodyG * r)) * 100 - BETA.mid * peakHrs);
+  const peakHigh = Math.max(high, (totalG / (bodyG * rLow)) * 100 - BETA.slow * peakHrs);
+  const peakLow = Math.max(low, (totalG / (bodyG * rHigh)) * 100 - BETA.fast * peakHrs);
 
-  // Sober-by counts from the peak, not from now, and uses the pessimistic
-  // bound — the number should never flatter.
-  const clearHrs = minsToPeak / 60 + peakHigh / 0.0135;
-  const under08Hrs = peakHigh > 0.08 ? minsToPeak / 60 + (peakHigh - 0.08) / 0.0135 : 0;
+  // The safety bound is computed separately and is NEVER narrowed by the
+  // tolerance setting. Tolerance is a self-report; "when can I drive" is not
+  // the place to act on one. Population-worst-case r, slowest elimination,
+  // fastest absorption — the same numbers the display band used before it was
+  // individualised.
+  const safeNow = Math.max(0, (absorbedGrams(drinks, nowMs, 25) / (bodyG * r * 0.93)) * 100 - 0.0135 * hrs);
+  const peakSafe = Math.max(safeNow, (totalG / (bodyG * r * 0.93)) * 100 - 0.0135 * peakHrs);
+
+  // Sober-by counts from the peak, not from now, and uses the safety bound —
+  // the number should never flatter.
+  const clearHrs = minsToPeak / 60 + peakSafe / 0.0135;
+  const under08Hrs = peakSafe > 0.08 ? minsToPeak / 60 + (peakSafe - 0.08) / 0.0135 : 0;
 
   // Two different jobs, so two different bounds.
   //
@@ -257,12 +288,12 @@ function computeBac(drinks, profile, now = new Date()) {
   //
   // `over08Risk` is a safety call, not a characterization: it is the line
   // between driving and not driving. That one stays on the pessimistic bound.
-  const over08Risk = peakHigh >= 0.08;
+  const over08Risk = peakSafe >= 0.08;
   let status = "safe";
   if (peak >= 0.08) status = "over";
   else if (peak >= 0.05) status = "high";
   else if (peak >= 0.02) status = "moderate";
-  return { low, mid, high, peak, peakHigh, peakLow, minsToPeak, r, clearHrs, under08Hrs, status, over08Risk };
+  return { low, mid, high, peak, peakHigh, peakLow, peakSafe, minsToPeak, r, clearHrs, under08Hrs, status, over08Risk };
 }
 
 function computePace(drinks, now = new Date()) {
@@ -362,6 +393,7 @@ function strip(r) {
     bac_mid: r.bac ? Number(r.bac.mid.toFixed(4)) : null,
     bac_high: r.bac ? Number(r.bac.high.toFixed(4)) : null,
     bac_peak: r.bac ? Number(r.bac.peak.toFixed(4)) : null,
+    bac_peak_safe: r.bac ? Number(r.bac.peakSafe.toFixed(4)) : null,
     bac_peak_low: r.bac ? Number(r.bac.peakLow.toFixed(4)) : null,
     bac_peak_high: r.bac ? Number(r.bac.peakHigh.toFixed(4)) : null,
     bac_status: r.bac ? r.bac.status : null,
