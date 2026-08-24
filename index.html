@@ -1722,24 +1722,74 @@ function computePace(drinks) {
 }
 
 // Widmark BAC estimate. Inaccurate by ~20% — for awareness, not legal/medical decisions.
+// Widmark factor from Watson's total-body-water regression (age + height +
+// weight) rather than the flat 0.68/0.55 male/female constants — same body
+// weight can carry very different water, and water is what dilutes the alcohol.
+function widmarkR(profile) {
+  const kg = Number(profile.weight_lb) * 0.453592;
+  const cm = Number(profile.height_in) * 2.54;
+  const age = Number(profile.age);
+  const female = String(profile.gender || '').toLowerCase().startsWith('f');
+  if (!kg || !cm || !age) return female ? 0.55 : 0.68;
+  const tbw = female
+    ? -2.097 + 0.1069 * cm + 0.2466 * kg
+    : 2.447 - 0.09516 * age + 0.1074 * cm + 0.3362 * kg;
+  return Math.min(0.85, Math.max(0.40, tbw / (0.806 * kg)));
+}
+
+const drinkAtMs = (d) => new Date(d.entry_at || d.drink_at).getTime();
+
+// Ethanol absorbed into blood by `nowMs`, on a linear ramp of `absorbMin` per
+// drink. A drink logged 2 minutes ago is still in the stomach and contributes
+// nothing yet — treating it as instant blood alcohol overstates the moment.
+function absorbedGrams(drinks, nowMs, absorbMin) {
+  return drinks.reduce((sum, d) => {
+    const g = (Number(d.standard_units) || 1) * 14;
+    const frac = Math.max(0, Math.min(1, (nowMs - drinkAtMs(d)) / 60000 / absorbMin));
+    return sum + g * frac;
+  }, 0);
+}
+
+// Widmark BAC with an explicit uncertainty band. A single number reads as
+// precision this model does not have: r is a regression estimate, elimination
+// runs 0.0135-0.018 %/hr between people, and absorption takes 25-60 min
+// depending on food. `bac` stays the headline midpoint (existing callers and
+// the trend read use it); low/high bracket it. Awareness only — never a
+// fitness-to-drive test. Mirrors supabase/functions/drink-log/index.ts; the two
+// must stay in step or the watch and the app will disagree on the same night.
 function computeBAC(drinks, profile) {
   if (!profile || drinks.length === 0) return null;
-  const { age, gender, weight_lb } = profile;
-  const baseR = gender === 'female' ? 0.55 : 0.68;
-  const floorR = gender === 'female' ? 0.45 : 0.58;
-  const r = Math.max(floorR, baseR - Math.max(0, age - 30) * 0.001);
-  const grams = drinks.reduce((s, d) => s + (Number(d.standard_units) || 1) * 14, 0);
-  const weightG = weight_lb * 453.592;
-  const firstDrink = new Date(drinks[0].drink_at).getTime();
-  const hoursElapsed = Math.max(0, (Date.now() - firstDrink) / 3600000);
-  const rawBac = (grams / (weightG * r)) * 100;
-  const bac = Math.max(0, rawBac - 0.015 * hoursElapsed);
-  const soberInHours = bac / 0.015;
+  const kg = Number(profile.weight_lb) * 0.453592;
+  if (!kg) return null;
+  const bodyG = kg * 1000;
+  const r = widmarkR(profile);
+  const rLow = r * 0.93;   // less body water -> higher BAC
+  const rHigh = r * 1.07;
+  const nowMs = Date.now();
+  const firstMs = drinkAtMs(drinks[0]);
+  const hrs = Math.max(0, (nowMs - firstMs) / 3600000);
+
+  const high = Math.max(0, (absorbedGrams(drinks, nowMs, 25) / (bodyG * rLow)) * 100 - 0.0135 * hrs);
+  const low  = Math.max(0, (absorbedGrams(drinks, nowMs, 60) / (bodyG * rHigh)) * 100 - 0.018 * hrs);
+  const bac  = Math.max(0, (absorbedGrams(drinks, nowMs, 40) / (bodyG * r)) * 100 - 0.0155 * hrs);
+
+  // Where the night lands once everything logged has absorbed.
+  const totalG = drinks.reduce((s, d) => s + (Number(d.standard_units) || 1) * 14, 0);
+  const peakMs = Math.max(nowMs, drinkAtMs(drinks[drinks.length - 1]) + 25 * 60000);
+  const peakHrs = (peakMs - firstMs) / 3600000;
+  const minsToPeak = Math.max(0, Math.round((peakMs - nowMs) / 60000));
+  const peak     = Math.max(0, (totalG / (bodyG * r))     * 100 - 0.0155 * peakHrs);
+  const peakHigh = Math.max(high, (totalG / (bodyG * rLow))  * 100 - 0.0135 * peakHrs);
+  const peakLow  = Math.max(low,  (totalG / (bodyG * rHigh)) * 100 - 0.018  * peakHrs);
+
+  // Sober-by counts from the peak and uses the pessimistic bound, so the
+  // number never flatters.
+  const soberInHours = minsToPeak / 60 + peakHigh / 0.0135;
   let status = 'safe';
-  if (bac >= 0.08) status = 'over';
-  else if (bac >= 0.05) status = 'high';
-  else if (bac >= 0.02) status = 'moderate';
-  return { bac, status, soberInHours };
+  if (peakHigh >= 0.08) status = 'over';
+  else if (peakHigh >= 0.05) status = 'high';
+  else if (peakHigh >= 0.02) status = 'moderate';
+  return { bac, low, high, peak, peakLow, peakHigh, minsToPeak, r, status, soberInHours };
 }
 
 // ---------------------------------------------------------------------------
@@ -2354,7 +2404,7 @@ function renderIndulgeActive() {
           <div class="pace-fused-stat">
             <div class="pace-fused-stat-label">BAC · est</div>
             <div class="pace-fused-num">${bac ? bac.bac.toFixed(2).replace(/^0/, '') : '—'}</div>
-            <div class="pace-fused-stat-detail muted-soft">${escapeHtml(trend || (bac ? 'first read' : 'no drinks yet'))}</div>
+            <div class="pace-fused-stat-detail muted-soft">${escapeHtml(bacDetail(bac, trend))}</div>
           </div>
         ` : ''}
       </div>
@@ -2468,6 +2518,17 @@ function openIndulgeEntryDetail(id, kind) {
       closeModal();
     };
   });
+}
+
+// The 44px headline number is the midpoint; this line under it carries the
+// honest spread. When the last drink is still absorbing, where it is heading
+// beats which way it is drifting — so the arrow replaces the trend word.
+const bacFmt = (n) => n.toFixed(2).replace(/^0/, '');
+function bacDetail(bac, trend) {
+  if (!bac) return 'no drinks yet';
+  const range = `${bacFmt(bac.low)}–${bacFmt(bac.high)}`;
+  if (bac.peakHigh > bac.high + 0.004) return `${range} → ~${bacFmt(bac.peakHigh)}`;
+  return trend ? `${range} · ${trend}` : range;
 }
 
 // BAC trend: compare current BAC to what we'd compute 15 minutes ago.
