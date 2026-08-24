@@ -2,3 +2,4 @@ dev-config.js
 .DS_Store
 
 .claude/worktrees/
+supabase/.temp/
