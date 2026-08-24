@@ -1787,11 +1787,17 @@ function computeBAC(drinks, profile) {
   // Sober-by counts from the peak and uses the pessimistic bound, so the
   // number never flatters.
   const soberInHours = minsToPeak / 60 + peakHigh / 0.0135;
+
+  // Two bounds for two jobs. `status` labels the likely case (the midpoint) —
+  // calling a .027-.053 estimate "impairment" because its pessimistic edge
+  // grazes .05 is overstatement, and a warning that overstates early gets
+  // ignored later. `over08Risk` is the driving line, so it stays pessimistic.
+  const over08Risk = peakHigh >= 0.08;
   let status = 'safe';
-  if (peakHigh >= 0.08) status = 'over';
-  else if (peakHigh >= 0.05) status = 'high';
-  else if (peakHigh >= 0.02) status = 'moderate';
-  return { bac, low, high, peak, peakLow, peakHigh, minsToPeak, r, status, soberInHours };
+  if (peak >= 0.08) status = 'over';
+  else if (peak >= 0.05) status = 'high';
+  else if (peak >= 0.02) status = 'moderate';
+  return { bac, low, high, peak, peakLow, peakHigh, minsToPeak, r, status, over08Risk, soberInHours };
 }
 
 // ---------------------------------------------------------------------------

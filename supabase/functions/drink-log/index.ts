@@ -246,11 +246,23 @@ function computeBac(drinks, profile, now = new Date()) {
   // bound — the number should never flatter.
   const clearHrs = minsToPeak / 60 + peakHigh / 0.0135;
   const under08Hrs = peakHigh > 0.08 ? minsToPeak / 60 + (peakHigh - 0.08) / 0.0135 : 0;
+
+  // Two different jobs, so two different bounds.
+  //
+  // `status` is a characterization ("impairment range"), and characterizing a
+  // .027-.053 estimate that way because its pessimistic edge grazes .05 is
+  // overstatement. An alert that cries wolf on the fourth drink is ignored by
+  // the eighth, which is when it actually matters — so the label follows the
+  // likely case, the midpoint.
+  //
+  // `over08Risk` is a safety call, not a characterization: it is the line
+  // between driving and not driving. That one stays on the pessimistic bound.
+  const over08Risk = peakHigh >= 0.08;
   let status = "safe";
-  if (peakHigh >= 0.08) status = "over";
-  else if (peakHigh >= 0.05) status = "high";
-  else if (peakHigh >= 0.02) status = "moderate";
-  return { low, mid, high, peak, peakHigh, peakLow, minsToPeak, r, clearHrs, under08Hrs, status };
+  if (peak >= 0.08) status = "over";
+  else if (peak >= 0.05) status = "high";
+  else if (peak >= 0.02) status = "moderate";
+  return { low, mid, high, peak, peakHigh, peakLow, minsToPeak, r, clearHrs, under08Hrs, status, over08Risk };
 }
 
 function computePace(drinks, now = new Date()) {
@@ -321,9 +333,10 @@ function buildReadout(drinks, profile, now = new Date()) {
       body += ` Landing in ~${fmtMins(bac.minsToPeak)}.`;
     }
     const clearAt = new Date(now.getTime() + bac.clearHrs * 3600000);
-    if (bac.status === "over") {
+    if (bac.over08Risk) {
       const okAt = new Date(now.getTime() + bac.under08Hrs * 3600000);
-      body += ` Over .08 territory — under it ~${localTime(okAt)}, clear ~${localTime(clearAt)}.`;
+      const hedge = bac.status === "over" ? "Over .08" : "Could reach .08";
+      body += ` ${hedge} — under it ~${localTime(okAt)}, clear ~${localTime(clearAt)}.`;
     } else if (bac.status === "high") {
       body += ` Impairment range. Clear ~${localTime(clearAt)}.`;
     } else if (bac.peakHigh >= 0.005) {
