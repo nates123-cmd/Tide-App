@@ -79,9 +79,12 @@ const cases = [
   ["bac .081", "reading"],
   ["blew 0.09", "reading"],
   ["reading .045", "reading"],
-  ["08", "reading"],       // .008 is implausibly low, so this can only be .08
   [".08", "reading"],
-  ["15", "ambiguous"],     // .015 and .15 are both real readings — must ask
+  [".008", "reading"],     // near-zero readings are the ones that pin beta
+  ["0.008", "reading"],
+  ["08", "ambiguous"],     // .008 and .08 are both real readings — must ask
+  ["008", "ambiguous"],
+  ["15", "ambiguous"],
   ["25", "ambiguous"],
 
   // nothing recognisable must refuse rather than guess
@@ -117,21 +120,22 @@ const readingPhrases = cases.filter(([, a]) => a === "reading").map(([s]) => s);
 const readingsAsDrinks = readingPhrases.filter((s) => (parsePhrase(s) || {}).action === "log");
 if (readingsAsDrinks.length) { fail++; console.log("\nREADING PARSED AS A DRINK:", readingsAsDrinks); }
 
-// Values must survive the parse. "08" is the one that bit: read as thousandths
-// it becomes .008 — a 10x error in the flattering direction on a number about
-// whether you can drive.
+// An explicit decimal is taken exactly as typed, at any magnitude. Low values
+// are first-class: a reading hours after the last drink is what pins beta, so
+// .008 must round-trip as .008 and never be treated as noise.
 for (const [spoken, expect] of [
   [".062", 0.062], ["0.062", 0.062], ["62", 0.062], ["081", 0.081],
-  ["08", 0.08], [".08", 0.08], ["0.08", 0.08], ["120", 0.12], ["05", 0.05],
+  [".08", 0.08], ["0.08", 0.08], [".008", 0.008], ["0.008", 0.008],
+  ["120", 0.12],
 ]) {
   const got = (parsePhrase(spoken) || {}).bac;
   if (Math.abs((got ?? -1) - expect) > 1e-9) { fail++; console.log(`FAIL  "${spoken}" -> bac ${got} != ${expect}`); }
 }
 
-// Nothing may silently produce a reading outside what a breathalyzer can show.
-for (const spoken of ["62", "08", "120", "05", "062", ".062", "0.4"]) {
-  const v = (parsePhrase(spoken) || {}).bac;
-  if (v !== undefined && (v < 0.005 || v > 0.5)) { fail++; console.log(`FAIL  "${spoken}" -> implausible ${v}`); }
+// Bare digits that could be two real readings must ask, never pick one.
+for (const spoken of ["08", "008", "15", "25", "09", "005"]) {
+  const a = (parsePhrase(spoken) || {}).action;
+  if (a !== "ambiguous") { fail++; console.log(`FAIL  "${spoken}" -> ${a}, expected ambiguous`); }
 }
 
 console.log(fail === 0 ? "\nALL PHRASE CHECKS PASS" : `\n${fail} FAILURES`);

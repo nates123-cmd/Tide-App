@@ -134,15 +134,19 @@ function parsePhrase(input) {
   // Anchored to the whole phrase on purpose — "two beers" contains a number and
   // must never be read as a measurement.
   //
-  // Bare digits are genuinely ambiguous and the first version guessed wrong:
-  // it read everything as thousandths, so "08" (meaning .08) became .008 — a
-  // 10x error, in the flattering direction, on a number about whether you can
-  // drive. So: try both readings, keep the ones that are physically plausible,
-  // and only accept when exactly one survives. Two survivors means ask.
+  // Bare digits are genuinely ambiguous, so never guess: try both readings,
+  // keep the ones physically plausible, accept only if exactly one survives.
   //
   //   "62"  -> .062 ok, .62 impossible          -> .062
-  //   "08"  -> .008 too low, .08 ok             -> .080
+  //   "120" -> .120 ok, 1.20 impossible         -> .120
+  //   "08"  -> .008 ok AND .08 ok               -> ambiguous, ask
   //   "15"  -> .015 ok AND .15 ok               -> ambiguous, ask
+  //
+  // The floor is .001, not .010. A near-zero reading is not noise to be
+  // discarded — the descending limb, hours after the last drink, is precisely
+  // what pins the elimination rate, so .005 and .008 are among the most
+  // valuable numbers here. An earlier floor of .010 silently turned "008" into
+  // .080, inventing a 10x error while trying to prevent one.
   //
   // An explicit decimal point is never ambiguous and is always taken as typed.
   const m = s.match(/^(?:bac|blew|blow|reading|measured|test)?\s*(0?\.\d{1,3}|\d{1,3})\s*(?:bac)?$/);
@@ -153,7 +157,7 @@ function parsePhrase(input) {
       if (v > 0 && v < 0.6) return { action: "reading", bac: v, raw: input };
     } else {
       const n = Number(lit);
-      const plausible = [n / 1000, n / 100].filter((v) => v >= 0.010 && v <= 0.40);
+      const plausible = [n / 1000, n / 100].filter((v) => v >= 0.001 && v <= 0.40);
       const uniq = [...new Set(plausible)];
       if (uniq.length === 1) return { action: "reading", bac: uniq[0], raw: input };
       if (uniq.length > 1) return { action: "ambiguous", raw: input };
