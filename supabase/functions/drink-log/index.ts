@@ -131,14 +131,33 @@ function parsePhrase(input) {
   }
 
   // A breathalyzer reading: essentially just a number, optionally prefixed.
-  // Accepts .062, 0.062, and 62 (some devices drop the leading "0."). Anchored
-  // to the whole phrase on purpose — "two beers" contains a number and must
-  // never be read as a measurement.
-  const m = s.match(/^(?:bac|blew|blow|reading|measured|test)?\s*(0?\.\d{1,3}|\d{2,3})\s*(?:bac)?$/);
+  // Anchored to the whole phrase on purpose — "two beers" contains a number and
+  // must never be read as a measurement.
+  //
+  // Bare digits are genuinely ambiguous and the first version guessed wrong:
+  // it read everything as thousandths, so "08" (meaning .08) became .008 — a
+  // 10x error, in the flattering direction, on a number about whether you can
+  // drive. So: try both readings, keep the ones that are physically plausible,
+  // and only accept when exactly one survives. Two survivors means ask.
+  //
+  //   "62"  -> .062 ok, .62 impossible          -> .062
+  //   "08"  -> .008 too low, .08 ok             -> .080
+  //   "15"  -> .015 ok AND .15 ok               -> ambiguous, ask
+  //
+  // An explicit decimal point is never ambiguous and is always taken as typed.
+  const m = s.match(/^(?:bac|blew|blow|reading|measured|test)?\s*(0?\.\d{1,3}|\d{1,3})\s*(?:bac)?$/);
   if (m) {
-    let v = Number(m[1]);
-    if (v >= 1) v = v / 1000;              // "62" -> .062
-    if (v > 0 && v < 0.6) return { action: "reading", bac: v };
+    const lit = m[1];
+    if (lit.includes(".")) {
+      const v = Number(lit);
+      if (v > 0 && v < 0.6) return { action: "reading", bac: v, raw: input };
+    } else {
+      const n = Number(lit);
+      const plausible = [n / 1000, n / 100].filter((v) => v >= 0.010 && v <= 0.40);
+      const uniq = [...new Set(plausible)];
+      if (uniq.length === 1) return { action: "reading", bac: uniq[0], raw: input };
+      if (uniq.length > 1) return { action: "ambiguous", raw: input };
+    }
   }
 
   // Drink type: first alias that appears as a whole word or a plural of one.
@@ -461,6 +480,10 @@ async function handleTelegram(req, update) {
       await reply(`Didn't catch "${said.slice(0, 40)}" — send a BAC number like .062, or beer / status / undo.`);
       return ok();
     }
+    if (parsed.action === "ambiguous") {
+      await reply(`"${said.trim()}" could be two different readings — send it with the decimal, like .015 or .15.`);
+      return ok();
+    }
     // Same executor the watch uses, in text mode — the reply is the readout.
     const param = (k) => (parsed[k] ?? null);
     const res = await runCore(param, true, said, new Date());
@@ -564,6 +587,11 @@ Deno.serve(async (req) => {
   const wantsText = fmt === "text" || (fmt !== "json" && req.method === "POST" && !Object.keys(body).length);
   const now = new Date();
 
+  if (spoken && spoken.action === "ambiguous") {
+    const msg = `"${String(spoken.raw).trim()}" could be two different readings — send it with the decimal, like .015 or .15.`;
+    return wantsText ? text(msg, 400) : json({ error: msg, heard: spoken.raw }, 400);
+  }
+
   if (spoken && spoken.action === "unknown") {
     const msg = `Didn't catch "${phrase.slice(0, 40)}" — say beer, wine, spirits, cocktail, status, or undo.`;
     return wantsText ? text(msg, 400) : json({ error: msg, heard: phrase }, 400);
@@ -630,6 +658,9 @@ async function runCore(param, wantsText, phrase, now) {
         session_id: session ? session.id : null,
         measured_at: now.toISOString(),
         bac: measured,
+        // Exactly what arrived, so a misparse is readable later rather than
+        // reconstructed from the value it produced.
+        raw_text: (param("raw") || phrase || null),
         device: param("device") || null,
         note: param("note") || null,
         predicted_low: b ? Number(b.low.toFixed(4)) : null,

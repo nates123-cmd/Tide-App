@@ -79,6 +79,10 @@ const cases = [
   ["bac .081", "reading"],
   ["blew 0.09", "reading"],
   ["reading .045", "reading"],
+  ["08", "reading"],       // .008 is implausibly low, so this can only be .08
+  [".08", "reading"],
+  ["15", "ambiguous"],     // .015 and .15 are both real readings — must ask
+  ["25", "ambiguous"],
 
   // nothing recognisable must refuse rather than guess
   ["asdfgh", "unknown"],
@@ -113,10 +117,21 @@ const readingPhrases = cases.filter(([, a]) => a === "reading").map(([s]) => s);
 const readingsAsDrinks = readingPhrases.filter((s) => (parsePhrase(s) || {}).action === "log");
 if (readingsAsDrinks.length) { fail++; console.log("\nREADING PARSED AS A DRINK:", readingsAsDrinks); }
 
-// Values must survive the parse, including the no-leading-zero device format.
-for (const [spoken, expect] of [[".062", 0.062], ["0.062", 0.062], ["62", 0.062], ["081", 0.081]]) {
+// Values must survive the parse. "08" is the one that bit: read as thousandths
+// it becomes .008 — a 10x error in the flattering direction on a number about
+// whether you can drive.
+for (const [spoken, expect] of [
+  [".062", 0.062], ["0.062", 0.062], ["62", 0.062], ["081", 0.081],
+  ["08", 0.08], [".08", 0.08], ["0.08", 0.08], ["120", 0.12], ["05", 0.05],
+]) {
   const got = (parsePhrase(spoken) || {}).bac;
   if (Math.abs((got ?? -1) - expect) > 1e-9) { fail++; console.log(`FAIL  "${spoken}" -> bac ${got} != ${expect}`); }
+}
+
+// Nothing may silently produce a reading outside what a breathalyzer can show.
+for (const spoken of ["62", "08", "120", "05", "062", ".062", "0.4"]) {
+  const v = (parsePhrase(spoken) || {}).bac;
+  if (v !== undefined && (v < 0.005 || v > 0.5)) { fail++; console.log(`FAIL  "${spoken}" -> implausible ${v}`); }
 }
 
 console.log(fail === 0 ? "\nALL PHRASE CHECKS PASS" : `\n${fail} FAILURES`);
