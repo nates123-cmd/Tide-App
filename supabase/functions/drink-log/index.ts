@@ -103,7 +103,10 @@ const NUM_WORDS = {
 };
 
 function parsePhrase(input) {
-  const s = String(input).toLowerCase().replace(/[^a-z0-9\s']/g, " ").replace(/\s+/g, " ").trim();
+  // The decimal point survives normalisation — stripping it turned "0.062"
+  // into "0 062" and a breathalyzer reading into nothing. Word-boundary
+  // matching below is unaffected, since "." is itself a boundary.
+  const s = String(input).toLowerCase().replace(/[^a-z0-9.\s']/g, " ").replace(/\s+/g, " ").trim();
   if (!s) return null;
 
   // Commands first, and deliberately phrase-level rather than keyword-level.
@@ -117,6 +120,17 @@ function parsePhrase(input) {
   }
   if (/\b(status|where am i|how many|how am i|how'?s it going|hows it going|check in|read out|readout|update me)\b/.test(s)) {
     return { action: "status" };
+  }
+
+  // A breathalyzer reading: essentially just a number, optionally prefixed.
+  // Accepts .062, 0.062, and 62 (some devices drop the leading "0."). Anchored
+  // to the whole phrase on purpose — "two beers" contains a number and must
+  // never be read as a measurement.
+  const m = s.match(/^(?:bac|blew|blow|reading|measured|test)?\s*(0?\.\d{1,3}|\d{2,3})\s*(?:bac)?$/);
+  if (m) {
+    let v = Number(m[1]);
+    if (v >= 1) v = v / 1000;              // "62" -> .062
+    if (v > 0 && v < 0.6) return { action: "reading", bac: v };
   }
 
   // Drink type: first alias that appears as a whole word or a plural of one.
@@ -526,6 +540,57 @@ Deno.serve(async (req) => {
       const r = rest.length ? buildReadout(rest, profile, now) : null;
       const msg = r ? `Removed. ${r.line}` : "Removed. Back to zero.";
       return wantsText ? text(msg) : json({ ok: true, undone: true, message: msg, count: rest.length });
+    }
+
+    // --- reading (breathalyzer measurement, for calibration) ------------------
+    if (action === "reading") {
+      const measured = Number(param("bac"));
+      if (!(measured > 0 && measured < 0.6)) {
+        const msg = "Need a BAC number, e.g. .062";
+        return wantsText ? text(msg, 400) : json({ error: msg }, 400);
+      }
+      const { session, entries } = await resolveSession(now, { createIfMissing: false });
+      const r = entries.length ? buildReadout(entries, profile, now) : null;
+      const b = r && r.bac;
+
+      // The prediction and its inputs are frozen into the row. A refit months
+      // from now must not depend on those entries still existing unchanged.
+      const row = {
+        user_id: USER_ID,
+        session_id: session ? session.id : null,
+        measured_at: now.toISOString(),
+        bac: measured,
+        device: param("device") || null,
+        note: param("note") || null,
+        predicted_low: b ? Number(b.low.toFixed(4)) : null,
+        predicted_mid: b ? Number(b.mid.toFixed(4)) : null,
+        predicted_high: b ? Number(b.high.toFixed(4)) : null,
+        predicted_safe: b ? Number(b.peakSafe.toFixed(4)) : null,
+        drinks_count: r ? r.count : 0,
+        units_total: r ? Number(r.units.toFixed(2)) : 0,
+        hours_elapsed: r ? Number(r.pace.rawHr.toFixed(3)) : null,
+        mins_since_last: r ? r.pace.minSinceLast : null,
+        model_r: b ? Number(b.r.toFixed(4)) : null,
+        model_beta: BETA.mid,
+        log_date: localDate(now),
+      };
+      await sbFetch("/tide_bac_readings", { method: "POST", body: JSON.stringify(row) });
+
+      // Answer with the gap, because that is the whole point of taking the
+      // reading — a bare "saved" would make the calibration invisible.
+      let msg = `Logged ${bacStr(measured)}.`;
+      if (b) {
+        const delta = measured - b.mid;
+        const dir = Math.abs(delta) < 0.005 ? "on the money" : (delta > 0 ? "higher" : "lower");
+        msg += ` Model said ~${bacStr(b.mid)} (${bacStr(b.low)}-${bacStr(b.high)})`;
+        msg += Math.abs(delta) < 0.005
+          ? ` — ${dir}.`
+          : ` — you read ${bacStr(Math.abs(delta))} ${dir}.`;
+        msg += ` Drink ${r.count}, ${r.pace.rawHr.toFixed(1)}h in.`;
+      } else {
+        msg += " No active session, so nothing to compare against.";
+      }
+      return wantsText ? text(msg) : json({ ok: true, reading: measured, message: msg, ...(b ? strip(r) : {}) });
     }
 
     // --- status (read-only readout, always answers) ---------------------------

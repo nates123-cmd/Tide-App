@@ -71,6 +71,15 @@ const cases = [
   ["calling it", "end"],
   ["heading home", "end"],
 
+  // breathalyzer readings
+  [".062", "reading"],
+  ["0.062", "reading"],
+  ["062", "reading"],
+  ["62", "reading"],
+  ["bac .081", "reading"],
+  ["blew 0.09", "reading"],
+  ["reading .045", "reading"],
+
   // nothing recognisable must refuse rather than guess
   ["asdfgh", "unknown"],
   ["the weather is nice", "unknown"],
@@ -92,6 +101,23 @@ for (const [spoken, action, type, count, scale] of cases) {
 const commandPhrases = cases.filter(([, a]) => a !== "log" && a !== "unknown").map(([s]) => s);
 const leaked = commandPhrases.filter((s) => (parsePhrase(s) || {}).action === "log");
 if (leaked.length) { fail++; console.log("\nCOMMAND LEAKED INTO A LOG:", leaked); }
+
+// Readings and drinks must not bleed into each other. A drink counted as a
+// calibration point corrupts the fit; a reading counted as a drink corrupts
+// the drink record. Both are silent failures, so assert both directions.
+const drinkPhrases = cases.filter(([, a]) => a === "log").map(([s]) => s);
+const drinksAsReadings = drinkPhrases.filter((s) => (parsePhrase(s) || {}).action === "reading");
+if (drinksAsReadings.length) { fail++; console.log("\nDRINK PARSED AS A READING:", drinksAsReadings); }
+
+const readingPhrases = cases.filter(([, a]) => a === "reading").map(([s]) => s);
+const readingsAsDrinks = readingPhrases.filter((s) => (parsePhrase(s) || {}).action === "log");
+if (readingsAsDrinks.length) { fail++; console.log("\nREADING PARSED AS A DRINK:", readingsAsDrinks); }
+
+// Values must survive the parse, including the no-leading-zero device format.
+for (const [spoken, expect] of [[".062", 0.062], ["0.062", 0.062], ["62", 0.062], ["081", 0.081]]) {
+  const got = (parsePhrase(spoken) || {}).bac;
+  if (Math.abs((got ?? -1) - expect) > 1e-9) { fail++; console.log(`FAIL  "${spoken}" -> bac ${got} != ${expect}`); }
+}
 
 console.log(fail === 0 ? "\nALL PHRASE CHECKS PASS" : `\n${fail} FAILURES`);
 process.exit(fail === 0 ? 0 : 1);
