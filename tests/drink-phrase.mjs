@@ -71,6 +71,22 @@ const cases = [
   ["calling it", "end"],
   ["heading home", "end"],
 
+  // breathalyzer readings
+  [".062", "reading"],
+  ["0.062", "reading"],
+  ["062", "reading"],
+  ["62", "reading"],
+  ["bac .081", "reading"],
+  ["blew 0.09", "reading"],
+  ["reading .045", "reading"],
+  [".08", "reading"],
+  [".008", "reading"],     // near-zero readings are the ones that pin beta
+  ["0.008", "reading"],
+  ["08", "ambiguous"],     // .008 and .08 are both real readings — must ask
+  ["008", "ambiguous"],
+  ["15", "ambiguous"],
+  ["25", "ambiguous"],
+
   // nothing recognisable must refuse rather than guess
   ["asdfgh", "unknown"],
   ["the weather is nice", "unknown"],
@@ -92,6 +108,35 @@ for (const [spoken, action, type, count, scale] of cases) {
 const commandPhrases = cases.filter(([, a]) => a !== "log" && a !== "unknown").map(([s]) => s);
 const leaked = commandPhrases.filter((s) => (parsePhrase(s) || {}).action === "log");
 if (leaked.length) { fail++; console.log("\nCOMMAND LEAKED INTO A LOG:", leaked); }
+
+// Readings and drinks must not bleed into each other. A drink counted as a
+// calibration point corrupts the fit; a reading counted as a drink corrupts
+// the drink record. Both are silent failures, so assert both directions.
+const drinkPhrases = cases.filter(([, a]) => a === "log").map(([s]) => s);
+const drinksAsReadings = drinkPhrases.filter((s) => (parsePhrase(s) || {}).action === "reading");
+if (drinksAsReadings.length) { fail++; console.log("\nDRINK PARSED AS A READING:", drinksAsReadings); }
+
+const readingPhrases = cases.filter(([, a]) => a === "reading").map(([s]) => s);
+const readingsAsDrinks = readingPhrases.filter((s) => (parsePhrase(s) || {}).action === "log");
+if (readingsAsDrinks.length) { fail++; console.log("\nREADING PARSED AS A DRINK:", readingsAsDrinks); }
+
+// An explicit decimal is taken exactly as typed, at any magnitude. Low values
+// are first-class: a reading hours after the last drink is what pins beta, so
+// .008 must round-trip as .008 and never be treated as noise.
+for (const [spoken, expect] of [
+  [".062", 0.062], ["0.062", 0.062], ["62", 0.062], ["081", 0.081],
+  [".08", 0.08], ["0.08", 0.08], [".008", 0.008], ["0.008", 0.008],
+  ["120", 0.12],
+]) {
+  const got = (parsePhrase(spoken) || {}).bac;
+  if (Math.abs((got ?? -1) - expect) > 1e-9) { fail++; console.log(`FAIL  "${spoken}" -> bac ${got} != ${expect}`); }
+}
+
+// Bare digits that could be two real readings must ask, never pick one.
+for (const spoken of ["08", "008", "15", "25", "09", "005"]) {
+  const a = (parsePhrase(spoken) || {}).action;
+  if (a !== "ambiguous") { fail++; console.log(`FAIL  "${spoken}" -> ${a}, expected ambiguous`); }
+}
 
 console.log(fail === 0 ? "\nALL PHRASE CHECKS PASS" : `\n${fail} FAILURES`);
 process.exit(fail === 0 ? 0 : 1);

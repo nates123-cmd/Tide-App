@@ -43,8 +43,16 @@ const TOKEN = Deno.env.get("TIDE_DRINK_TOKEN") || "";
 // only to point the watch at a different account without touching the rest.
 const USER_ID = Deno.env.get("TIDE_DRINK_USER_ID") || Deno.env.get("OWNER_ID") || "";
 const ALERT_AT = Number(Deno.env.get("TIDE_DRINK_ALERT_AT") || 4);
-const TG_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
-const TG_CHAT = Deno.env.get("TELEGRAM_CHAT_ID") || "";
+// TELEGRAM_BOT_TOKEN is @Nate_beelink_bot, which OpenClaw long-polls from
+// rootless Docker. Telegram hands each update to exactly ONE getUpdates caller
+// or webhook, so SENDING on that token is harmless but RECEIVING on it would
+// silently steal OpenClaw's messages. The TIDE_ overrides exist so Tide can
+// move to its own BotFather bot and own its inbound replies without touching
+// the shared one. Same landmine is documented in challengebot.py.
+const TG_TOKEN = Deno.env.get("TIDE_TG_TOKEN") || Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
+const TG_CHAT = Deno.env.get("TIDE_TG_CHAT") || Deno.env.get("TELEGRAM_CHAT_ID") || "";
+// Set when registering the webhook; Telegram echoes it back on every update.
+const TG_WEBHOOK_SECRET = Deno.env.get("TIDE_TG_WEBHOOK_SECRET") || "";
 const TZ = Deno.env.get("TIDE_TZ") || "America/New_York";
 
 // A session is "the same night" until this many hours pass with no drink.
@@ -103,7 +111,10 @@ const NUM_WORDS = {
 };
 
 function parsePhrase(input) {
-  const s = String(input).toLowerCase().replace(/[^a-z0-9\s']/g, " ").replace(/\s+/g, " ").trim();
+  // The decimal point survives normalisation — stripping it turned "0.062"
+  // into "0 062" and a breathalyzer reading into nothing. Word-boundary
+  // matching below is unaffected, since "." is itself a boundary.
+  const s = String(input).toLowerCase().replace(/[^a-z0-9.\s']/g, " ").replace(/\s+/g, " ").trim();
   if (!s) return null;
 
   // Commands first, and deliberately phrase-level rather than keyword-level.
@@ -117,6 +128,40 @@ function parsePhrase(input) {
   }
   if (/\b(status|where am i|how many|how am i|how'?s it going|hows it going|check in|read out|readout|update me)\b/.test(s)) {
     return { action: "status" };
+  }
+
+  // A breathalyzer reading: essentially just a number, optionally prefixed.
+  // Anchored to the whole phrase on purpose — "two beers" contains a number and
+  // must never be read as a measurement.
+  //
+  // Bare digits are genuinely ambiguous, so never guess: try both readings,
+  // keep the ones physically plausible, accept only if exactly one survives.
+  //
+  //   "62"  -> .062 ok, .62 impossible          -> .062
+  //   "120" -> .120 ok, 1.20 impossible         -> .120
+  //   "08"  -> .008 ok AND .08 ok               -> ambiguous, ask
+  //   "15"  -> .015 ok AND .15 ok               -> ambiguous, ask
+  //
+  // The floor is .001, not .010. A near-zero reading is not noise to be
+  // discarded — the descending limb, hours after the last drink, is precisely
+  // what pins the elimination rate, so .005 and .008 are among the most
+  // valuable numbers here. An earlier floor of .010 silently turned "008" into
+  // .080, inventing a 10x error while trying to prevent one.
+  //
+  // An explicit decimal point is never ambiguous and is always taken as typed.
+  const m = s.match(/^(?:bac|blew|blow|reading|measured|test)?\s*(0?\.\d{1,3}|\d{1,3})\s*(?:bac)?$/);
+  if (m) {
+    const lit = m[1];
+    if (lit.includes(".")) {
+      const v = Number(lit);
+      if (v > 0 && v < 0.6) return { action: "reading", bac: v, raw: input };
+    } else {
+      const n = Number(lit);
+      const plausible = [n / 1000, n / 100].filter((v) => v >= 0.001 && v <= 0.40);
+      const uniq = [...new Set(plausible)];
+      if (uniq.length === 1) return { action: "reading", bac: uniq[0], raw: input };
+      if (uniq.length > 1) return { action: "ambiguous", raw: input };
+    }
   }
 
   // Drink type: first alias that appears as a whole word or a plural of one.
@@ -401,6 +446,58 @@ function strip(r) {
   };
 }
 
+// Handle one Telegram update: read the text, run it through the same parser
+// the watch uses, do the thing, reply in the chat.
+//
+// LANDMINE — always answer 200, even on failure. Telegram retries any non-2xx
+// delivery, and a retried "beer" is a drink logged twice. Errors are reported
+// in the chat, never in the status code.
+async function handleTelegram(req, update) {
+  const ok = () => new Response("ok", { status: 200 });
+
+  if (TG_WEBHOOK_SECRET) {
+    const got = req.headers.get("x-telegram-bot-api-secret-token") || "";
+    if (got !== TG_WEBHOOK_SECRET) return ok(); // ignore, don't invite retries
+  }
+
+  const msg = update.message || update.edited_message;
+  const chatId = msg?.chat?.id;
+  const said = String(msg?.text || "").trim();
+  if (!chatId || !said) return ok();
+
+  // Only answer Nate. A dedicated bot is still publicly discoverable by name.
+  if (TG_CHAT && String(chatId) !== String(TG_CHAT)) return ok();
+
+  const reply = async (t) => {
+    try {
+      await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: t, reply_to_message_id: msg.message_id }),
+      });
+    } catch { /* nothing useful to do; the update is already consumed */ }
+  };
+
+  try {
+    const parsed = parsePhrase(said);
+    if (!parsed || parsed.action === "unknown") {
+      await reply(`Didn't catch "${said.slice(0, 40)}" — send a BAC number like .062, or beer / status / undo.`);
+      return ok();
+    }
+    if (parsed.action === "ambiguous") {
+      await reply(`"${said.trim()}" could be two different readings — send it with the decimal, like .015 or .15.`);
+      return ok();
+    }
+    // Same executor the watch uses, in text mode — the reply is the readout.
+    const param = (k) => (parsed[k] ?? null);
+    const res = await runCore(param, true, said, new Date());
+    await reply((await res.text()).trim() || "Done.");
+  } catch (e) {
+    await reply("Failed: " + String((e && e.message) || e));
+  }
+  return ok();
+}
+
 async function telegram(msg) {
   if (!TG_TOKEN || !TG_CHAT) return false;
   try {
@@ -474,6 +571,13 @@ Deno.serve(async (req) => {
       phrase = raw;
     }
   }
+  // --- Telegram webhook -----------------------------------------------------
+  // Replying to an alert lands here. Only ever registered against a DEDICATED
+  // Tide bot — never @Nate_beelink_bot, which OpenClaw polls.
+  if (body && body.update_id !== undefined) {
+    return await handleTelegram(req, body);
+  }
+
   const spoken = phrase ? parsePhrase(phrase) : null;
   const param = (k) => body[k] ?? url.searchParams.get(k) ?? (spoken ? spoken[k] : null) ?? null;
 
@@ -487,11 +591,23 @@ Deno.serve(async (req) => {
   const wantsText = fmt === "text" || (fmt !== "json" && req.method === "POST" && !Object.keys(body).length);
   const now = new Date();
 
+  if (spoken && spoken.action === "ambiguous") {
+    const msg = `"${String(spoken.raw).trim()}" could be two different readings — send it with the decimal, like .015 or .15.`;
+    return wantsText ? text(msg, 400) : json({ error: msg, heard: spoken.raw }, 400);
+  }
+
   if (spoken && spoken.action === "unknown") {
     const msg = `Didn't catch "${phrase.slice(0, 40)}" — say beer, wine, spirits, cocktail, status, or undo.`;
     return wantsText ? text(msg, 400) : json({ error: msg, heard: phrase }, 400);
   }
 
+  return await runCore(param, wantsText, phrase, now);
+});
+
+// Action dispatch, shared by the HTTP path and the Telegram webhook so the
+// two can never drift into different behaviour. Returns a Response; the
+// webhook reads the text out of it.
+async function runCore(param, wantsText, phrase, now) {
   const action = String(param("action") || "log").toLowerCase();
 
   try {
@@ -526,6 +642,60 @@ Deno.serve(async (req) => {
       const r = rest.length ? buildReadout(rest, profile, now) : null;
       const msg = r ? `Removed. ${r.line}` : "Removed. Back to zero.";
       return wantsText ? text(msg) : json({ ok: true, undone: true, message: msg, count: rest.length });
+    }
+
+    // --- reading (breathalyzer measurement, for calibration) ------------------
+    if (action === "reading") {
+      const measured = Number(param("bac"));
+      if (!(measured > 0 && measured < 0.6)) {
+        const msg = "Need a BAC number, e.g. .062";
+        return wantsText ? text(msg, 400) : json({ error: msg }, 400);
+      }
+      const { session, entries } = await resolveSession(now, { createIfMissing: false });
+      const r = entries.length ? buildReadout(entries, profile, now) : null;
+      const b = r && r.bac;
+
+      // The prediction and its inputs are frozen into the row. A refit months
+      // from now must not depend on those entries still existing unchanged.
+      const row = {
+        user_id: USER_ID,
+        session_id: session ? session.id : null,
+        measured_at: now.toISOString(),
+        bac: measured,
+        // Exactly what arrived, so a misparse is readable later rather than
+        // reconstructed from the value it produced.
+        raw_text: (param("raw") || phrase || null),
+        device: param("device") || null,
+        note: param("note") || null,
+        predicted_low: b ? Number(b.low.toFixed(4)) : null,
+        predicted_mid: b ? Number(b.mid.toFixed(4)) : null,
+        predicted_high: b ? Number(b.high.toFixed(4)) : null,
+        predicted_safe: b ? Number(b.peakSafe.toFixed(4)) : null,
+        drinks_count: r ? r.count : 0,
+        units_total: r ? Number(r.units.toFixed(2)) : 0,
+        hours_elapsed: r ? Number(r.pace.rawHr.toFixed(3)) : null,
+        mins_since_last: r ? r.pace.minSinceLast : null,
+        model_r: b ? Number(b.r.toFixed(4)) : null,
+        model_beta: BETA.mid,
+        log_date: localDate(now),
+      };
+      await sbFetch("/tide_bac_readings", { method: "POST", body: JSON.stringify(row) });
+
+      // Answer with the gap, because that is the whole point of taking the
+      // reading — a bare "saved" would make the calibration invisible.
+      let msg = `Logged ${bacStr(measured)}.`;
+      if (b) {
+        const delta = measured - b.mid;
+        const dir = Math.abs(delta) < 0.005 ? "on the money" : (delta > 0 ? "higher" : "lower");
+        msg += ` Model said ~${bacStr(b.mid)} (${bacStr(b.low)}-${bacStr(b.high)})`;
+        msg += Math.abs(delta) < 0.005
+          ? ` — ${dir}.`
+          : ` — you read ${bacStr(Math.abs(delta))} ${dir}.`;
+        msg += ` Drink ${r.count}, ${r.pace.rawHr.toFixed(1)}h in.`;
+      } else {
+        msg += " No active session, so nothing to compare against.";
+      }
+      return wantsText ? text(msg) : json({ ok: true, reading: measured, message: msg, ...(b ? strip(r) : {}) });
     }
 
     // --- status (read-only readout, always answers) ---------------------------
@@ -626,4 +796,5 @@ Deno.serve(async (req) => {
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, 502);
   }
-});
+}
+
