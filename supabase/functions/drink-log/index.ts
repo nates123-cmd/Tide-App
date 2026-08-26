@@ -43,8 +43,16 @@ const TOKEN = Deno.env.get("TIDE_DRINK_TOKEN") || "";
 // only to point the watch at a different account without touching the rest.
 const USER_ID = Deno.env.get("TIDE_DRINK_USER_ID") || Deno.env.get("OWNER_ID") || "";
 const ALERT_AT = Number(Deno.env.get("TIDE_DRINK_ALERT_AT") || 4);
-const TG_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
-const TG_CHAT = Deno.env.get("TELEGRAM_CHAT_ID") || "";
+// TELEGRAM_BOT_TOKEN is @Nate_beelink_bot, which OpenClaw long-polls from
+// rootless Docker. Telegram hands each update to exactly ONE getUpdates caller
+// or webhook, so SENDING on that token is harmless but RECEIVING on it would
+// silently steal OpenClaw's messages. The TIDE_ overrides exist so Tide can
+// move to its own BotFather bot and own its inbound replies without touching
+// the shared one. Same landmine is documented in challengebot.py.
+const TG_TOKEN = Deno.env.get("TIDE_TG_TOKEN") || Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
+const TG_CHAT = Deno.env.get("TIDE_TG_CHAT") || Deno.env.get("TELEGRAM_CHAT_ID") || "";
+// Set when registering the webhook; Telegram echoes it back on every update.
+const TG_WEBHOOK_SECRET = Deno.env.get("TIDE_TG_WEBHOOK_SECRET") || "";
 const TZ = Deno.env.get("TIDE_TZ") || "America/New_York";
 
 // A session is "the same night" until this many hours pass with no drink.
@@ -415,6 +423,54 @@ function strip(r) {
   };
 }
 
+// Handle one Telegram update: read the text, run it through the same parser
+// the watch uses, do the thing, reply in the chat.
+//
+// LANDMINE — always answer 200, even on failure. Telegram retries any non-2xx
+// delivery, and a retried "beer" is a drink logged twice. Errors are reported
+// in the chat, never in the status code.
+async function handleTelegram(req, update) {
+  const ok = () => new Response("ok", { status: 200 });
+
+  if (TG_WEBHOOK_SECRET) {
+    const got = req.headers.get("x-telegram-bot-api-secret-token") || "";
+    if (got !== TG_WEBHOOK_SECRET) return ok(); // ignore, don't invite retries
+  }
+
+  const msg = update.message || update.edited_message;
+  const chatId = msg?.chat?.id;
+  const said = String(msg?.text || "").trim();
+  if (!chatId || !said) return ok();
+
+  // Only answer Nate. A dedicated bot is still publicly discoverable by name.
+  if (TG_CHAT && String(chatId) !== String(TG_CHAT)) return ok();
+
+  const reply = async (t) => {
+    try {
+      await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: t, reply_to_message_id: msg.message_id }),
+      });
+    } catch { /* nothing useful to do; the update is already consumed */ }
+  };
+
+  try {
+    const parsed = parsePhrase(said);
+    if (!parsed || parsed.action === "unknown") {
+      await reply(`Didn't catch "${said.slice(0, 40)}" — send a BAC number like .062, or beer / status / undo.`);
+      return ok();
+    }
+    // Same executor the watch uses, in text mode — the reply is the readout.
+    const param = (k) => (parsed[k] ?? null);
+    const res = await runCore(param, true, said, new Date());
+    await reply((await res.text()).trim() || "Done.");
+  } catch (e) {
+    await reply("Failed: " + String((e && e.message) || e));
+  }
+  return ok();
+}
+
 async function telegram(msg) {
   if (!TG_TOKEN || !TG_CHAT) return false;
   try {
@@ -488,6 +544,13 @@ Deno.serve(async (req) => {
       phrase = raw;
     }
   }
+  // --- Telegram webhook -----------------------------------------------------
+  // Replying to an alert lands here. Only ever registered against a DEDICATED
+  // Tide bot — never @Nate_beelink_bot, which OpenClaw polls.
+  if (body && body.update_id !== undefined) {
+    return await handleTelegram(req, body);
+  }
+
   const spoken = phrase ? parsePhrase(phrase) : null;
   const param = (k) => body[k] ?? url.searchParams.get(k) ?? (spoken ? spoken[k] : null) ?? null;
 
@@ -506,6 +569,13 @@ Deno.serve(async (req) => {
     return wantsText ? text(msg, 400) : json({ error: msg, heard: phrase }, 400);
   }
 
+  return await runCore(param, wantsText, phrase, now);
+});
+
+// Action dispatch, shared by the HTTP path and the Telegram webhook so the
+// two can never drift into different behaviour. Returns a Response; the
+// webhook reads the text out of it.
+async function runCore(param, wantsText, phrase, now) {
   const action = String(param("action") || "log").toLowerCase();
 
   try {
@@ -691,4 +761,5 @@ Deno.serve(async (req) => {
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, 502);
   }
-});
+}
+
